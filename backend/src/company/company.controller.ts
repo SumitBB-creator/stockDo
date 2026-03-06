@@ -3,10 +3,14 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { CompanyService } from './company.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { memoryStorage } from 'multer';
+import { SupabaseService } from '../common/services/supabase.service';
 
 @Controller('company')
 export class CompanyController {
-  constructor(private readonly companyService: CompanyService) { }
+  constructor(
+    private readonly companyService: CompanyService,
+    private readonly supabaseService: SupabaseService,
+  ) { }
 
   @Get()
   getCompany() {
