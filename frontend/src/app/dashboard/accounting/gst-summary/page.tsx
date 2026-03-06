@@ -64,7 +64,7 @@ export default function GstSummaryPage() {
 
     // Calculate Totals for Output Tax
     const outputTaxRows = [
-        { label: 'Sales', data: summary?.sales },
+        { label: 'Sales', data: summary?.sales, isAdjustment: false },
     ];
 
     return (
