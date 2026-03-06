@@ -36,8 +36,8 @@ export function formatCurrency(amount: number | string | undefined | null) {
     const value = typeof amount === 'string' ? parseFloat(amount) : amount;
     if (value === undefined || value === null || isNaN(value)) return '0.00';
 
-    return value.toLocaleString('en-IN', {
+    return `₹ ${value.toLocaleString('en-IN', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-    });
+    })}`;
 }

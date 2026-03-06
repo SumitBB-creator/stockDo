@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import {
     TrendingUp,
     TrendingDown,
-    DollarSign,
+    IndianRupee,
     Users,
     AlertTriangle,
     ArrowUpRight,
@@ -71,7 +71,7 @@ export default function DashboardPage() {
                 <Card className="border-none shadow-md bg-gradient-to-br from-indigo-500 to-indigo-700 text-white">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-xs font-medium opacity-90 text-white">Earnings</CardTitle>
-                        <DollarSign className="h-4 w-4 opacity-80" />
+                        <IndianRupee className="h-4 w-4 opacity-80" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-xl font-bold">{formatCurrency(data?.earnings)}</div>
@@ -256,7 +256,7 @@ export default function DashboardPage() {
                                                 return val;
                                             }
                                         }}
-                                        formatter={(value: any) => [formatCurrency(value).replace('₹', '₹ '), 'Revenue']}
+                                        formatter={(value: any) => [formatCurrency(value), 'Revenue']}
                                     />
                                     <Area
                                         name="Daily Revenue"
