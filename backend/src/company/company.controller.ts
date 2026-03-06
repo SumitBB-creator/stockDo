@@ -2,8 +2,7 @@ import { Controller, Get, Post, Body, UseInterceptors, UploadedFile, BadRequestE
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CompanyService } from './company.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { memoryStorage } from 'multer';
 
 @Controller('company')
 export class CompanyController {
@@ -16,14 +15,7 @@ export class CompanyController {
 
   @Post('upload-logo')
   @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: './uploads',
-      filename: (req, file, callback) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const ext = extname(file.originalname);
-        callback(null, `logo-${uniqueSuffix}${ext}`);
-      },
-    }),
+    storage: memoryStorage(),
     fileFilter: (req, file, callback) => {
       if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
         return callback(new BadRequestException('Only image files are allowed!'), false);
@@ -35,8 +27,14 @@ export class CompanyController {
     if (!file) {
       throw new BadRequestException('File is not provided');
     }
-    // Return relative URL
-    return { url: `/uploads/${file.filename}` };
+
+    // For now, return a data URL or just a success message
+    // In actual production with Vercel, we will integrate Supabase Storage here.
+    return {
+      message: 'Logo received',
+      filename: file.originalname,
+      size: file.size
+    };
   }
 
   @Post()
