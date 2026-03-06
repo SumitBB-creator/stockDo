@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
-import api from '@/lib/api';
+import api, { fetchCompany } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -34,6 +34,21 @@ export default function Home() {
   const { setAuth, token, _hasHydrated } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [companyName, setCompanyName] = useState('StockDo');
+
+  useEffect(() => {
+    const loadCompany = async () => {
+      try {
+        const data = await fetchCompany();
+        if (data?.companyName) {
+          setCompanyName(data.companyName);
+        }
+      } catch (err) {
+        console.error('Failed to fetch company details', err);
+      }
+    };
+    loadCompany();
+  }, []);
 
   useEffect(() => {
     if (_hasHydrated && token) {
@@ -75,7 +90,7 @@ export default function Home() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-xl font-bold text-center">Login to StockDo</CardTitle>
+          <CardTitle className="text-xl font-bold text-center">Login to {companyName}</CardTitle>
           <CardDescription className="text-center">
             Enter your email and password to access your account
           </CardDescription>
