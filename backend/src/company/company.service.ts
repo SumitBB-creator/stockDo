@@ -7,11 +7,11 @@ export class CompanyService {
   private readonly logger = new Logger(CompanyService.name);
   constructor(private prisma: PrismaService) { }
 
-  async findAll() {
+  async getCompany() {
     return this.prisma.company.findFirst();
   }
 
-  async update(id: string, data: any) {
+  async updateCompany(data: any) {
     const existing = await this.prisma.company.findFirst();
     if (existing) {
       return this.prisma.company.update({
