@@ -1,0 +1,593 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Customer {
+  id              String   @id @default(uuid())
+  name            String
+  ledgerAccountId String?  @map("ledger_account_id")
+  relationType    String?  @map("relation_type") // S/O, D/O, W/O, C/O
+  relationName    String?  @map("relation_name")
+  pan             String?
+  
+  // Office Address
+  officeAddress   String?  @map("office_address")
+  officeCity      String?  @map("office_city")
+  officePin       String?  @map("office_pin")
+  officeState     String?  @map("office_state")
+  officeCountry   String?  @map("office_country")
+  officePhone     String?  @map("office_phone")
+  officeFax       String?  @map("office_fax")
+  officeEmail     String?  @map("office_email")
+  officeGst       String?  @map("office_gst")
+
+  // Site Address
+  siteAddress     String?  @map("site_address")
+  siteCity        String?  @map("site_city")
+  sitePin         String?  @map("site_pin")
+  siteState       String?  @map("site_state")
+  siteCountry     String?  @map("site_country")
+  sitePhone       String?  @map("site_phone")
+  siteFax         String?  @map("site_fax")
+  siteEmail       String?  @map("site_email")
+  siteGst         String?  @map("site_gst")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  quotations      Quotation[]
+  agreements      Agreement[]
+  challans        Challan[]
+  bills           Bill[]
+  transfersFrom   Transfer[] @relation("FromCustomer")
+  transfersTo     Transfer[] @relation("ToCustomer")
+
+  @@map("customers")
+}
+
+model Employee {
+  id              String   @id @default(uuid())
+  name            String
+  ledgerAccountId String?  @unique @map("ledger_account_id")
+  relationType    String?  @map("relation_type") // S/O, D/O, W/O, C/O
+  relationName    String?  @map("relation_name")
+  pan             String?
+  
+  // Address
+  address         String?
+  city            String?
+  pin             String?
+  state           String?
+  country         String?
+  phone           String?
+  fax             String?
+  email           String?
+  gstIn           String?  @map("gst_in")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("employees")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  roleId    String?  @map("role_id")
+  role      Role?    @relation(fields: [roleId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  permissions Json     // Matrix of module vs actions
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users       User[]
+
+  @@map("roles")
+}
+
+model Supplier {
+  id              String   @id @default(uuid())
+  name            String
+  ledgerAccountId String?  @unique @map("ledger_account_id")
+  relationType    String?  @map("relation_type") // S/O, D/O, W/O, C/O
+  relationName    String?  @map("relation_name")
+  pan             String?
+  
+  // Address
+  address         String?
+  city            String?
+  pin             String?
+  state           String?
+  country         String?
+  phone           String?
+  fax             String?
+  email           String?
+  gstIn           String?  @map("gst_in")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  purchases       Purchase[]
+
+  @@map("suppliers")
+}
+
+model Material {
+  id          String   @id @default(uuid())
+  materialId  String   @unique @map("material_id") // M0001, M0002...
+  branchId    String   @map("branch_id")           // B00001
+  name        String
+  unit        String?
+  hsn         String?
+  sac         String?
+  
+  // Quantities
+  totalQty    Int      @default(0) @map("total_qty")
+  damageQty   Int      @default(0) @map("damage_qty")
+  shortQty    Int      @default(0) @map("short_qty")
+  lowerLimit  Int      @default(0) @map("lower_limit")
+  
+  // Rates (Defaults)
+  hireRate            Float    @default(0) @map("hire_rate")
+  damageRecoveryRate  Float    @default(0) @map("damage_recovery_rate")
+  shortRecoveryRate   Float    @default(0) @map("short_recovery_rate")
+
+  status      String   @default("Active")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  quotationItems QuotationItem[]
+  agreementItems AgreementItem[]
+  challanItems   ChallanItem[]
+  transferItems  TransferItem[]
+
+  @@map("materials")
+}
+
+model Quotation {
+  id          String   @id @default(uuid())
+  quotationId String   @unique @map("quotation_id") // QTN-0001
+  
+  customerId  String   @map("customer_id")
+  customer    Customer @relation(fields: [customerId], references: [id])
+  
+  date        DateTime
+  status      String   @default("Draft") // Draft, Finalized
+  version     Int      @default(1)
+
+  items       QuotationItem[]
+  versions    QuotationVersion[]
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("quotations")
+}
+
+model QuotationVersion {
+  id          String    @id @default(uuid())
+  quotationId String    @map("quotation_id")
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  
+  version     Int
+  data        Json      // Snapshot of the quotation data (items included)
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("quotation_versions")
+}
+
+model Company {
+  id              String   @id @default(uuid())
+  companyName     String
+  employerName    String?
+  address1        String?
+  address2        String?
+  city            String?
+  stateCode       String?
+  state           String?
+  country         String?
+  pin             String?
+  email           String?
+  website         String?
+  phone           String?
+  fax             String?
+  pan             String?
+  gstin           String?
+  history         String?  @db.Text
+  logo            String?
+
+  gstOnTransportation Boolean @default(false) @map("gst_on_transportation")
+  ledgerAccountId     String?  @unique @map("ledger_account_id")
+  fixedAssetsValue    Float   @default(0) @map("fixed_assets_value")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("company")
+}
+
+model QuotationItem {
+  id                 String   @id @default(uuid())
+  quotationId        String   @map("quotation_id")
+  quotation          Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  materialId         String   @map("material_id")
+  material           Material @relation(fields: [materialId], references: [id])
+
+  hireRate           Float    @map("hire_rate")
+  damageRecoveryRate Float    @map("damage_recovery_rate")
+  shortRecoveryRate  Float    @map("short_recovery_rate")
+  rateAppliedAs      String   @default("Nos/Days") @map("rate_applied_as")
+
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("quotation_items")
+}
+
+model Vehicle {
+  id                String   @id @default(uuid())
+  vehicleNumber     String   @unique @map("vehicle_number")
+  vehicleType       String   @map("vehicle_type")
+  
+  // Due Dates
+  nextServiceDue    DateTime? @map("next_service_due")
+  pollutionDue      DateTime? @map("pollution_due")
+  insuranceDue      DateTime? @map("insurance_due")
+  roadTaxDue        DateTime? @map("road_tax_due")
+  tokenTaxDue       DateTime? @map("token_tax_due")
+  nationalPermitDue DateTime? @map("national_permit_due")
+  statePermitDue    DateTime? @map("state_permit_due")
+  fitnessTestDue    DateTime? @map("fitness_test_due")
+  
+  details           String?
+  status            String   @default("Active")
+
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("vehicles")
+}
+
+model Agreement {
+  id                      String   @id @default(uuid())
+  agreementId             String   @unique @map("agreement_id") // AGRMT-0001
+  
+  customerId              String   @map("customer_id")
+  customer                Customer @relation(fields: [customerId], references: [id])
+  
+  validFrom               DateTime @map("valid_from")
+  siteAddress             String?  @map("site_address")
+  residenceAddress        String?  @map("residence_address")
+  authorizedRepresentative String? @map("authorized_representative")
+  minimumRentPeriod       Int      @default(30) @map("minimum_rent_period") // In Days
+  
+  status                  String   @default("Draft") // Draft, Active, Closed
+  
+  items                   AgreementItem[]
+  challans                Challan[]
+  transfers               Transfer[]
+
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@map("agreements")
+}
+
+model AgreementItem {
+  id                 String    @id @default(uuid())
+  agreementId        String    @map("agreement_id")
+  agreement          Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+
+  materialId         String    @map("material_id")
+  material           Material  @relation(fields: [materialId], references: [id])
+
+  hireRate           Float     @map("hire_rate")
+  damageRecoveryRate Float     @map("damage_recovery_rate")
+  shortRecoveryRate  Float     @map("short_recovery_rate")
+  rateAppliedAs      String    @default("Nos/Days") @map("rate_applied_as")
+
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@map("agreement_items")
+}
+
+enum ChallanType {
+  ISSUE
+  RETURN
+}
+
+enum BillStatus {
+  DRAFT
+  FINALIZED
+  PAID
+  PARTIAL
+  CANCELLED
+}
+
+enum TransactionType {
+  BILL
+  PAYMENT
+  RECEIPT
+  EXPENSE
+  CREDIT_NOTE
+  DEBIT_NOTE
+  PURCHASE
+}
+
+model Challan {
+  id            String   @id @default(uuid())
+  challanNumber String   @unique @map("challan_number") // Auto-generated e.g., CH-0001
+  date          DateTime
+  
+  customerId    String   @map("customer_id")
+  customer      Customer @relation(fields: [customerId], references: [id])
+  
+  agreementId   String?  @map("agreement_id")
+  agreement     Agreement? @relation(fields: [agreementId], references: [id])
+  
+  vehicleNumber String?  @map("vehicle_number")
+  driverName    String?  @map("driver_name")
+  
+  // New Fields
+  manualChallanNumber String? @map("manual_challan_number")
+  
+  goodsValue          Float?   @map("goods_value")
+  weight              Float?
+  transportationCost  Float?   @map("transportation_cost")
+  greenTax            Float?   @map("green_tax")
+  transporterName     String?  @map("transporter_name")
+  biltyNumber         String?  @map("bilty_number")
+  
+  receiverName        String?  @map("receiver_name")
+  receiverMobile      String?  @map("receiver_mobile")
+  driverMobile        String?  @map("driver_mobile")
+  licenseNumber       String?  @map("license_number")
+  timeOut             String?  @map("time_out")
+  timeIn              String?  @map("time_in") // Used for Returns
+
+  remarks       String?
+  
+  type          ChallanType
+  
+  items         ChallanItem[]
+  
+  transferId    String?  @map("transfer_id")
+  transfer      Transfer? @relation(fields: [transferId], references: [id])
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("challans")
+}
+
+model Transfer {
+  id              String   @id @default(uuid())
+  transferNumber  String   @unique @map("transfer_number") // MTID-0001
+  date            DateTime
+  
+  fromCustomerId  String   @map("from_customer_id")
+  fromCustomer    Customer @relation("FromCustomer", fields: [fromCustomerId], references: [id])
+  
+  toCustomerId    String   @map("to_customer_id")
+  toCustomer      Customer @relation("ToCustomer", fields: [toCustomerId], references: [id])
+  
+  agreementId     String   @map("agreement_id") // Receiver's agreement
+  agreement       Agreement @relation(fields: [agreementId], references: [id])
+  
+  vehicleNumber   String?  @map("vehicle_number")
+  remarks         String?
+  
+  senderTransportation   Float @default(0) @map("sender_transportation")
+  receiverTransportation Float @default(0) @map("receiver_transportation")
+  
+  returnChallanId String? @unique @map("return_challan_id")
+  issueChallanId  String? @unique @map("issue_challan_id")
+  
+  items           TransferItem[]
+  challans        Challan[]
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("transfers")
+}
+
+model TransferItem {
+  id          String   @id @default(uuid())
+  transferId  String   @map("transfer_id")
+  transfer    Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  
+  materialId  String   @map("material_id")
+  material    Material @relation(fields: [materialId], references: [id])
+  
+  quantity    Int
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("transfer_items")
+}
+
+model ChallanItem {
+  id          String   @id @default(uuid())
+  challanId   String   @map("challan_id")
+  challan     Challan  @relation(fields: [challanId], references: [id], onDelete: Cascade)
+  
+  materialId  String   @map("material_id")
+  material    Material @relation(fields: [materialId], references: [id])
+  
+  quantity        Int
+  damageQuantity  Int      @default(0) @map("damage_quantity")
+  shortQuantity   Int      @default(0) @map("short_quantity")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("challan_items")
+}
+
+model Bill {
+  id            String   @id @default(uuid())
+  billNumber    String   @unique @map("bill_number")
+  
+  customerId    String   @map("customer_id")
+  customer      Customer @relation(fields: [customerId], references: [id])
+  
+  dateFrom      DateTime @map("date_from")
+  dateTo        DateTime @map("date_to")
+  generationDate DateTime @default(now()) @map("generation_date")
+  
+  totalAmount   Float    @map("total_amount")     // Sub-total (before GST)
+  taxableAmount Float?   @default(0) @map("taxable_amount") // Amount on which GST is calculated
+  
+  // Extra Charges
+  transportationCount Int?   @default(0) @map("transportation_count")
+  transportationCost Float? @default(0) @map("transportation_cost")
+  greenTaxCount      Int?   @default(0) @map("green_tax_count")
+  greenTax           Float? @default(0) @map("green_tax")
+  
+  // GST Fields
+  gstType       String?  @map("gst_type")          // "IGST" or "CGST_SGST"
+  gstRate       Float    @default(18) @map("gst_rate")  // 18%
+  cgst          Float?   @default(0)                 // 9% of totalAmount (intra-state)
+  sgst          Float?   @default(0)                 // 9% of totalAmount (intra-state)
+  igst          Float?   @default(0)                 // 18% of totalAmount (inter-state)
+  grandTotal    Float?   @map("grand_total")        // totalAmount + GST
+
+  status        BillStatus @default(DRAFT)
+  
+  items         BillItem[]
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("bills")
+}
+
+model BillItem {
+  id          String   @id @default(uuid())
+  billId      String   @map("bill_id")
+  bill        Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+  
+  description String
+  quantity    Float    // This is the total Unit-Days (No)
+  rate        Float
+  amount      Float
+  
+  materialId  String?  @map("material_id") // Optional link to material
+
+  // Period details
+  fromDate    DateTime? @map("from_date")
+  toDate      DateTime? @map("to_date")
+  balance     Float?    @default(0)
+  days        Int?      @default(0)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("bill_items")
+}
+
+model Transaction {
+  id              String   @id @default(uuid())
+  
+  ledgerAccountId String   @map("ledger_account_id") // Links to Customer.ledgerAccountId or Supplier or Employee
+  
+  date            DateTime
+  type            TransactionType
+  amount          Float    // Absolute amount
+  
+  referenceId     String?  @map("reference_id") // ID of Bill or Challan or Payment Record
+  transactionNumber String? @unique @map("transaction_number") // Auto-generated e.g. R-0001
+  description     String?
+  
+  // GST Fields for Notes
+  taxableAmount   Float?   @map("taxable_amount")
+  gstRate         Float?   @map("gst_rate")
+  cgst            Float?   @default(0)
+  sgst            Float?   @default(0)
+  igst            Float?   @default(0)
+  gstType         String?  @map("gst_type") // "IGST" or "CGST_SGST"
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("transactions")
+}
+
+model Purchase {
+  id              String   @id @default(uuid())
+  purchaseNumber  String   @unique @map("purchase_number") // Auto-generated e.g., PUR-0001
+  billNumber      String?  @map("bill_number")      // Supplier's Bill No.
+  date            DateTime  @default(now())
+  
+  supplierId      String   @map("supplier_id")
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  
+  totalAmount     Float    @map("total_amount")     // Sub-total (before GST)
+  
+  // GST Fields
+  gstType         String?  @map("gst_type")          // "IGST" or "CGST_SGST"
+  gstRate         Float    @default(18) @map("gst_rate")  // 18%
+  cgst            Float?   @default(0)
+  sgst            Float?   @default(0)
+  igst            Float?   @default(0)
+  grandTotal      Float?   @map("grand_total")        // totalAmount + GST
+
+  status          String   @default("Draft") // Draft, Finalized
+  
+  items           PurchaseItem[]
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id          String   @id @default(uuid())
+  purchaseId  String   @map("purchase_id")
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  
+  description String
+  quantity    Int
+  rate        Float
+  amount      Float
+  
+  materialId  String?  @map("material_id") // Optional link to material
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("purchase_items")
+}
+
+model DailyRevenue {
+  id        String   @id @default(uuid())
+  date      DateTime @unique @default(now())
+  amount    Float
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("daily_revenue")
+}

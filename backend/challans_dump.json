@@ -1,0 +1,22 @@
+[
+  {
+    "challanNumber": "CHN-0001",
+    "date": "2026-02-23T00:00:00.000Z",
+    "transportationCost": 100
+  },
+  {
+    "challanNumber": "CHN-0002",
+    "date": "2026-02-23T00:00:00.000Z",
+    "transportationCost": 100
+  },
+  {
+    "challanNumber": "RTN-0001",
+    "date": "2026-02-23T05:21:07.409Z",
+    "transportationCost": 100
+  },
+  {
+    "challanNumber": "CHN-0003",
+    "date": "2026-02-23T00:00:00.000Z",
+    "transportationCost": 100
+  }
+]
