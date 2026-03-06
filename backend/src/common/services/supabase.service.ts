@@ -6,7 +6,7 @@ import { extname } from 'path';
 
 @Injectable()
 export class SupabaseService {
-    private readonly logger = new Logger(SupabaseService.ts);
+    private readonly logger = new Logger(SupabaseService.name);
     private supabase: SupabaseClient;
 
     constructor(private configService: ConfigService) {

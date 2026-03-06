@@ -1,7 +1,6 @@
 import { Controller, Get, Post, Body, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CompanyService } from './company.service';
-import { CreateCompanyDto } from './dto/create-company.dto';
 import { memoryStorage } from 'multer';
 import { SupabaseService } from '../common/services/supabase.service';
 
@@ -42,7 +41,7 @@ export class CompanyController {
   }
 
   @Post()
-  updateCompany(@Body() createCompanyDto: CreateCompanyDto) {
-    return this.companyService.updateCompany(createCompanyDto);
+  updateCompany(@Body() data: any) {
+    return this.companyService.updateCompany(data);
   }
 }
