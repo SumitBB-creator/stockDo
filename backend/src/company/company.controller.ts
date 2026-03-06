@@ -26,18 +26,25 @@ export class CompanyController {
       callback(null, true);
     },
   }))
-  uploadLogo(@UploadedFile() file: Express.Multer.File) {
+  async uploadLogo(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('File is not provided');
     }
 
-    // For now, return a data URL or just a success message
-    // In actual production with Vercel, we will integrate Supabase Storage here.
-    return {
-      message: 'Logo received',
-      filename: file.originalname,
-      size: file.size
-    };
+    try {
+      const publicUrl = await this.supabaseService.uploadFile(file, 'logos');
+      return {
+        message: 'Logo uploaded successfully',
+        url: publicUrl,
+        filename: file.originalname,
+        size: file.size,
+      };
+    } catch (error) {
+      const errorMessage = error.message.includes('not found')
+        ? `${error.message}. Please create a public bucket named "logos" in your Supabase dashboard.`
+        : error.message;
+      throw new BadRequestException(`Failed to upload logo: ${errorMessage}`);
+    }
   }
 
   @Post()

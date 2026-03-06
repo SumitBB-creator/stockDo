@@ -34,6 +34,10 @@ export class SupabaseService {
             });
 
         if (error) {
+            if (error.message.includes('Bucket not found')) {
+                this.logger.error(`Supabase Storage Bucket "${bucket}" not found. Please ensure it is created and set to Public.`);
+                throw new Error(`Storage bucket "${bucket}" was not found in Supabase.`);
+            }
             this.logger.error(`Error uploading to Supabase: ${error.message}`);
             throw error;
         }

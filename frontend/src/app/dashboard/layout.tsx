@@ -123,25 +123,25 @@ const NavItems = ({
                             {isManagementOpen && (
                                 <div className="ml-4 space-y-1 border-l pl-2">
                                     {canView("Agreement") && (
-                                        <Link href="/dashboard/agreement" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Agreement">
+                                        <Link href="/dashboard/agreement" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Agreement">
                                             <FileText className="h-4 w-4" />
                                             <span>Agreement</span>
                                         </Link>
                                     )}
                                     {canView("Quotation") && (
-                                        <Link href="/dashboard/quotation" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Quotation">
+                                        <Link href="/dashboard/quotation" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Quotation">
                                             <FileText className="h-4 w-4" />
                                             <span>Quotation</span>
                                         </Link>
                                     )}
                                     {canView("Customer Stock") && (
-                                        <Link href="/dashboard/customer-stock" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Customer Stock">
+                                        <Link href="/dashboard/customer-stock" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Customer Stock">
                                             <Package className="h-4 w-4" />
                                             <span>Customer Stock</span>
                                         </Link>
                                     )}
                                     {canView("Company Stock") && (
-                                        <Link href="/dashboard/company-stock" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Company Stock">
+                                        <Link href="/dashboard/company-stock" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Company Stock">
                                             <Package className="h-4 w-4" />
                                             <span>Company Stock</span>
                                         </Link>
@@ -168,25 +168,25 @@ const NavItems = ({
                             {isStockOpen && (
                                 <div className="ml-4 space-y-1 border-l pl-2">
                                     {canView("Challan") && (
-                                        <Link href="/dashboard/stock/challan" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Challan">
+                                        <Link href="/dashboard/stock/challan" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Challan">
                                             <ClipboardList className="h-4 w-4" />
                                             <span>Challan</span>
                                         </Link>
                                     )}
                                     {canView("Return") && (
-                                        <Link href="/dashboard/stock/return" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Return">
+                                        <Link href="/dashboard/stock/return" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Return">
                                             <RotateCcw className="h-4 w-4" />
                                             <span>Return</span>
                                         </Link>
                                     )}
                                     {canView("Transfer") && (
-                                        <Link href="/dashboard/stock/transfer" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Transfer">
+                                        <Link href="/dashboard/stock/transfer" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Transfer">
                                             <ArrowRightLeft className="h-4 w-4" />
                                             <span>Transfer</span>
                                         </Link>
                                     )}
                                     {canView("Shortage Notice") && (
-                                        <Link href="/dashboard/stock/shortage" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Shortage Notice">
+                                        <Link href="/dashboard/stock/shortage" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Shortage Notice">
                                             <AlertTriangle className="h-4 w-4 text-amber-500" />
                                             <span>Shortage Notice</span>
                                         </Link>
@@ -214,63 +214,63 @@ const NavItems = ({
                                 <div className="ml-4 space-y-1 border-l pl-2">
                                     {canView("Billing") && (
                                         <>
-                                            <Link href="/dashboard/accounting/billing" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Monthly Billing">
+                                            <Link href="/dashboard/accounting/billing" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Monthly Billing">
                                                 <Calendar className="h-4 w-4" />
                                                 <span>Monthly Billing</span>
                                             </Link>
-                                            <Link href="/dashboard/accounting/customize-billing" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Customize Billing">
+                                            <Link href="/dashboard/accounting/customize-billing" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Customize Billing">
                                                 <Settings2 className="h-4 w-4" />
                                                 <span>Customize Billing</span>
                                             </Link>
-                                            <Link href="/dashboard/accounting/print-bill" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Print Bill">
+                                            <Link href="/dashboard/accounting/print-bill" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Print Bill">
                                                 <Printer className="h-4 w-4" />
                                                 <span>Print Bill</span>
                                             </Link>
                                         </>
                                     )}
                                     {canView("Transportation") && (
-                                        <Link href="/dashboard/accounting/transportation" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Transportation">
+                                        <Link href="/dashboard/accounting/transportation" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Transportation">
                                             <Truck className="h-4 w-4" />
                                             <span>Transportation</span>
                                         </Link>
                                     )}
                                     {canView("Ledger") && (
-                                        <Link href="/dashboard/accounting/ledger" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Ledger">
+                                        <Link href="/dashboard/accounting/ledger" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Ledger">
                                             <Book className="h-4 w-4" />
                                             <span>Ledger</span>
                                         </Link>
                                     )}
                                     {canView("Dues List") && (
-                                        <Link href="/dashboard/accounting/dueslist" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Dues List">
+                                        <Link href="/dashboard/accounting/dueslist" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Dues List">
                                             <FileText className="h-4 w-4" />
                                             <span>Dues List</span>
                                         </Link>
                                     )}
                                     {canView("Daybook") && (
-                                        <Link href="/dashboard/accounting/daybook" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Daybook">
+                                        <Link href="/dashboard/accounting/daybook" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Daybook">
                                             <Book className="h-4 w-4" />
                                             <span>Daybook</span>
                                         </Link>
                                     )}
                                     {canView("Receipt") && (
-                                        <Link href="/dashboard/accounting/receipt" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Receipt">
+                                        <Link href="/dashboard/accounting/receipt" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Receipt">
                                             <Receipt className="h-4 w-4" />
                                             <span>Receipt</span>
                                         </Link>
                                     )}
-                                    <Link href="/dashboard/accounting/notes" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Credit / Debit Notes">
+                                    <Link href="/dashboard/accounting/notes" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Credit / Debit Notes">
                                         <FileText className="h-4 w-4" />
                                         <span>Credit / Debit Notes</span>
                                     </Link>
-                                    <Link href="/dashboard/accounting/balance-sheet" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Balance Sheet">
+                                    <Link href="/dashboard/accounting/balance-sheet" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Balance Sheet">
                                         <Calculator className="h-4 w-4" />
                                         <span>Balance Sheet</span>
                                     </Link>
-                                    <Link href="/dashboard/accounting/gst-summary" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="GST Summary">
+                                    <Link href="/dashboard/accounting/gst-summary" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="GST Summary">
                                         <FileText className="h-4 w-4" />
                                         <span>GST Summary</span>
                                     </Link>
-                                    <Link href="/dashboard/accounting/annual-report" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Annual Report">
+                                    <Link href="/dashboard/accounting/annual-report" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Annual Report">
                                         <Layers className="h-4 w-4" />
                                         <span>Annual Report</span>
                                     </Link>
@@ -301,13 +301,13 @@ const NavItems = ({
                                                 Sale Report
                                             </div>
                                             {canView("Local Sale") && (
-                                                <Link href="/dashboard/sale-report/local" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Local Sale">
+                                                <Link href="/dashboard/sale-report/local" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Local Sale">
                                                     <FileText className="h-4 w-4" />
                                                     <span>Local Sale</span>
                                                 </Link>
                                             )}
                                             {canView("Central Sale") && (
-                                                <Link href="/dashboard/sale-report/central" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Central Sale">
+                                                <Link href="/dashboard/sale-report/central" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Central Sale">
                                                     <FileText className="h-4 w-4" />
                                                     <span>Central Sale</span>
                                                 </Link>
@@ -320,19 +320,19 @@ const NavItems = ({
                                                 Purchase
                                             </div>
                                             {canView("Purchase Details") && (
-                                                <Link href="/dashboard/purchase/details" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Purchase Details">
+                                                <Link href="/dashboard/purchase/details" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Purchase Details">
                                                     <ClipboardList className="h-4 w-4" />
                                                     <span>Purchase Details</span>
                                                 </Link>
                                             )}
                                             {canView("Local Purchase") && (
-                                                <Link href="/dashboard/purchase/local" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Local Purchase">
+                                                <Link href="/dashboard/purchase/local" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Local Purchase">
                                                     <FileText className="h-4 w-4" />
                                                     <span>Local Purchase</span>
                                                 </Link>
                                             )}
                                             {canView("Central Purchase") && (
-                                                <Link href="/dashboard/purchase/central" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Central Purchase">
+                                                <Link href="/dashboard/purchase/central" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Central Purchase">
                                                     <FileText className="h-4 w-4" />
                                                     <span>Central Purchase</span>
                                                 </Link>
@@ -378,13 +378,13 @@ const NavItems = ({
                     {isControlPanelOpen && (
                         <div className="ml-4 space-y-1 border-l pl-2">
                             {canView("Manage Role") && (
-                                <Link href="/dashboard/control-panel/roles" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Manage Role">
+                                <Link href="/dashboard/control-panel/roles" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Manage Role">
                                     <ShieldCheck className="h-4 w-4" />
                                     <span>Manage Role</span>
                                 </Link>
                             )}
                             {canView("Manage User") && (
-                                <Link href="/dashboard/control-panel/users" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm text-white" title="Manage User">
+                                <Link href="/dashboard/control-panel/users" className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors text-sm" title="Manage User">
                                     <UserPlus className="h-4 w-4" />
                                     <span>Manage User</span>
                                 </Link>
