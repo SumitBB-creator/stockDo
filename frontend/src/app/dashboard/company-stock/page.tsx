@@ -94,7 +94,7 @@ export default function CompanyStockPage() {
                                     <TableCell className="font-medium">{item.materialName}</TableCell>
                                     <TableCell>
                                         <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-xs font-medium">
-                                            {item.unit || 'N/A'}
+                                            {item.unit || 'Nos'}
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right font-semibold">{item.totalQty}</TableCell>
