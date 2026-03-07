@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Package, Search, Download } from 'lucide-react';
+import { Package, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -47,9 +47,7 @@ export default function CompanyStockPage() {
                     <Package className="h-8 w-8 text-primary" />
                     Company Stock Overview
                 </h1>
-                <Button variant="outline">
-                    <Download className="mr-2 h-4 w-4" /> Export Report
-                </Button>
+
             </div>
 
             <div className="flex items-center gap-4 bg-card p-4 rounded-lg border shadow-sm">
