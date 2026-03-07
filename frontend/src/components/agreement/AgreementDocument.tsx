@@ -195,7 +195,7 @@ const AgreementDocument: React.FC<AgreementDocumentProps> = ({ agreement, compan
     const party2CO = customer?.relationName ? ` ${customer.relationType || 'C/O'}-Mr. ${customer.relationName}` : '';
 
     // Check for complete address construction
-    let customerAddress = customer?.siteAddress || customer?.residenceAddress || customer?.officeAddress || '';
+    let customerAddress = customer?.siteAddress || customer?.residenceAddress || customer?.officeAddress || customer?.address || '';
     const customerCity = customer?.siteCity || customer?.officeCity;
     const customerState = customer?.siteState || customer?.officeState;
     const customerPin = customer?.sitePin || customer?.officePin;

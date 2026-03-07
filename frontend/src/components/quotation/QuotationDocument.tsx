@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     },
     companyAddress: {
         fontSize: 9,
-        lineHeight: 1.0,
+        lineHeight: 1.5,
         color: '#4B5563', // gray-600
     },
     logo: {
@@ -220,12 +220,14 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, compan
                     <Text style={styles.customerName}>{quotation.customer?.name}</Text>
                     {(() => {
                         const customer = quotation.customer;
-                        let customerAddress = customer?.siteAddress || customer?.residenceAddress || customer?.officeAddress || '';
+                        const relation = customer?.relationName ? `${customer.relationType || 'C/O'}-Mr. ${customer.relationName}` : '';
+
+                        let customerAddress = customer?.siteAddress || customer?.residenceAddress || customer?.officeAddress || customer?.address || '';
                         const customerCity = customer?.siteCity || customer?.officeCity;
                         const customerState = customer?.officeState || customer?.siteState;
                         const customerPin = customer?.officePin || customer?.sitePin;
 
-                        const addressParts = [customerAddress, customerCity].filter(Boolean);
+                        const addressParts = [relation, customerAddress, customerCity].filter(Boolean);
                         let fullAddress = addressParts.join(', ');
                         if (customerState || customerPin) {
                             const statePin = [customerState, customerPin].filter(Boolean).join(' - ');
