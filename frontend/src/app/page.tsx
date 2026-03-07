@@ -34,7 +34,7 @@ export default function Home() {
   const { setAuth, token, _hasHydrated } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [companyName, setCompanyName] = useState('StockDo');
+  const [companyName, setCompanyName] = useState('Inventory MS');
 
   useEffect(() => {
     const loadCompany = async () => {

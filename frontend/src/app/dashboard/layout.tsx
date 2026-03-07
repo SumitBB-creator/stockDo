@@ -483,7 +483,7 @@ export default function DashboardLayout({
                                 />
                             </div>
                         ) : (
-                            <span>StockDo</span>
+                            <span>Inventory</span>
                         )
                     )}
                     <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
@@ -525,14 +525,14 @@ export default function DashboardLayout({
                                             <span className="truncate">{companyData.companyName}</span>
                                         </div>
                                     ) : (
-                                        <span>{companyData?.companyName || 'StockDo'}</span>
+                                        <span>{companyData?.companyName || 'Inventory'}</span>
                                     )}
                                 </div>
                                 <NavItems isExpanded={true} {...navProps} />
                             </SheetContent>
                         </Sheet>
                         <h1 className="text-lg font-semibold ml-4">
-                            {companyData?.companyName || 'StockDo'}
+                            {companyData?.companyName || 'Inventory'}
                         </h1>
                     </div>
                     <div className="flex items-center space-x-4">

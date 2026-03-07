@@ -159,7 +159,7 @@ const BalanceSheetDocument: React.FC<BalanceSheetDocumentProps> = ({ data, compa
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
-                        <Text style={styles.companyName}>{company?.companyName || 'StockDo'}</Text>
+                        <Text style={styles.companyName}>{company?.companyName || 'Company Name'}</Text>
                         {company?.address1 && <Text style={styles.companyAddress}>{company.address1}</Text>}
                         {company?.address2 && <Text style={styles.companyAddress}>{company.address2}</Text>}
                         <Text style={styles.companyAddress}>
@@ -283,7 +283,7 @@ const BalanceSheetDocument: React.FC<BalanceSheetDocumentProps> = ({ data, compa
                     </View>
                     <View style={styles.signatureBlock}>
                         <View style={styles.signatureLine} />
-                        <Text style={styles.footerLabel}>For {company?.companyName || 'StockDo'}</Text>
+                        <Text style={styles.footerLabel}>For {company?.companyName || 'Company'}</Text>
                     </View>
                 </View>
             </Page>

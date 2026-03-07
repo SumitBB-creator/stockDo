@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "StockDo",
+  title: "Inventory & Accounting Management",
   description: "Stock Management System",
 };
 
