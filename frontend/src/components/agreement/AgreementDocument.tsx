@@ -7,13 +7,16 @@ const styles = StyleSheet.create({
     page: {
         flexDirection: 'column',
         backgroundColor: '#FFFFFF',
-        padding: 30,
+        paddingTop: 20,
+        paddingBottom: 30,
+        paddingLeft: 40,
+        paddingRight: 40,
         fontFamily: 'Helvetica',
         fontSize: 10,
         color: '#000000',
     },
     header: {
-        marginBottom: 20,
+        marginBottom: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#111827', // gray-900
         paddingBottom: 10,
@@ -53,9 +56,9 @@ const styles = StyleSheet.create({
         letterSpacing: 2,
     },
     introSection: {
-        marginTop: 10,
-        marginBottom: 10,
-        lineHeight: 1.5,
+        marginTop: 5,
+        marginBottom: 8,
+        lineHeight: 1,
         textAlign: 'justify',
     },
     boldText: {
@@ -71,7 +74,7 @@ const styles = StyleSheet.create({
     },
     termItem: {
         flexDirection: 'row',
-        marginBottom: 8, // Increased spacing for better readability
+        marginBottom: 4, // Reduced spacing for more compact look
     },
     termNumber: {
         width: 20,
@@ -81,7 +84,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 10,
         textAlign: 'justify',
-        lineHeight: 1.5,
+        lineHeight: 1.2,
     },
     tableLabel: {
         marginTop: 10,
@@ -179,18 +182,31 @@ const AgreementDocument: React.FC<AgreementDocumentProps> = ({ agreement, compan
     // Construct Party 1 String
     // "SEJWAL SHUTTERING STORE C/O Deepak Sejwal Kh. No. 398..."
     const party1CO = company?.employerName ? ` C/O ${company.employerName}` : '';
-    const party1Address = `${company?.address1 || ''} ${company?.address2 ? `, ${company.address2}` : ''} ${company?.city ? `, ${company.city}` : ''} ${(company?.pin) ? `- ${company.pin}` : ''} ${(company?.state) ? `(${company.state})` : ''}`;
+
+    const addressParts = [company?.address1, company?.address2, company?.city].filter(Boolean);
+    let party1Address = addressParts.join(', ');
+    if (company?.pin) party1Address += ` - ${company.pin}`;
+    if (company?.state) party1Address += ` (${company.state})`;
+
     const party1String = `${companyName}${party1CO} ${party1Address}`;
 
     // Construct Party 2 String
     // "DEVENDER KUMAR SAINI C/O-Mr. BOBY SAINI, D - 1997 , PALAM VIHAR..."
     const party2CO = customer?.relationName ? ` ${customer.relationType || 'C/O'}-Mr. ${customer.relationName}` : '';
-    // Use residence address if available as per template "residence at ...", but for the main definition usually customer address is used. 
-    // The template uses specific address, we will use the stored address for the customer (likely 'residenceAddress' or 'officeAddress' or just 'address' depending on schema usage in frontend).
-    // In Agreement schema we have `residenceAddress` and `siteAddress`.
-    // The template says: "Party No. 2 for their site situated at [Site] and residence at [Residence]" later.
-    // Here in the intro, it usually uses the main legal address (Residence).
-    const party2Address = `${customer?.residenceAddress || customer?.siteAddress || customer?.officeAddress || ''}`;
+
+    // Check for complete address construction
+    let customerAddress = customer?.siteAddress || customer?.residenceAddress || customer?.officeAddress || '';
+    const customerCity = customer?.siteCity || customer?.officeCity;
+    const customerState = customer?.siteState || customer?.officeState;
+    const customerPin = customer?.sitePin || customer?.officePin;
+
+    const party2AddressParts = [customerAddress, customerCity].filter(Boolean);
+    let party2Address = party2AddressParts.join(', ');
+    if (customerState || customerPin) {
+        const statePin = [customerState, customerPin].filter(Boolean).join(' - ');
+        if (statePin) party2Address += ` (${statePin})`;
+    }
+
     const party2String = `${customer?.name}${party2CO}, ${party2Address}`;
 
     return (
@@ -200,8 +216,8 @@ const AgreementDocument: React.FC<AgreementDocumentProps> = ({ agreement, compan
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
                         <Text style={styles.companyName}>{companyName}</Text>
-                        <Text style={styles.companyAddress}>{company?.address1} {company?.address2}</Text>
-                        <Text style={styles.companyAddress}>{company?.city ? `${company.city}, ` : ''}{company?.state} {company?.pin ? `- ${company.pin}` : ''}</Text>
+                        <Text style={styles.companyAddress}>{company?.address1}{company?.address2 ? ` ${company.address2}` : ''}</Text>
+                        <Text style={styles.companyAddress}>{company?.city ? `${company.city}, ` : ''}{company?.state}{company?.pin ? ` - ${company.pin}` : ''}</Text>
                         {company?.phone && <Text style={styles.companyAddress}>Phone: {company.phone}</Text>}
                         {company?.email && <Text style={styles.companyAddress}>Email: {company.email}</Text>}
                         {company?.gstin && <Text style={styles.companyAddress}>GSTIN: {company.gstin}</Text>}
