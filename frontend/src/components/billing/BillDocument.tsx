@@ -228,19 +228,30 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
             <View style={styles.customerSection}>
                 <Text style={styles.sectionTitle}>Bill To</Text>
                 <Text style={styles.customerName}>{bill.customer?.name}</Text>
-                {bill.customer?.relationType && bill.customer?.relationName && (
-                    <Text style={styles.text}>{bill.customer.relationType} {bill.customer.relationName}</Text>
-                )}
-                <Text style={styles.text}>
-                    {bill.customer?.officeAddress || bill.customer?.siteAddress || ''}
-                </Text>
-                {bill.customer?.officeCity && (
-                    <Text style={styles.text}>
-                        {bill.customer.officeCity}
-                        {bill.customer?.officeState ? `, ${bill.customer.officeState}` : ''}
-                    </Text>
-                )}
-                {bill.customer?.officeGst && <Text style={styles.text}>GSTIN: {bill.customer.officeGst}</Text>}
+                {(() => {
+                    const customer = bill.customer;
+                    if (!customer) return null;
+                    const relation = customer.relationName ? `${customer.relationType || 'C/O'}-Mr. ${customer.relationName}` : '';
+                    const address = customer.siteAddress || customer.residenceAddress || customer.officeAddress || customer.address || '';
+                    const city = customer.siteCity || customer.residenceCity || customer.officeCity || customer.city || '';
+                    const state = customer.siteState || customer.residenceState || customer.officeState || customer.state || '';
+                    const pin = customer.sitePin || customer.residencePin || customer.officePin || customer.pin || '';
+
+                    const mainParts = [address, city].filter(Boolean);
+                    let formattedAddress = mainParts.join(', ');
+                    if (state || pin) {
+                        const statePin = [state, pin].filter(Boolean).join(' - ');
+                        if (statePin) formattedAddress += ` (${statePin})`;
+                    }
+
+                    return (
+                        <>
+                            {relation && <Text style={styles.text}>{relation}</Text>}
+                            <Text style={styles.text}>{formattedAddress}</Text>
+                            {customer.officeGst && <Text style={styles.text}>GSTIN: {customer.officeGst}</Text>}
+                        </>
+                    );
+                })()}
             </View>
             <View style={styles.metaSection}>
                 <View style={styles.metaRow}>
