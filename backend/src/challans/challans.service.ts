@@ -144,6 +144,7 @@ export class ChallansService {
             .map(s => ({
                 materialId: s.material.id,
                 materialName: s.material.name,
+                unit: s.material.unit, // New field, flattened from material
                 material: s.material,
                 quantity: s.quantity,
             }))

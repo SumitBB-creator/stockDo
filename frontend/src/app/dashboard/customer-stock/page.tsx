@@ -123,7 +123,7 @@ export default function CustomerStockPage() {
                                     <TableCell className="font-medium">{item.materialName}</TableCell>
                                     <TableCell>
                                         <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-xs font-medium">
-                                            {item.material.unit || 'N/A'}
+                                            {item.unit || item.material?.unit || 'Nos'}
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right text-primary font-bold text-lg">
