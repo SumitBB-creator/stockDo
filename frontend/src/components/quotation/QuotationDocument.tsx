@@ -9,13 +9,16 @@ const styles = StyleSheet.create({
     page: {
         flexDirection: 'column',
         backgroundColor: '#FFFFFF',
-        padding: 30,
+        paddingTop: 20,
+        paddingBottom: 30,
+        paddingLeft: 40,
+        paddingRight: 40,
         fontFamily: 'Helvetica',
         fontSize: 10,
         color: '#333333',
     },
     header: {
-        marginBottom: 20,
+        marginBottom: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#111827', // gray-900
         paddingBottom: 10,
@@ -38,7 +41,7 @@ const styles = StyleSheet.create({
     },
     companyAddress: {
         fontSize: 9,
-        lineHeight: 1.3,
+        lineHeight: 1.0,
         color: '#4B5563', // gray-600
     },
     logo: {
@@ -82,6 +85,7 @@ const styles = StyleSheet.create({
     text: {
         marginBottom: 2,
         color: '#4B5563',
+        lineHeight: 1.0,
     },
     metaRow: {
         flexDirection: 'row',
@@ -141,6 +145,7 @@ const styles = StyleSheet.create({
     cellText: {
         fontSize: 9,
         color: '#4B5563',
+        lineHeight: 1.0,
     },
     footer: {
         marginTop: 'auto',
@@ -185,8 +190,8 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, compan
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
                     <Text style={styles.companyName}>{company?.companyName || 'Company Name'}</Text>
-                    <Text style={styles.companyAddress}>{company?.address1} {company?.address2}</Text>
-                    <Text style={styles.companyAddress}>{company?.city ? `${company.city}, ` : ''}{company?.state} {company?.pin ? `- ${company.pin}` : ''}</Text>
+                    <Text style={styles.companyAddress}>{company?.address1}{company?.address2 ? ` ${company.address2}` : ''}</Text>
+                    <Text style={styles.companyAddress}>{company?.city ? `${company.city}, ` : ''}{company?.state}{company?.pin ? ` - ${company.pin}` : ''}</Text>
                     {company?.phone && <Text style={styles.companyAddress}>Phone: {company.phone}</Text>}
                     {company?.email && <Text style={styles.companyAddress}>Email: {company.email}</Text>}
                     {company?.gstin && <Text style={styles.companyAddress}>GSTIN: {company.gstin}</Text>}
@@ -213,9 +218,22 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, compan
                 <View style={styles.customerSection}>
                     <Text style={styles.sectionTitle}>Quotation For</Text>
                     <Text style={styles.customerName}>{quotation.customer?.name}</Text>
-                    <Text style={styles.text}>
-                        {quotation.customer?.address || quotation.customer?.siteAddress || quotation.customer?.officeAddress}
-                    </Text>
+                    {(() => {
+                        const customer = quotation.customer;
+                        let customerAddress = customer?.siteAddress || customer?.residenceAddress || customer?.officeAddress || '';
+                        const customerCity = customer?.siteCity || customer?.officeCity;
+                        const customerState = customer?.officeState || customer?.siteState;
+                        const customerPin = customer?.officePin || customer?.sitePin;
+
+                        const addressParts = [customerAddress, customerCity].filter(Boolean);
+                        let fullAddress = addressParts.join(', ');
+                        if (customerState || customerPin) {
+                            const statePin = [customerState, customerPin].filter(Boolean).join(' - ');
+                            if (statePin) fullAddress += ` (${statePin})`;
+                        }
+
+                        return <Text style={styles.text}>{fullAddress}</Text>;
+                    })()}
                     {quotation.customer?.gstIn && <Text style={styles.text}>GSTIN: {quotation.customer.gstIn}</Text>}
                 </View>
                 <View style={styles.metaSection}>
