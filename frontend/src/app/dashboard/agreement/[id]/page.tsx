@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { fetchAgreement, fetchCompany, fetchCustomers } from '@/lib/api';
+import { fetchAgreement, fetchCompany, fetchCustomers, fetchActiveAgreementTemplate } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -24,15 +24,17 @@ export default function AgreementViewPage() {
     const { toast } = useToast();
     const [agreement, setAgreement] = useState<any>(null);
     const [company, setCompany] = useState<any>(null);
+    const [template, setTemplate] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const loadData = async () => {
             try {
-                // Fetch agreement and company
-                const [agreementData, companyData] = await Promise.all([
+                // Fetch agreement, company and active template
+                const [agreementData, companyData, templateData] = await Promise.all([
                     fetchAgreement(params.id as string),
-                    fetchCompany()
+                    fetchCompany(),
+                    fetchActiveAgreementTemplate()
                 ]);
 
                 // We need customer details. Agreement data usually contains minimal customer info or just ID.
@@ -60,6 +62,7 @@ export default function AgreementViewPage() {
 
                 setAgreement(detailedAgreement);
                 setCompany(companyData);
+                setTemplate(templateData);
             } catch (error) {
                 console.error("Failed to load data", error);
                 toast({
@@ -120,7 +123,7 @@ export default function AgreementViewPage() {
             <div className="flex-1 p-4 md:p-8 overflow-hidden">
                 <div className="h-full w-full max-w-5xl mx-auto shadow-2xl rounded-lg overflow-hidden bg-gray-500">
                     <PDFViewer width="100%" height="100%" className="border-none" showToolbar={true}>
-                        <AgreementDocument agreement={agreement} company={company} logoUrl={logoUrl} />
+                        <AgreementDocument agreement={agreement} company={company} logoUrl={logoUrl} template={template} />
                     </PDFViewer>
                 </div>
             </div>

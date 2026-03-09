@@ -194,11 +194,45 @@ export class ChallansService {
     }
 
     async remove(id: string) {
-        // Cascade delete Items then Challan
+        // Fetch the challan first to get details for cascading bill deletion
+        const challan = await this.prisma.challan.findUnique({
+            where: { id },
+        });
+
+        if (!challan) {
+            throw new NotFoundException('Challan not found');
+        }
+
         return this.prisma.$transaction(async (tx) => {
+            // 1. Find all finalized bills for this customer that include this challan date or later
+            // Since billing logic uses the entire history, deleting an old challan affects all subsequent bills.
+            const affectedBills = await tx.bill.findMany({
+                where: {
+                    customerId: challan.customerId,
+                    dateTo: { gte: challan.date },
+                    status: { not: 'CANCELLED' }
+                }
+            });
+
+            if (affectedBills.length > 0) {
+                const billIds = affectedBills.map(b => b.id);
+
+                // 2. Delete associated Transactions for these bills
+                await tx.transaction.deleteMany({
+                    where: { referenceId: { in: billIds } }
+                });
+
+                // 3. Delete the bills (BillItems will be deleted via Cascade in Schema)
+                await tx.bill.deleteMany({
+                    where: { id: { in: billIds } }
+                });
+            }
+
+            // 4. Cascade delete Items then Challan
             await tx.challanItem.deleteMany({
                 where: { challanId: id }
             });
+
             return tx.challan.delete({
                 where: { id }
             });

@@ -21,6 +21,7 @@ import { RolesModule } from './roles/roles.module';
 import { TransfersModule } from './transfers/transfers.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DailyRevenueModule } from './daily-revenue/daily-revenue.module';
+import { AgreementTemplatesModule } from './agreement-templates/agreement-templates.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { DailyRevenueModule } from './daily-revenue/daily-revenue.module';
     TransfersModule,
     ScheduleModule.forRoot(),
     DailyRevenueModule,
+    AgreementTemplatesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

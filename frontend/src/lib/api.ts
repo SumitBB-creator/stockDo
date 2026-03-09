@@ -131,6 +131,17 @@ export const deleteAgreement = async (id: string) => {
     return response.data;
 };
 
+// Agreement Templates
+export const fetchActiveAgreementTemplate = async () => {
+    const response = await api.get('/agreement-templates/active');
+    return response.data;
+};
+
+export const updateAgreementTemplate = async (id: string, data: any) => {
+    const response = await api.put(`/agreement-templates/${id}`, data);
+    return response.data;
+};
+
 // Challans
 export const fetchChallans = async () => {
     const response = await api.get('/challans');

@@ -167,9 +167,10 @@ interface AgreementDocumentProps {
     agreement: any;
     company: any;
     logoUrl: string | null;
+    template?: any;
 }
 
-const AgreementDocument: React.FC<AgreementDocumentProps> = ({ agreement, company, logoUrl }) => {
+const AgreementDocument: React.FC<AgreementDocumentProps> = ({ agreement, company, logoUrl, template }) => {
     // Helper to format date
     const formatDate = (dateString: string) => {
         if (!dateString) return '________________';
@@ -180,21 +181,15 @@ const AgreementDocument: React.FC<AgreementDocumentProps> = ({ agreement, compan
     const companyName = company?.companyName || 'SEJWAL SHUTTERING STORE';
 
     // Construct Party 1 String
-    // "SEJWAL SHUTTERING STORE C/O Deepak Sejwal Kh. No. 398..."
     const party1CO = company?.employerName ? ` C/O ${company.employerName}` : '';
-
     const addressParts = [company?.address1, company?.address2, company?.city].filter(Boolean);
     let party1Address = addressParts.join(', ');
     if (company?.pin) party1Address += ` - ${company.pin}`;
     if (company?.state) party1Address += ` (${company.state})`;
-
     const party1String = `${companyName}${party1CO} ${party1Address}`;
 
     // Construct Party 2 String
-    // "DEVENDER KUMAR SAINI C/O-Mr. BOBY SAINI, D - 1997 , PALAM VIHAR..."
     const party2CO = customer?.relationName ? ` ${customer.relationType || 'C/O'}-Mr. ${customer.relationName}` : '';
-
-    // Check for complete address construction
     let customerAddress = customer?.siteAddress || customer?.residenceAddress || customer?.officeAddress || customer?.address || '';
     const customerCity = customer?.siteCity || customer?.officeCity;
     const customerState = customer?.siteState || customer?.officeState;
@@ -206,8 +201,49 @@ const AgreementDocument: React.FC<AgreementDocumentProps> = ({ agreement, compan
         const statePin = [customerState, customerPin].filter(Boolean).join(' - ');
         if (statePin) party2Address += ` (${statePin})`;
     }
-
     const party2String = `${customer?.name}${party2CO}, ${party2Address}`;
+
+    // Helper to replace placeholders
+    const replacePlaceholders = (text: string) => {
+        if (!text) return '';
+        return text
+            .replace(/{date}/g, formatDate(agreement.validFrom))
+            .replace(/{party1}/g, party1String)
+            .replace(/{party2}/g, party2String)
+            .replace(/{siteAddress}/g, agreement.siteAddress || '__________________')
+            .replace(/{residenceAddress}/g, agreement.residenceAddress || '__________________')
+            .replace(/{authorizedRepresentative}/g, agreement.authorizedRepresentative || '__________________')
+            .replace(/{minimumRentPeriod}/g, agreement.minimumRentPeriod?.toString() || '30');
+    };
+
+    const renderTextWithBoldPlaceholders = (text: string, style: any = styles.termText) => {
+        if (!text) return null;
+
+        const placeholders = [
+            '{date}',
+            '{party1}',
+            '{party2}',
+            '{siteAddress}',
+            '{residenceAddress}',
+            '{authorizedRepresentative}',
+            '{minimumRentPeriod}'
+        ];
+
+        // Create a regex that captures the placeholders
+        const regex = new RegExp(`(${placeholders.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'g');
+        const parts = text.split(regex);
+
+        return (
+            <Text style={style}>
+                {parts.map((part, i) => {
+                    if (placeholders.includes(part)) {
+                        return <Text key={i} style={styles.boldText}>{replacePlaceholders(part)}</Text>;
+                    }
+                    return <Text key={i}>{part}</Text>;
+                })}
+            </Text>
+        );
+    };
 
     return (
         <Document>
@@ -235,70 +271,30 @@ const AgreementDocument: React.FC<AgreementDocumentProps> = ({ agreement, compan
                 </View>
 
                 {/* Intro Paragraph */}
-                <Text style={styles.introSection}>
-                    This agreement come in force from this date <Text style={styles.boldText}>{formatDate(agreement.validFrom)}</Text> between <Text style={styles.boldText}>{party1String} (Party No-1)</Text> and <Text style={styles.boldText}>{party2String} (Party No-2)</Text>.
-                </Text>
+                {renderTextWithBoldPlaceholders(
+                    template?.introText || `This agreement come in force from this date {date} between {party1} (Party No-1) and {party2} (Party No-2).`,
+                    styles.introSection
+                )}
 
                 <Text style={{ marginBottom: 5 }}>The Contents of this agreement are as under :-</Text>
 
                 {/* Terms */}
                 <View style={styles.termsList}>
-                    {/* 1 */}
-                    <View style={styles.termItem}>
-                        <Text style={styles.termNumber}>1.</Text>
-                        <Text style={styles.termText}>
-                            That the 1st party shall supply the shuttering material on hire basis exour godown to Party No. 2 for their site situated at <Text style={styles.boldText}>{agreement.siteAddress || '__________________'}</Text> and residence at <Text style={styles.boldText}>{agreement.residenceAddress || '__________________'}</Text>
-                        </Text>
-                    </View>
-                    {/* 2 */}
-                    <View style={styles.termItem}>
-                        <Text style={styles.termNumber}>2.</Text>
-                        <Text style={styles.termText}>
-                            That the 2nd Party undertake to make regular payments of bill amounting for the hired period and items on the charged rates which has been agreed between the both parties within the seven day on receipt of the bill in every month by cheque.
-                        </Text>
-                    </View>
-                    {/* 3 */}
-                    <View style={styles.termItem}>
-                        <Text style={styles.termNumber}>3.</Text>
-                        <Text style={styles.termText}>
-                            That the 2nd Part undertake not to transfer the any hired items to any other site without the permission of 1st Party which shall be writting of the 2nd Party.
-                        </Text>
-                    </View>
-                    {/* 4 */}
-                    <View style={styles.termItem}>
-                        <Text style={styles.termNumber}>4.</Text>
-                        <Text style={styles.termText}>
-                            That the 2nd Party undertake to return all the hired materials in safe & sound condition. In any damage or lost conditional the 2nd Party shall pay the cost of item which is agreed between the both parties.
-                        </Text>
-                    </View>
-                    {/* 5 */}
-                    <View style={styles.termItem}>
-                        <Text style={styles.termNumber}>5.</Text>
-                        <Text style={styles.termText}>
-                            That the 2nd Party has authorized Mr. <Text style={styles.boldText}>{agreement.authorizedRepresentative || '__________________'}</Text> as his/her representative and is also attest his signature. This representative Mr. <Text style={styles.boldText}>{agreement.authorizedRepresentative || '__________________'}</Text> shall sign, receive the challan and bills etc. of the 2nd party on his/her behalf.
-                        </Text>
-                    </View>
-                    {/* 6 */}
-                    <View style={styles.termItem}>
-                        <Text style={styles.termNumber}>6.</Text>
-                        <Text style={styles.termText}>
-                            That the both parties undertake to honour this agreement and shall never seek any reason to evade their responsibility.
-                        </Text>
-                    </View>
-                    {/* 7 */}
-                    <View style={styles.termItem}>
-                        <Text style={styles.termNumber}>7.</Text>
-                        <Text style={styles.termText}>
-                            That in case of any dispute with regard to the terms and condition shall be (subjected to) settled at component court of law at New Delhi (Delhi).
-                        </Text>
-                    </View>
-                    {/* 8 */}
-                    <View style={styles.termItem}>
-                        <Text style={styles.termNumber}>8.</Text>
-                        <Text style={styles.termText}>
-                            That the minimum rent period for the hired material shall be <Text style={styles.boldText}>{agreement.minimumRentPeriod}</Text> Days.
-                        </Text>
-                    </View>
+                    {(template?.terms || [
+                        "That the 1st party shall supply the shuttering material on hire basis exour godown to Party No. 2 for their site situated at {siteAddress} and residence at {residenceAddress}",
+                        "That the 2nd Party undertake to make regular payments of bill amounting for the hired period and items on the charged rates which has been agreed between the both parties within the seven day on receipt of the bill in every month by cheque.",
+                        "That the 2nd Part undertake not to transfer the any hired items to any other site without the permission of 1st Party which shall be writting of the 2nd Party.",
+                        "That the 2nd Party undertake to return all the hired materials in safe & sound condition. In any damage or lost conditional the 2nd Party shall pay the cost of item which is agreed between the both parties.",
+                        "That the 2nd Party has authorized Mr. {authorizedRepresentative} as his/her representative and is also attest his signature. This representative Mr. {authorizedRepresentative} shall sign, receive the challan and bills etc. of the 2nd party on his/her behalf.",
+                        "That the both parties undertake to honour this agreement and shall never seek any reason to evade their responsibility.",
+                        "That in case of any dispute with regard to the terms and condition shall be (subjected to) settled at component court of law at New Delhi (Delhi).",
+                        "That the minimum rent period for the hired material shall be {minimumRentPeriod} Days."
+                    ]).map((term: string, index: number) => (
+                        <View key={index} style={styles.termItem}>
+                            <Text style={styles.termNumber}>{index + 1}.</Text>
+                            {renderTextWithBoldPlaceholders(term)}
+                        </View>
+                    ))}
                 </View>
 
                 <Text style={styles.tableLabel}>That the itemwise rates is as under :-</Text>

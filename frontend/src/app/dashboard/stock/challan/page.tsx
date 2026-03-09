@@ -51,7 +51,7 @@ export default function ChallanListPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!window.confirm("Are you sure you want to delete this challan? This action cannot be undone.")) {
+        if (!window.confirm("Are you sure? Deleting this challan will also PERMANENTLY DELETE all bills generated for this customer after this date. This action cannot be undone.")) {
             return;
         }
         setLoading(true);
