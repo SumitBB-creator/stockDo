@@ -261,9 +261,9 @@ export default function EmployeesPage() {
                                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                         <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
                                                         <SelectContent>
-                                                            <SelectItem value="S/O">S/O</SelectItem>
-                                                            <SelectItem value="D/O">D/O</SelectItem>
-                                                            <SelectItem value="W/O">W/O</SelectItem>
+                                                            <SelectItem value="Owner Name">Owner Name</SelectItem>
+                                                            <SelectItem value="Proprietor Name">Proprietor Name</SelectItem>
+                                                            <SelectItem value="Director Name">Director Name</SelectItem>
                                                             <SelectItem value="C/O">C/O</SelectItem>
                                                         </SelectContent>
                                                     </Select>
@@ -408,8 +408,8 @@ export default function EmployeesPage() {
                                         <div className="text-xs text-muted-foreground">{employee.ledgerAccountId}</div>
                                     </TableCell>
                                     <TableCell>
-                                        {employee.relationType && employee.relationName
-                                            ? `${employee.relationType}-${employee.relationName}`
+                                        {employee.relationType || employee.relationName
+                                            ? `${employee.relationType ? `${employee.relationType} - ` : ''}${employee.relationName || ''}`
                                             : 'N/A'}
                                     </TableCell>
                                     <TableCell>{employee.phone || 'N/A'}</TableCell>

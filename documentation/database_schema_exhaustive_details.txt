@@ -1,0 +1,35 @@
+MODULE: DATABASE SCHEMA & DATA MODEL - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The StockDo data model is built on Core PostgreSQL using Prisma ORM. It captures the complex lifecycle of rental equipment, from Quotation to Billing, and ensures strict referential integrity across 22+ tables.
+
+2. CORE ENTITIES & RELATIONS
+* Customers: The primary hub. Linked 1:N with Quotations, Agreements, Challans, and Bills.
+* Materials: The inventory master. Tracks `totalQty`, `lowerLimit`, and `recovery rates`.
+* Agreements: The legal contract. Defines specific `hireRate` overrides for a Customer for a specific set of Items.
+* Challans: The physical movement record.
+  - `ISSUE`: Stock moves from Company -> Customer.
+  - `RETURN`: Stock moves from Customer -> Company.
+* Transactions: The financial ledger record. Unlike other tables, it uses a logical `ledgerAccountId` to unify Customers, Employees, and Suppliers.
+
+3. DATA INTEGRITY & CASCADE RULES
+To prevent "Orphaned Data," the system implements strict cascading deletion rules at the database level:
+- If a Bill is deleted, all its `BillItems` are automatically removed.
+- If a Challan is deleted, all `ChallanItems` are automatically removed.
+- If an Agreement is deleted, its `AgreementItems` are purged.
+* Safeguard: High-level entities like Customers or Materials cannot be deleted if they have active transaction history (handled by business logic guards).
+
+4. NAMING & MAPPING CONVENTIONS
+* DB Level: Uses `snake_case` (e.g., `ledger_account_id`, `created_at`) for PostgreSQL compatibility.
+* App Level: Uses `camelCase` (e.g., `ledgerAccountId`, `createdAt`) for TypeScript consistency.
+* Translation: Handled by `@map` and `@@map` directives in `schema.prisma`.
+
+5. COMPLEX WORKFLOW: THE "TRANSFER" MODEL
+The `Transfer` table is architecturally unique:
+- It connects two `Customer` records (`fromCustomer` and `toCustomer`).
+- It acts as an atomic bridge: one Transfer record technically triggers two virtual movements (a Return for one site and an Issue for the other), ensuring global stock balance remains zero-sum.
+
+6. CORE DESIGN DECISIONS
+1. UUID Primary Keys: Prevents "ID Guessing" in URLs and provides better security for multi-tenant scaling.
+2. Json Storage: Used for `Role.permissions` and `AgreementTemplate.terms` to allow schema-less flexibility for complex nested arrays.
+3. Decoupled Ledger: Transactions are decoupled from specific tables by using a global ID (`LAIDXXXX`), allowing the business to treat Staff, Suppliers, and Customers as equal "Financial Parties."

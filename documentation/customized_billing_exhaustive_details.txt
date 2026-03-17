@@ -1,0 +1,40 @@
+MODULE: AD-HOC & CUSTOMIZED BILLING - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Ad-hoc & Customized Billing module provides flexibility beyond the standard monthly billing cycle. It allows for the generation of invoices for any arbitrary date range (e.g., a 10-day period or a mid-month closure) using a sophisticated "Replay History" engine to calculate precise rental dues.
+
+2. THE "REPLAY HISTORY" ENGINE
+* Logic: `calculateHandlingPeriods()`
+  - Challenge: Rent depends on the daily balance of stock on-site. If a customer has 100 props today and returns 50 tomorrow, the rent must change exactly on that day.
+  - Solution: The system replays the entire history of the customer's challans (Issues and Returns) using a First-In-First-Out (FIFO) approach.
+  - State Tracking: It maintains a `stockState` map that keeps track of the "Open Issues" for every material. 
+  - Dynamic Calculation: 
+    1. Replays every challan BEFORE the start date to determine the "Opening Stock".
+    2. Iterates day-by-day through the requested period.
+    3. If a movement occurs, it "Closes" the current rent period and "Opens" a new one with the updated balance.
+    4. Calculates rent as: `(Quantity) x (Days) x (Hire Rate)`.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/billing/billing.service.ts ---
+* Logic: `generateBillCustomRange()`
+  - This is the core entry point for ad-hoc billing.
+  - It bypasses the "Unbilled" check and directly fetches all movements up to the end-date.
+* Logic: `createBill()`
+  - Handles the complex GST logic for custom bills:
+    - Intra-state (Same State): Splits tax as 9% CGST + 9% SGST.
+    - Inter-state (Different State): Applies 18% IGST.
+    - Captures "Freight-extra" rules based on the Company's configuration.
+
+--- frontend/src/app/dashboard/accounting/customize-billing/page.tsx ---
+* Logic: Two-Step Workflow (Preview -> Finalize)
+  - Pre-validation: Enforces that `fromDate` is before `toDate`.
+  - Preview Mode: Fetches the calculated line items and displays a "Draft Invoice" to the user.
+  - Finalization: Once confirmed, it hits the `finalize-custom` endpoint which persists the bill and creates a corresponding Transaction (DR) in the customer's ledger.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Trigger: A customer requests a final settlement mid-month.
+2. Setup: User selects the customer and the specific 15-day range.
+3. Preview: The system calculates exactly how many days each item was on-site, accounting for any returns made during those 15 days.
+4. Validation: The user verifies the "Particulars", "HSN", and "Days" columns.
+5. Impact: Upon finalization, a professional Bill is generated, and the Ledger balance is updated, ensuring that the "Monthly Cycle" doesn't double-bill for those same items.

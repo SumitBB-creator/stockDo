@@ -1,0 +1,43 @@
+MODULE: TECHNICAL ARCHITECTURE & INFRASTRUCTURE - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+This module documentation describes the "Plumbing" of StockDo. It covers the foundational technologies that allow the business modules to communicate, store files, and handle errors gracefully.
+
+2. FOUNDATIONAL TECHNOLOGIES
+
+--- Database Layer (Prisma & PostgreSQL) ---
+* Model: Prisma ORM acts as the bridge between the NestJS code and the Postgres database.
+* Schema Identity:
+  - All primary keys are UUIDs to prevent ID guessing and improve security.
+  - `@map` is used extensively to translate between camelCase (Typescript) and snake_case (Postgres standard).
+  - Relationships: The schema enforces "Cascading Deletions" in critical areas (like Quotation Versions) to prevent database bloat.
+
+--- File Storage (Supabase Integration) ---
+* Logic: `SupabaseService`
+  - Purpose: Handles binary assets like Company Logos or Material Photos.
+  - Process: 
+    1. The app receives a file via Multer.
+    2. The service generates a `randomUUID()` filename to prevent collisions.
+    3. It uploads the buffer to a Supabase "Bucket."
+    4. It returns a `publicUrl`, which is then stored in the database (e.g., `company.logo`).
+  - Security: Uses environment variables (`SUPABASE_URL`/`SUPABASE_KEY`) to authenticate the bridge.
+
+3. GLOBAL PIPELINES & HANDLERS
+
+--- backend/src/common/filters/http-exception.filter.ts ---
+* Logic: `AllExceptionsFilter`
+  - Universal Catch: This filter ensures that the app never "crashes" with a raw system error.
+  - Standardization: Every error—whether it's a 404 (Not Found) or a 500 (Database Error)—is converted into a clean JSON object with a timestamp, path, and human-readable message.
+  - Logging: It uses `this.logger.error` to capture the stack trace, which is critical for developers to debug production issues without exposing sensitive details to the end-user.
+
+--- backend/src/common/interceptors/transform.interceptor.ts ---
+* Logic: Standardized Data Response
+  - Uniformity: Ensures that every API response from the backend is wrapped in a `{ data: ... }` object.
+  - Frontend Ease: This consistency allows the React/Next.js frontend to use a single base-hook for all data fetching.
+
+4. SYSTEM FLOW
+1. Request: A user tries to upload a logo.
+2. Interception: `transform.interceptor` prepares the request.
+3. Storage: `SupabaseService` moves the file to the cloud.
+4. Database: Prisma saves the cloud URL into Postgres.
+5. Error Handling: If the database is down, `AllExceptionsFilter` catches the crash and returns a polite "Internal Server Error" instead of a blank screen.

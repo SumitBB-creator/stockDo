@@ -1,0 +1,37 @@
+MODULE: USER MANAGEMENT - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The User Management module handles the administrative accounts that operate the StockDo system. Unlike the Employees module (which tracks staff for payroll/ledger), this module defines the login credentials, security profiles, and permission levels for the humans interacting with the software.
+
+2. DATABASE TABLES
+--- Table: users ---
+* Purpose: Stores operational accounts and their security metadata.
+* Critical Fields:
+  - id (UUID): Unique primary key.
+  - email (String, Unique): The primary login identifier.
+  - name: The display name of the administrator.
+  - password (String, Hashed): A security-hardened Bcrypt hash of the user's password.
+  - roleId (UUID): A foreign key linking the user to a specific permission set in the `roles` table.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/users/users.service.ts ---
+* Logic: Secure Account Creation (`create` method)
+  - Salt Rounds: Uses a salt work factor of 10 for Bcrypt hashing.
+  - Atomicity: Ensures that when a user is created, their `role` is immediately included in the return object for the frontend to establish session context.
+* Logic: Authentication Support (`findByEmail`)
+  - A specialized query utilized by the `AuthGuard` and `Login` logic to verify credentials without exposing the database to wide broad searches.
+* Logic: RBAC Persistence
+  - All `find` methods include the `role` relation by default. This ensures that the user's permission matrix is always available for checking module-level access (e.g., can this user see "Billing"?).
+
+--- backend/src/users/dto/create-user.dto.ts ---
+* Logic: Complexity Enforcement
+  - Email: Validates proper RFC email format.
+  - Password: Enforces a minimum length of 6 characters via `@MinLength(6)`.
+  - Relation: Ensures a `roleId` is provided, preventing "orphan" users with zero permissions.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Admin Provisioning: A super-admin creates a new account for an employee (e.g., a "Bill Clerk").
+2. Hashing: The system converts the temporary password into a non-reversible hash before storing it in Postgres.
+3. Access Control: Upon login, the system loads the user's `roleId`. Every subsequent API call is checked against the permission JSON stored in that role to verify if the "Bill Clerk" is allowed to perform that specific action.
+4. Account Lifecycle: Accounts can be updated (e.g., changing names/emails) or deleted without affecting historical transactions, as those are linked to the `ledgerAccountId` (via the Employees/Customers modules), not the login `User` ID.

@@ -1,0 +1,35 @@
+MODULE: LOGISTICS & TRANSPORTATION - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Logistics & Transportation module manages the physical movement of materials between the main godowns and customer sites. It tracks vehicle utilization, transportation costs, and specific freight-related taxes like the Green Tax.
+
+2. TRANSPORTATION DATA POINTS
+Every logistical movement (Challan) captures:
+* Vehicle Number: The registration of the truck/tempo.
+* Driver Name & Mobile: For contact during transit.
+* Transportation Cost: The flat fee paid to the transporter for the trip.
+* Green Tax: An environmental surcharge often applicable for site deliveries in specific regions.
+* Bilty Number: The Consignment Note number from the transport company.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/challans/challans.service.ts ---
+* Logic: `getTransportationChallans()`
+  - Purpose: Aggregates all movements that incurred freight costs.
+  - Filtering: Allows searching by "Month" and "Year" to reconcile monthly transport bills.
+  - Data Retrieval: Fetches the `transportationCost` and `greenTax` fields which are stored directly on the `challan` record.
+
+--- frontend/src/app/dashboard/accounting/transportation/page.tsx ---
+* Logic: Route Visualization
+  - The UI dynamically determines the "From" and "To" locations.
+  - If type is `ISSUE`: From = Company Godown, To = Customer Site.
+  - If type is `RETURN`: From = Customer Site, To = Company Godown.
+* Logic: Printing
+  - Provides a "Monthly Transport Receipt" function that generates a PDF summary of all trips made for a specific client, used for verifying ledger entries against physical trip logs.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Dispatch: A vehicle is loaded. The operator enters the vehicle number and freight cost into the "New Challan" form.
+2. Cost Capture: The `transportationCost` is saved to the database.
+3. Accounting Integration: During monthly billing, the system automatically pulls these individual trip costs and adds them to the customer's bill if the agreement specifies "Freight extra."
+4. Reconciliation: The "Transportation" dashboard allows the owner to see how much has been spent on logistics for any given month, helping to track transporter payouts.
+5. Compliance: Capturing Driver Licenses and Mobile numbers ensures a safety trail for high-value material movement.

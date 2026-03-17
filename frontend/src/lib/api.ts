@@ -22,6 +22,15 @@ api.interceptors.response.use(
         return response;
     },
     (error) => {
+        if (error.response && error.response.status === 401) {
+            console.warn('Unauthorized access - token expired or invalid');
+            useAuthStore.getState().logout();
+            
+            // Only redirect if we are in the browser
+            if (typeof window !== 'undefined') {
+                window.location.href = '/';
+            }
+        }
         return Promise.reject(error);
     }
 );

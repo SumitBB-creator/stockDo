@@ -1,0 +1,56 @@
+MODULE: CHALLANS (STOCK) - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Challans module is the operational heart of StockDo's inventory system. It records the physical movement of materials into and out of the company's warehouse. Every Issue (to site) and Return (from site) is captured here, providing the raw data for both inventory tracking and financial billing.
+
+2. DATABASE TABLES
+--- Table: challans ---
+* Purpose: Records a single stock movement event.
+* Critical Fields:
+  - id (UUID): Unique internal key.
+  - challanNumber (String, e.g., "CHN-0082" or "RTN-0014"): Auto-generated sequential ID based on movement type.
+  - type (Enum): "ISSUE" (Stock leaving warehouse) or "RETURN" (Stock coming back).
+  - date (DateTime): The exact day the movement occurred (critical for billing).
+  - customerId (UUID): Who is receiving/returning the items.
+  - agreementId (UUID, Optional): Links to the active pricing contract. Mandatory for Issue challans.
+  - manualChallanNumber (String): Optional field to cross-reference physical paper booklets.
+  - transportationCost / greenTax (Float): Logistic expenses tied to this specific trip.
+  - Logistics Fields: vehicleNumber, driverName, transporterName, biltyNumber, timeIn/Out.
+* Relationships:
+  - items: Links to the specific materials and quantities moved.
+  - customer / agreement: Provides context for ownership and pricing.
+
+--- Table: challan_items ---
+* Purpose: Stores the line-by-line breakdown of a challan.
+* Fields:
+  - materialId: What item was moved.
+  - quantity (Int): Total count moved.
+  - damageQuantity / shortQuantity (Int): Used specifically in RETURNS to flag items that are broken or missing.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/customers/challans.service.ts ---
+* Logic: Validated Issues (`create` method)
+  - For 'ISSUE' type challans, the system performs a strict check:
+    1. It ensures an `agreementId` is provided.
+    2. It verifies the agreement is actually for the selected customer.
+    3. It verifies that every material in the challan is explicitly listed in the customer's agreement. This prevents staff from accidentally issuing un-quoted items.
+* Logic: History Reconstruction (`getCustomerStock` & `getCompanyStock`)
+  - The system does NOT store a static "current_stock" field that updates.
+  - Instead, it dynamically REPLAYS the history of every challan.
+  - It iterates through all Issue (+ quantity) and Return (- quantity) records to calculate precisely how much stock is currently at a customer site or available in the warehouse.
+* Logic: The "Protection" System (`remove` method)
+  - Deleting a challan is a high-impact action.
+  - If you delete a challan from 3 months ago, every Bill generated since then would now be mathematically incorrect.
+  - Code Explained: The service uses a Prisma Transaction to find all non-cancelled Bills for that customer dated ON or AFTER the challan's date. It then deletes those bills and their ledger transactions before deleting the challan itself. This forces the user to re-generate correct billing after fixing the historical mistake.
+
+--- backend/src/challans/dto/create-challan.dto.ts ---
+* Logic: Comprehensive Payload.
+  - Uses `@IsEnum(ChallanType)` to restrict types to only ISSUE or RETURN.
+  - Validates logistics fields (mobile numbers, license info) as optional strings.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Dispatch: Warehouse staff create an ISSUE challan. The system assigns a `CHN-XXXX` number.
+2. Custody: While the material is at the site, it is "Locked" to that customer in stock reports.
+3. Return: When items come back, a RETURN challan is created. Any damaged items are flagged in `damageQuantity`.
+4. Financial trigger: The Billing Engine reads these challan dates to create the date ranges for monthly invoices.

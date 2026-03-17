@@ -1,0 +1,54 @@
+MODULE: PURCHASES - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Purchases module manages Capital Expenditure (CAPEX). It records the acquisition of new materials from external suppliers. Financially, it acts as the "Payables" record, ensuring that any money owed to a supplier for new inventory is tracked via the general ledger and dashboard summaries.
+
+2. DATABASE TABLES
+--- Table: purchases ---
+* Purpose: Stores the header information for a procurement bill from a supplier.
+* Critical Fields:
+  - id (UUID): Internal primary key.
+  - purchaseNumber (String, e.g., "PUR-0005"): Automated sequential ID for internal tracking.
+  - billNumber (String): The physical invoice number provided by the supplier.
+  - date (DateTime): The date of the acquisition.
+  - supplierId (UUID): Links to the master Supplier record.
+  - totalAmount / grandTotal: Financial totals (pre-tax and post-tax).
+  - GST Fields: cgst, sgst, igst, gstType, gstRate.
+  - status (String): "Draft" or "Finalized".
+* Relationships:
+  - items: Links to the specific materials and quantities bought.
+
+--- Table: purchase_items ---
+* Purpose: Records the individual lines of a purchase.
+* Fields:
+  - description: Details of the material.
+  - quantity (Int): How many units were bought.
+  - rate: The purchase price per unit.
+  - materialId (UUID, Optional): Links the line item to the master Material list. This link is primarily for historical price tracking.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/purchases/purchases.service.ts ---
+* Logic: Supplier Ledger Integration (`create` method)
+  - When a purchase is saved, the service automatically initiates a **CREDIT** transaction in the Supplier's ledger.
+  - This increases the amount the company "Owes" to that supplier.
+  - This transaction is linked via `referenceId`, allowing the user to click a ledger entry and view the original purchase details.
+* Logic: Atomic Transaction
+  - Uses `this.prisma.$transaction` to ensure that a purchase record and its corresponding ledger transaction are either both saved or both fail.
+* Logic: Purchase Sequencing
+  - It uses a custom split/parse logic on `PUR-XXXX` strings to find the next available numeric ID.
+* Logic: Missing Auto-Stock Update (IMPORTANT)
+  - Analysis of the service shows that creating a Purchase **does NOT** automatically update `material.totalQty`.
+  - The Purchases module is currently focused on the accounting side (Accounts Payable).
+  - Users must manually update the Material's `totalQty` in the Materials Master module after a physical delivery is received.
+
+--- backend/src/purchases/dto/create-purchase.dto.ts ---
+* Logic: Financial Validation
+  - Ensures a `supplierId` and `totalAmount` are provided.
+  - Validates nested items to ensure that quantity, rate, and amount calculations are mathematically consistent before reaching the database.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Logistial Trigger: New materials arrive at the warehouse.
+2. Data Entry: Staff record the supplier's bill in the "New Purchase" screen.
+3. Accounting: The system creates the Purchase record and updates the Supplier’s balance in the balance sheet.
+4. Profit & Loss: The total purchase amount is used by the `TransactionsService` to calculate the company's "Spendings" in dashboard visualizations and annual reports.

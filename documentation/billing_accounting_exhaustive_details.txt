@@ -1,0 +1,58 @@
+MODULE: BILLING & ACCOUNTING - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Billing & Accounting module is the financial engine of StockDo. It transforms physical stock movements (Challans) into monetary invoices (Bills) and tracks those invoices against payments in a double-entry style Ledger system.
+
+2. DATABASE TABLES
+--- Table: bills ---
+* Purpose: Stores finalized monthly or custom-range invoices.
+* Critical Fields:
+  - billNumber (String, e.g., "BILL00042"): Sequential identifier.
+  - dateFrom / dateTo: The period covered by the invoice.
+  - totalAmount: The base rent calculated for the period.
+  - taxableAmount: The amount on which GST is applied (includes transport if configured).
+  - GST Fields: cgst, sgst, igst, gstType, gstRate.
+  - grandTotal: The final "Payable" amount including taxes and logistic costs.
+* Relationships:
+  - items: Every line item in a bill represents a material's rent for a specific duration within the month.
+
+--- Table: transactions ---
+* Purpose: The "General Ledger" recording every increase or decrease in a party's balance.
+* Types:
+  - BILL: Debits the customer (Increases debt).
+  - RECEIPT: Credits the customer (Decreases debt).
+  - PAYMENT: Used for refunds or supplier payments.
+  - CREDIT_NOTE / DEBIT_NOTE: For manual adjustments.
+* Critical Fields:
+  - ledgerAccountId: Can be the Customer UUID or the human-readable LAID.
+  - amount: The absolute value of the transaction.
+  - referenceId: Links back to the original Bill or Receipt.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/billing/billing.service.ts ---
+* Logic: The Rent Engine (`calculateHandlingPeriods`)
+  - This method uses a **FIFO (First-In, First-Out)** stock model.
+  - It maintains a `stockState` (Map) of open material issues.
+  - When a "Return" challan occurs, it deducts the quantity from the oldest recorded "Issue" for that material.
+  - Duration Calculation: It splits the billing month into segments based on challan dates. If a customer has 100 pipes for 10 days and then returns 50, the algorithm creates two segments: (100 qty * 10 days) + (50 qty * 20 days).
+  - Full-Month Logic: Ensures that a full month (e.g., 1st to 30th) is counted as 30 days of rent, not 29, using specific `date-fns` difference logic.
+
+* Logic: The GST Engine (`createBill`)
+  - Rule 1: It compares the Company's State vs. the Customer's Office State.
+  - Rule 2 (Intra-State): If states match, it applies CGST (9%) + SGST (9%).
+  - Rule 3 (Inter-State): If states differ, it applies IGST (18%).
+  - Rule 4 (Transporters): It checks `company.gstOnTransportation`. If true, transport costs are added to the taxable base; if false, they are added after GST.
+
+--- backend/src/transactions/transactions.service.ts ---
+* Logic: Ledger Replay (`getLedger`)
+  - To ensure 100% accuracy, the system does not just store a "Balance" field. It calculates the balance on-the-fly.
+  - Step 1: Accumulate all transactions prior to the requested Date Range to find the "Opening Balance".
+  - Step 2: Iterate through the period, adding/subtracting based on type.
+  - Mirroring: For Customers, BILLS are positive (Debit). For Suppliers, BILLS (Purchases) are negative (Credit). The code handles this "Inversion" logic to show the correct perspective for the user.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Generation: At month-end, the user clicks "Generate Bill". The system identifies "Unbilled Customers" (Active agreement + Stock in hand).
+2. Automation: The system generates individual bill line items by replaying the month's challans.
+3. Posting: Upon "Finalizing", the system creates a `Bill` record AND a matching `Transaction` record automatically.
+4. Accountability: No bill can be "Deleted" without also deleting its ledger entry, ensuring the "Dues List" is never out of sync with actual invoices.

@@ -1,0 +1,58 @@
+MODULE: AUTHENTICATION & ROLES - DEEP DIVE
+
+1. DATABASE TABLES
+The module relies on two primary tables in the PostgreSQL database (managed via Prisma):
+
+--- Table: users ---
+* Purpose: Stores account credentials and profile links.
+* Fields:
+  - id (UUID): Unique identifier for the user.
+  - email (String): Unique email used for login identification.
+  - name (String): The full name of the user.
+  - password (String): The BCrypt hashed password (never stored in plain text).
+  - role_id (UUID, Nullable): Foreign key linking to the 'roles' table.
+  - created_at / updated_at: Automatic timestamps for auditing.
+
+--- Table: roles ---
+* Purpose: Defines access levels and functional permissions.
+* Fields:
+  - id (UUID): Unique identifier for the role.
+  - name (String): Unique name (e.g., "Admin", "Stock Manager").
+  - permissions (JSON): A flexible data matrix.
+    Example structure: { "stock": { "view": true, "create": true }, "billing": { "view": false } }
+  - created_at / updated_at: Automatic timestamps.
+
+2. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/auth/auth.service.ts ---
+* Code: `validateUser(email, pass)`
+  - Logic: Calls `usersService.findByEmail`. If user exists, it uses `bcrypt.compare(pass, user.password)`. If they match, it strips the password field from the object and returns the user.
+* Code: `login(loginDto)`
+  - Logic: After validation, it creates a JWT payload: `{ email, sub: userId, role: user.role }`. It then signs this using the global `JWT_SECRET`.
+* Code: `register(createUserDto)`
+  - Logic: Creates a user in the DB and immediately generates a token so the user is logged in instantly.
+
+--- backend/src/auth/jwt.strategy.ts ---
+* Code: `constructor()`
+  - Logic: Configures Passport to look for the "Bearer Token" in the Authorization header.
+* Code: `validate(payload)`
+  - Logic: This function is called AFTER the token is cryptographically verified. It returns the Decoded Payload, which NestJS then attaches to `request.user`.
+
+--- backend/src/auth/jwt-auth.guard.ts ---
+* Logic: Extends `AuthGuard('jwt')`. It is used as a decorator `@UseGuards(JwtAuthGuard)` on controllers to block unauthenticated requests.
+
+--- backend/src/users/users.service.ts ---
+* Code: `create(dto)`
+  - Logic: Uses `bcrypt.hash(password, 10)` before saving to the DB. This ensures even if the database is leaked, passwords stay safe.
+* Code: `findByEmail(email)`
+  - Logic: `this.prisma.user.findUnique({ where: { email }, include: { role: true } })`. Crucial for fetching the role's permissions matrix along with user identity.
+
+--- backend/src/roles/roles.service.ts ---
+* Purpose: Standard CRUD (Create, Read, Update, Delete) for roles.
+* Logic: When a role is updated, the `permissions` JSON is replaced entirely with the new matrix from the frontend.
+
+3. SECURITY FLOW (The "Chain of Trust")
+1. Database: Stores Hashed Password and JSON Permissions.
+2. Login: AuthService verifies hash -> Issues signed JWT.
+3. Requests: JwtStrategy verifies signature -> Identifies User.
+4. Access: The Backend Controller or Frontend Layout reads the `user.role.permissions` to show/hide specific modules.

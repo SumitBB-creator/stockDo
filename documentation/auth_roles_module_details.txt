@@ -1,0 +1,52 @@
+MODULE: AUTHENTICATION & ROLES
+
+1. OVERVIEW
+The Authentication & Roles module is the security core of StockDo. It handles user identity, password security (hashing), session management (JWT), and the permissions matrix (RBAC) that defines what each user can see and do in the dashboard.
+
+2. BACKEND FILES & RESPONSIBILITIES (backend/src/auth, src/roles, src/users)
+
+--- backend/src/auth/auth.module.ts ---
+- Purpose: Orchestration.
+- What it does: Registers the JwtModule (setting the secret and expiration) and the PassportModule. It links the AuthService with the UsersModule so the auth system can look up users in the database.
+
+--- backend/src/auth/auth.service.ts ---
+- Purpose: Business Logic for Security.
+- Code Explained:
+  - validateUser(email, pass): Retrieves user from UsersService. Uses `bcrypt.compare` to check if the plain-text password matches the encrypted hash in DB.
+  - login(loginDto): Calls validateUser. If successful, creates a JWT payload containing { email, userId, role } and signs it using `jwtService.sign()`.
+  - register(): Creates a new user and immediately returns an access token so they are logged in after sign-up.
+
+--- backend/src/auth/auth.controller.ts ---
+- Purpose: Entry point for requests.
+- Routes:
+  - POST /auth/login: Receives email/password. Returns JWT and user profile.
+  - POST /auth/register: Receives user details. Returns JWT.
+
+--- backend/src/auth/jwt.strategy.ts ---
+- Purpose: Request Verification.
+- Logic: This class runs on every request that is "Secured". It extracts the Bearer token from the Auth header, decodes it, and returns the payload (userId, email, role). NestJS then automatically attaches this to `req.user`.
+
+--- backend/src/auth/jwt-auth.guard.ts ---
+- Purpose: Door Keeper.
+- Logic: A simple guard that triggers the JwtStrategy. If a route has `@UseGuards(JwtAuthGuard)`, any request without a valid JWT will be rejected with a 401 Unauthorized error.
+
+--- backend/src/roles/roles.service.ts ---
+- Purpose: Permissions Management.
+- Logic:
+  - Handles CRUD for roles (Admin, Manager, Staff, etc.).
+  - The "Permissions" field is stored as a JSON object. This object defines module-level access (e.g., billing: { read: true, write: false }).
+  - create()/update(): Saves the role name and the permissions matrix into the Prisma database.
+
+--- backend/src/roles/roles.controller.ts ---
+- Purpose: Admin UI support.
+- Security: Secured by `JwtAuthGuard`. Only logged-in users (usually with Admin permission) can manage roles.
+
+3. LOGIC FLOW
+1. User enters credentials in Frontend.
+2. Frontend calls POST /auth/login.
+3. Backend validates password via bcrypt.
+4. Backend returns a JWT (string).
+5. Frontend stores this token in local storage/cookies.
+6. For every subsequent API call (like fetching stock), Frontend includes "Authorization: Bearer <token>".
+7. Backend's JwtStrategy decodes the token.
+8. Component level permission logic (Frontend) or Guard logic (Backend) checks the "role" to allow/deny access.

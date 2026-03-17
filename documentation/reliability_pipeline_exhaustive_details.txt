@@ -1,0 +1,45 @@
+MODULE: SYSTEM RELIABILITY & REQUEST PIPELINE - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Request Pipeline is the "Safety Net" of the StockDo backend. It ensures that every incoming request is valid, every outgoing response is standardized, and every error is logged and handled gracefully without crashing the server.
+
+2. THE GLOBAL VALIDATION PIPE
+* Logic: `ValidationPipe` (configured in `main.ts`)
+* Role: 
+  - `whitelist: true`: Automatically strips any properties from the request body that are not defined in the DTO (Data Transfer Object). This prevents "Mass Assignment" vulnerabilities.
+  - `transform: true`: Automatically converts plain JSON objects into instances of their DTO classes, allowing for the use of decorators like `@Type`.
+  - `forbidNonWhitelisted: true`: Rejects the request with a 400 Bad Request if the user sends extra, unrecognized fields.
+
+3. STANDARDIZED RESPONSE INTERCEPTOR
+* Logic: `TransformInterceptor`
+* Role: Ensures every successful API response follows a fixed JSON structure:
+  ```json
+  {
+    "statusCode": 200,
+    "message": "Success",
+    "data": { ... }
+  }
+  ```
+* Benefit: The Frontend can use a single logic in its Axios interceptor to "unwrap" the `data` payload consistently across all modules.
+
+4. GLOBAL EXCEPTION FILTER (The Catch-All)
+* Logic: `AllExceptionsFilter`
+* Role:
+  - It catches every error, whether it's a predicted `NotFoundException` or an unhandled TypeORM/Prisma crash.
+  - Standardized Error Format:
+    ```json
+    {
+      "statusCode": 500,
+      "timestamp": "2026-03-13T12:00:00Z",
+      "path": "/api/v1/bills",
+      "error": "Internal server error"
+    }
+    ```
+  - Logging: It logs the error stack trace to the server console, which is vital for debugging production issues without exposing sensitive details to the client.
+
+5. CORE BUSINESS LOGIC & FLOW
+1. Entry: A user submits a form.
+2. Validation: The `ValidationPipe` checks if the phone number is a string and the amount is a number. If fail, 400 error.
+3. Execution: The Controller/Service runs logic.
+4. Success: The `TransformInterceptor` wraps the result in a "Success" envelope.
+5. Failure: If the database is down, the `AllExceptionsFilter` catches the crash, logs it for the developer, and sends a polite "Internal Server Error" to the user.

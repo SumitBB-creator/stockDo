@@ -1,0 +1,46 @@
+MODULE: UI DESIGN SYSTEM & COMPONENT ARCHITECTURE - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+StockDo utilizes a modern, professional, and responsive Design System built on React, Tailwind CSS, and Shadcn/UI primitives. The aesthetic is defined by a "Clean Corporate" look with high-contrast elements, rounded corners (`--radius: 0.5rem`), and interactive micro-animations.
+
+2. GLOBAL STYLING & COLOR PALETTE
+* System: CSS Variables (`globals.css`)
+* Color Tokens:
+  - Primary: Deep Slate (`hsl(222.2 47.4% 11.2%)`) - used for main action buttons and active states.
+  - Background: Pure White in Light mode / Slate Black in Dark mode.
+  - Accent: Soft Silver/Slate (`hsl(210 40% 96.1%)`) - used for card backgrounds and table hover states.
+  - Destructive: Vibrant Red (`hsl(0 84.2% 60.2%)`) - used for delete actions and critical stock alerts.
+
+3. REUSABLE COMPONENT LIBRARY
+The project follows an "Atomic Design" philosophy where complex pages are built from small, highly reusable components found in `frontend/src/components/ui`.
+
+--- Advanced Autocomplete (`autocomplete.tsx`) ---
+* Complexity: One of the most advanced UI elements in the project.
+* Features: 
+  - Real-time client-side filtering.
+  - Support for "Triple Labels" (e.g., Customer Name + Site Address + Relation).
+  - FIFO Input Handling: The input text is synchronized with selection state and reverts on "Loss of Focus" if no item is selected.
+  - Visual Feedback: Uses `lucide-react` Search and Check icons to guide the user.
+
+--- Data Grid System (`table.tsx`) ---
+* Features:
+  - Responsive overflow handling for mobile devices.
+  - Consistent header styling (`bg-muted/50`).
+  - Row Hover effects to improve readability of dense financial data.
+
+--- Feedback System (`toast.tsx`) ---
+* Implementation: A declarative API (`useToast`) used across the app.
+* Usage: Provides non-intrusive confirmation for success actions (e.g., "Bill Finalized") and vibrant red alerts for backend errors.
+
+4. PAGE LAYOUT ARCHITECTURE
+* Dashboards: Most pages use a standard layout including:
+  - Header Row: Breadcrumbs and Primary Action Buttons.
+  - Filter Row: Month/Year selectors and Search Inputs.
+  - Main Body: Wrapped in a `Card` component for visual elevation.
+  - Footer Action Bar: Usually reserved for "Print" or "Save" buttons.
+
+5. CORE PRINCIPLES
+1. Consistency: Every margin, padding, and border value is derived from the Tailwind configuration, ensuring a unified "StockDo" feel.
+2. Responsiveness: Tables and Cards are designed to stack or scroll on smaller screens without breaking the layout.
+3. Accessibility: Interactive elements use ARIA labels (via Radix primitives) and maintain high color contrast for readability.
+4. Premium Touches: Subtle transitions and glassmorphism-inspired borders (`border-primary/20`) are used to give the app a high-end enterprise software feel.

@@ -1,0 +1,59 @@
+MODULE: AGREEMENTS - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Agreements module represents the "Legal Contract" stage of the relationship. While a Quotation is just a proposal, an Agreement is a finalized, binding document that defines the hire rates and terms for a specific customer site. Crucially, the Billing Service relies on the active Agreement to calculate how much to charge for inventory in use.
+
+2. DATABASE TABLES
+--- Table: agreements ---
+* Purpose: Header for a finalized contract.
+* Critical Fields:
+  - id (UUID): Internal key.
+  - agreementId (String, e.g., "AGRMT-000042"): Auto-generated unique ID with 6-digit padding.
+  - customerId (UUID): Links back to the master customer record.
+  - validFrom (DateTime): The date the contract starts.
+  - siteAddress (String): The physical destination for materials.
+  - minimumRentPeriod (Int): Defaulting to 30 days. If a customer returns stock early, they are still billed for this minimum duration.
+  - status (String): Typically "Draft", "Active", or "Closed". Only "Active" agreements allow stock issues.
+* Relationships:
+  - items: Links to the specific rates (Hire/Damage/Shortage) agreed upon.
+  - challans: tracks all stock movements tied to this specific contract.
+  - transfers: tracks site-to-site movements where this agreement is the "Receiver".
+
+--- Table: agreement_items ---
+* Purpose: Stores the fixed price list for this contract.
+* Fields:
+  - materialId: The item being contracted.
+  - hireRate: The daily rent for this item (can differ from the Material master defaults).
+  - damageRecoveryRate / shortRecoveryRate: Fixed penalty amounts.
+  - rateAppliedAs: Usually "Nos/Days".
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/agreements/agreements.service.ts ---
+* Logic: Large Serial IDs (`create` method)
+  - Unlike Quotations which use 4-digit padding, Agreements use 6-digit padding (AGRMT-000001).
+  - It generates this based on a simple table count (`count + 1`).
+* Logic: Transactional List Replacement (`update` method)
+  - Uses `this.prisma.$transaction` for data integrity.
+  - It uses an explicit `deleteMany` on existing items followed by `createMany` for the new list. 
+  - This is more efficient than granularly checking which lines changed when a contract is revised.
+* Logic: Status Filtering
+  - The `findAll` method supports a `status` query parameter, allowing the frontend to easily fetch only "Active" contracts for the selection dropdown in the Challan creation page.
+
+--- backend/src/agreements/agreements.controller.ts ---
+* Security: Fully protected by `JwtAuthGuard`.
+* Purpose: Standard 5-point CRUD for contract management.
+
+--- backend/src/agreements/dto/create-agreement.dto.ts ---
+* Validation:
+  - Ensures a `minimumRentPeriod` is provided as an Integer.
+  - Validates `validFrom` as a proper ISO date string.
+  - Nested validation for items ensure that every line in the contract has a valid rate.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Activation: An admin converts a Quotation into an Agreement and sets the status to "Active".
+2. Site Binding: The agreement is tied to a specific `siteAddress`. This allows a single Customer to have multiple concurrent Agreements for different construction sites.
+3. Rule Engine:
+   - When a Challan is created, the system fetches the "Active Agreement" for that site.
+   - If no active agreement is found, stock movement is blocked.
+4. Billing Input: The Billing Service looks up the `minimumRentPeriod` from this module to apply "Minimum Billing" logic during invoice generation.

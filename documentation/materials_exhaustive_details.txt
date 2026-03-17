@@ -1,0 +1,53 @@
+MODULE: MATERIALS - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Materials module manages the master inventory list of all equipment and assets (like scaffolding, props, pipes, etc.) that the company rents or sells. It defines the "DNA" of an item—its name, its unit of measure, and its recovery rates for damages/shortages.
+
+2. DATABASE TABLES
+--- Table: materials ---
+* Purpose: Stores the definition and total quantity of every inventory item.
+* Critical Fields:
+  - id (UUID): Unique internal primary key.
+  - materialId (String, e.g., "M0005"): A user-friendly, auto-generated unique ID with the "M" prefix.
+  - name (String): The descriptive name of the material.
+  - unit (String): The unit of measure (e.g., "Nos", "Mtr", "Set").
+  - hsn / sac (String): Tax classification codes for GST compliance.
+  - totalQty (Int): The total pool of physical stock owned by the company.
+  - damageQty / shortQty (Int): Current tallies of damaged or missing items.
+  - lowerLimit (Int): A "Safety Stock" threshold. If available stock falls below this, the system can trigger alerts.
+  - hireRate (Float): Default rental rate per unit per day.
+  - damageRecoveryRate (Float): Default penalty rate for damaged items.
+  - shortRecoveryRate (Float): Default penalty rate for lost/missing items.
+* Database Relationships:
+  - QuotationItems: Links materials to sales offers.
+  - AgreementItems: Links materials to active contracts with custom rates.
+  - ChallanItems: Tracks the physical count of materials moving in/out.
+  - TransferItems: Tracks materials moving between sites.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/materials/materials.service.ts ---
+* Logic: Auto-ID Generation (`create` method)
+  - When a new material is added, the service finds the `lastMaterial` created.
+  - It uses a regex `match(/^M(\d+)$/)` to isolate the numeric part of the ID.
+  - It increments the number and pads it to 4 digits (e.g., `M0012` -> `M0013`).
+  - This provides a sequential, professional identifier for warehouse staff.
+* Logic: Stock Monitoring
+  - The `findAll` and `getCompanyStock` (in Challans service) use these material definitions to map out the current "In Hand" vs "At Site" inventory counts.
+
+--- backend/src/materials/materials.controller.ts ---
+* Purpose: Admin entry point.
+* Security: Secured by `JwtAuthGuard`. 
+* Functionality: Provides endpoints to add new items, update rates, or remove obsolete materials.
+
+--- backend/src/materials/dto/create-material.dto.ts ---
+* Logic: Input Validation.
+  - Ensures `name` is never empty.
+  - Validates that quantities (`totalQty`, etc.) are Integers (`@IsInt()`).
+  - Makes fields like `hsn` and `unit` optional but validates them as Strings.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Master Setup: Admin creates a Material with its default rates and total quantity.
+2. Discovery: When a user creates a Quotation, they search the Materials list to add items to the quote.
+3. Verification: During Challan creation (Issue), the system checks the Material's `totalQty` to ensure the company isn't issuing more than they own.
+4. Reporting: The "Company Stock" page aggregates all `materials` and subtracts the sum of `ChallanItems` (Issued - Returned) to show real-time availability.

@@ -1,0 +1,41 @@
+MODULE: ENVIRONMENT CONFIGURATION & DEPLOYMENT - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+StockDo is a full-stack application designed for cloud-native deployment. It uses a decoupled architecture where the Frontend (Next.js) and Backend (NestJS) can be asymmetrically scaled and deployed on different providers (e.g., Vercel for Frontend, DigitalOcean/AWS for Backend).
+
+2. ENVIRONMENT VARIABLES (.env)
+The system relies on several critical environment keys to function:
+
+--- Backend Environment ---
+* `DATABASE_URL`: Connection string for the PostgreSQL database (Primary).
+* `DIRECT_URL`: Used by Prisma for migrations (bypassing connection poolers).
+* `JWT_SECRET`: The cryptographic key used to sign and verify user session tokens.
+* `SUPABASE_URL` & `SUPABASE_KEY`: Credentials for the Supabase bucket used to store binary assets like the Company Logo.
+* `PORT`: Port on which the NestJS server listens (defaults to 3001).
+
+--- Frontend Environment ---
+* `NEXT_PUBLIC_API_URL`: The absolute URL of the backend API.
+  - Development: `http://localhost:3001/api/v1`
+  - Production: `https://api.stockdo.com/api/v1`
+
+3. BUILD & DEPLOYMENT LIFECYCLE
+* Backend Build: 
+  - `npm run build`: Compiles TypeScript to optimized JavaScript in the `dist` folder.
+  - `postinstall`: Automatically triggers `prisma generate` to ensure the TypeSafe client is ready.
+* Frontend Build:
+  - `npm run build`: Triggers Next.js static optimization and server-side route generation.
+* Database Migrations:
+  - Executed via `npx prisma migrate deploy`. This applies schema changes to the production database without data loss.
+
+4. CLOUD INTEGRATIONS
+* Database: Hosted on PostgreSQL (often AWS RDS or Supabase Postgres).
+* File Storage: Supabase Storage.
+  - Logic: The `SupabaseService` handles the multipart upload of the company logo, generating a public URL that is then saved in the PostgreSQL `company` table.
+* API Communication: Standardized via the `api.ts` Axios client with CORS (Cross-Origin Resource Sharing) configured in the backend `main.ts` to allow the frontend domain.
+
+5. CORE BUSINESS LOGIC & FLOW
+1. Setup: A new developer clones the repo and creates the `.env` files based on the `.env.example`.
+2. Initialization: `npm install` triggers the Prisma client generation.
+3. Database Sync: `npx prisma db push` (dev) or `migrate deploy` (prod) synchronizes the PostgreSQL tables.
+4. Launch: `npm run dev` in both folders starts the local environment.
+5. Production: The code is pushed to Git. Vercel/CI-CD triggers the build scripts, and the app goes live.

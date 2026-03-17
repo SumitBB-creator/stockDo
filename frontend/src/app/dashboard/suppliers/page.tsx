@@ -259,9 +259,9 @@ export default function SuppliersPage() {
                                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                         <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
                                                         <SelectContent>
-                                                            <SelectItem value="S/O">S/O</SelectItem>
-                                                            <SelectItem value="D/O">D/O</SelectItem>
-                                                            <SelectItem value="W/O">W/O</SelectItem>
+                                                            <SelectItem value="Owner Name">Owner Name</SelectItem>
+                                                            <SelectItem value="Proprietor Name">Proprietor Name</SelectItem>
+                                                            <SelectItem value="Director Name">Director Name</SelectItem>
                                                             <SelectItem value="C/O">C/O</SelectItem>
                                                         </SelectContent>
                                                     </Select>
@@ -406,8 +406,8 @@ export default function SuppliersPage() {
                                         <div className="text-xs text-muted-foreground">{supplier.ledgerAccountId}</div>
                                     </TableCell>
                                     <TableCell>
-                                        {supplier.relationType && supplier.relationName
-                                            ? `${supplier.relationType}-${supplier.relationName}`
+                                        {supplier.relationType || supplier.relationName
+                                            ? `${supplier.relationType ? `${supplier.relationType} - ` : ''}${supplier.relationName || ''}`
                                             : 'N/A'}
                                     </TableCell>
                                     <TableCell>{supplier.phone || 'N/A'}</TableCell>

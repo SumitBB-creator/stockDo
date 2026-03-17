@@ -1,0 +1,43 @@
+MODULE: EMPLOYEES & DAILY REVENUE - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+This documentation covers the internal operational modules: Employee management (staff records and payroll ledger) and Daily Revenue (automated projected earnings calculations).
+
+2. DATABASE TABLES
+--- Table: employees ---
+* Purpose: Stores master records for staff members.
+* Critical Fields:
+  - name / phone / email: Basic identity.
+  - ledgerAccountId (String, Unique): Ensures the employee is a valid "entity" in the general ledger for financial transactions like salary advances or travel reimbursements.
+  - relationType / relationName: Legal identification (e.g., S/O for Son of).
+  - pan / gstIn: For tax compliance.
+
+--- Table: daily_revenue ---
+* Purpose: Stores a daily financial snapshot of the company's "Rent in Progress."
+* Fields:
+  - date: The specific snapshot date.
+  - amount: Total rental value of all materials currently at all customer sites.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/employees/employees.service.ts ---
+* Logic: Shared Ledger ID Sequence
+  - To prevent ID collisions between Customers, Suppliers, and Employees, the `create` method scans all three tables to find the current maximum `LAID`.
+  - It increments this value and pads it to 6 digits (e.g., `LAID000142`).
+  - This ensures that if you pay an employee, it is recorded in the same unified transaction system as a customer payment.
+
+--- backend/src/daily-revenue/daily-revenue.service.ts ---
+* Logic: The Prediction Engine (`handleDailyRevenueCalculation`)
+  - Frequency: Runs every night at midnight via `@Cron`.
+  - Methodology:
+    1. It fetches all "Active" agreements.
+    2. For each agreement, it scans all historical Challans (Issues and Returns) to determine the exact "Stock on Site" at that moment.
+    3. It then multiplies that quantity by the "Hire Rate" defined in the specific agreement.
+    4. Result: It generates a `totalDailyRevenue` which represents what the company earned *today* in rent, even if a bill hasn't been generated yet.
+* Logic: Dashboard Support (`getRevenueTrend`)
+  - Fetches the last 30 snapshots to provide the data for the "Revenue Growth" chart on the main dashboard.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Staff Onboarding: New employees are added, and a unique Ledger ID is reserved for them.
+2. Financial Fairness: Any cash given to an employee for fuel or site expenses is recorded against their Ledger ID.
+3. Revenue Visibility: While the Billing module shows "Historical Cash," the Daily Revenue module provides "Real-time Accrual." This allows management to see if revenue is increasing or decreasing based on stock movement *before* the month ends.

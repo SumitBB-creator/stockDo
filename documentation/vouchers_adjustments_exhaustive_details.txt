@@ -1,0 +1,39 @@
+MODULE: VOUCHERS & ADJUSTMENTS - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Vouchers & Adjustments module provides the manual financial controls for StockDo. While the Billing module generates "Automated" debits, this module handles the "Manual" entries: Receipts (Customer payments), Payments (Employee/Supplier payments), and Credit/Debit Notes (Financial adjustments).
+
+2. VOUCHER TYPES
+
+--- Receipt Voucher ---
+* Purpose: To record cash or bank inflows from customers.
+* Business Logic: 
+  - Every Receipt decreases the balance in the Customer's Ledger.
+  - Advance Payment: If a receipt is captured without a bill reference, it is labeled as an "Advance Payment" in the system, which sits as a credit until a bill is generated.
+  - Linked Metadata: Receipts capture the "Payment Mode" (Cash, Online, Cheque) and "Reference Number" (UTR/Cheque No.).
+
+--- Credit Note & Debit Note ---
+* Purpose: For non-cash adjustments such as discounts, bulk-return credits, or penalty charges.
+* Business Logic:
+  - Credit Note: Decreases the amount a customer owes (e.g., "5% Discount on total bill").
+  - Debit Note: Increases the amount a customer owes (e.g., "Late payment penalty").
+  - Tax Integration: These notes capture GST rates if the adjustment is on a taxable service (transportation/damages).
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- frontend/src/app/dashboard/accounting/receipt/page.tsx ---
+* Logic: Daily Cashbook View
+  - The listing page defaults to the "Current Day" view using `format(new Date(), 'yyyy-MM-dd')`.
+  - It uses a optimized `transactions/daybook` API call to fetch only relevant non-billing journals.
+
+--- backend/src/transactions/transactions.service.ts (Referenced) ---
+* Logic: Ledger Impact
+  - When a Credit Note is created, the service creates a `Transaction` record with `type: 'CREDIT_NOTE'`.
+  - Transaction Numbers: Vouchers use a separate sequential ID system (e.g., `R-0001` for Receipts, `CN-0001` for Credit Notes) to distinguish them from standard Bills.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Scenario: A customer pays ₹50,000 via IMPS.
+2. Voucher Entry: The accountant goes to "New Receipt" and selects the customer.
+3. Validation: The UI calculates the "Current Balance" to ensure the payment doesn't exceed the dues (unless intended as an advance).
+4. Permanent Record: A transaction is saved. The `Reporting & Ledger` module immediately reflects the new balance.
+5. Proof: The system generates a `ReceiptDocument.tsx` PDF that can be emailed to the customer.

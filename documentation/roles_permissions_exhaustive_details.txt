@@ -1,0 +1,38 @@
+MODULE: ROLES & PERMISSIONS - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Roles & Permissions module is the foundation of StockDo’s Role-Based Access Control (RBAC). It defines a permission matrix that determines exactly which sections of the app (Customers, Billing, Inventory, etc.) a specific user can View, Create, Edit, or Delete.
+
+2. DATABASE TABLES
+--- Table: roles ---
+* Purpose: Stores the named security profiles (e.g., "Full Admin," "In-Charge," "Bill Clerk").
+* Critical Fields:
+  - id (UUID): Unique identifier.
+  - name (String): The human-readable name of the role.
+  - permissions (JSON): The most critical field. It contains a nested object where keys are module names and values are action flags.
+    Example: `{"customers": {"create": true, "view": true, "edit": false}, "billing": {"view": true}}`
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/roles/roles.service.ts ---
+* Logic: Summary Counts (`findAll`)
+  - When listing roles, the service uses Prisma’s `_count` aggregation to show exactly how many users are currently assigned to each role. This helps admins identify unused or overloaded security profiles.
+* Logic: Deep Inspection (`findOne`)
+  - When a specific role is selected, the service returns the full list of users (ID, Name, Email) linked to it, allowing for easy management of staff access.
+
+--- backend/src/auth/roles.guard.ts (Referenced) ---
+* Logic: The Enforcer
+  - While the `roles` module stores the data, the logic lives in the `RolesGuard`.
+  - It intercepts incoming API requests, extracts the user’s `roleId`, looks up the JSON matrix, and checks if the requested action (e.g., POST to /billing) is permitted for that role.
+  - If the flag is `false` or missing in the JSON, the system returns a `403 Forbidden` error.
+
+--- frontend/src/app/dashboard/roles/page.tsx ---
+* Logic: Permission Matrix UI
+  - This screen presents the JSON as a grid of checkboxes.
+  - Admins can dynamically toggle permissions for an entire role, and the change is instantaneous for all users assigned to that role without requiring a logout.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Security Design: The Super Admin creates a role called "Store Keeper."
+2. Policy Definition: In the matrix, the admin checks "Create" and "View" for the "Challans" module but unchecks everything for "Billing" and "Transactions."
+3. User Assignment: An employee is assigned the "Store Keeper" role.
+4. Active Protection: When the employee tries to click the "Billing" link in the frontend, the UI hides the button (based on the same JSON). If they try to bypass the UI and call the API directly, the `RolesGuard` rejects the request based on the database record.

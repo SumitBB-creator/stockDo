@@ -1,0 +1,44 @@
+MODULE: GLOBAL FINANCIAL LEDGER & TRANSACTION ENGINE - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+This module is the "General Ledger" and financial heart of StockDo. It unifies every physical entity (Customer, Supplier, Employee, and the Company itself) into a single accounting framework. It ensures that every rupee moving in or out of the business is tracked with a permanent, auditable transaction record.
+
+2. THE "LAID" (LEDGER ACCOUNT ID) SYSTEM
+* Concept: To prevent ID overlap, the system uses a Global Ledger ID system (`LAIDXXXXXX`).
+* Generation Logic: 
+  - Found in `EmployeesService.create()` and similar methods.
+  - The system performs a "Max ID Search" across all three tables (Customers, Employees, Suppliers).
+  - It extracts the numeric part of the highest existing LAID and increments it.
+* Purpose: This allows the `Transaction` table to use a single `ledgerAccountId` field that could point to any person or business in the ecosystem, simplifying global reports.
+
+3. DYNAMIC BALANCE MIRRORING
+The `TransactionService` implements a critical "Mirroring" logic to handle the dual nature of business relationships:
+* Customer/Employee Ledger:
+  - BILL / DEBIT_NOTE: Increases Balance (+ Debit).
+  - RECEIPT / PAYMENT / CREDIT_NOTE: Decreases Balance (- Credit).
+* Company/Supplier Ledger:
+  - PURCHASE / DEBIT_NOTE: Decreases Balance (- Credit).
+  - PAYMENT / RECEIPT / CREDIT_NOTE: Increases Balance (+ Debit).
+* This logic ensures the "Balance" column in a Ledger Statement always reflects the "Amount Receivable" or "Amount Payable" correctly for that specific entity type.
+
+4. CORE ANALYTICAL ENGINES
+
+--- Ledger Statement Builder (`getLedger`) ---
+* Logic: Resolves the "Party" by searching 4 tables (Customer, Supplier, Employee, Company).
+* Logic: Calculates "Opening Balance" by summing every transaction date-stamped before the requested "From Date".
+* Logic: Enriches rows by resolving UUIDs to human-readable "Bill Numbers" or "Voucher Numbers".
+
+--- Dueslist Engine (`getDueslist`) ---
+* Logic: Uses Postgres Group-By to aggregate net balances for all parties simultaneously.
+* Logic: Implements "Advance Payment Detection". If Net Due < 0, it categorizes the amount as an "Advance," which is recorded as a Liability on the Balance Sheet.
+
+--- Balance Sheet Engine (`getBalanceSheet`) ---
+* Logic: Assets = Fixed Assets + Liquid Cash + (Closing Stock x Last Purchase Rate) + Debtors.
+* Logic: Liabilities = Creditors + Advances from Customers.
+* Real-time Valuation: It dynamically calculates "Stock Value" by looking up the most recent `PurchaseItem` rate for every material in inventory and multiplying it by current `totalQty`.
+
+5. CORE BUSINESS LOGIC & FLOW
+1. Event: A bill is finalized or a payment is received.
+2. Hook: The calling service (Billing/Receipts) invokes `transactionsService.create()`.
+3. Recording: A transaction is saved with a type-specific prefix (R-0001, P-0005) and a permanent point-in-time timestamp.
+4. Visibility: The business owner opens the "Dueslist" to see a sorted list of highest-debt customers, or the "Daybook" to audit every financial action taken by staff today.

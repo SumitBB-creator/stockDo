@@ -346,7 +346,7 @@ export default function CreateAgreementPage() {
                             name="residenceAddress"
                             render={({ field }) => (
                                 <FormItem className="col-span-2 md:col-span-1">
-                                    <FormLabel>Residence Address</FormLabel>
+                                    <FormLabel>Office Address</FormLabel>
                                     <FormControl>
                                         <Textarea {...field} />
                                     </FormControl>

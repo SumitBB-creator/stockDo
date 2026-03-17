@@ -13,6 +13,7 @@ import {
     Truck
 } from "lucide-react";
 import { fetchDashboardSummary, fetchDailyRevenueTrend } from '@/lib/api';
+import { useAuthStore } from '@/store/auth-store';
 import { formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
 import {
@@ -33,8 +34,11 @@ export default function DashboardPage() {
     const [dailyRevenue, setDailyRevenue] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const { token, _hasHydrated } = useAuthStore();
+
     useEffect(() => {
         const loadData = async () => {
+            if (!_hasHydrated || !token) return; // Wait for hydration and token
             try {
                 const [summary, trend] = await Promise.all([
                     fetchDashboardSummary(),
@@ -50,7 +54,7 @@ export default function DashboardPage() {
             }
         };
         loadData();
-    }, []);
+    }, [_hasHydrated, token]); // Add dependencies
 
     if (loading) {
         return (

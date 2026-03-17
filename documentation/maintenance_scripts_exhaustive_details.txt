@@ -1,0 +1,34 @@
+MODULE: SYSTEM SCRIPTS & MAINTENANCE - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The System Scripts module handles the "Day Zero" initialization of StockDo and the long-term maintenance of the database. These scripts act as the safety net and the blueprint for the entire application, ensuring that the software can be set up from scratch and recovered from historical data gaps.
+
+2. CORE OPERATIONAL SCRIPTS
+
+--- script: prisma/seed.ts (The System Blueprint) ---
+* Purpose: Primary database initialization.
+* Logic: Super Admin Injection
+  - It creates the `Admin` role with a 100% "Full Control" permission matrix.
+  - It injects the `Super Admin` account with a default password (`password123`) using Bcrypt.
+* Logic: Module Matrix Definition
+  - This file defines the "Gold Standard" list of the 22 sub-modules that the system supports (e.g., "Master Data," "Agreement," "Daybook," "Dues List," "Sale & Purchase," etc.).
+  - This list is what the `Roles & Permissions` module uses to build its interface.
+
+--- script: src/scripts/backfill-transactions.ts (The Financial Safety Net) ---
+* Purpose: Data integrity recovery.
+* Logic: Missing Transaction Detection
+  - This script is designed to fix "Gaps" in the universal ledger.
+  - It scans the `bills` table for any finalized bills.
+  - It then checks if a corresponding row exists in the `transactions` table.
+  - If a bill exists but the transaction is missing (e.g., due to an interrupted server process during bill finalization), it reconstructs the ledger entry using the bill's grand total and period dates.
+* Impact: This ensures that the Dues List and Balance Sheet are always 100% accurate, even if a runtime error occurred during a bill save.
+
+--- script: prisma/verify-user.ts ---
+* Purpose: Security debugging.
+* Logic: Provides a command-line interface to check if a user exists and if their stored password hash is healthy.
+
+3. CORE BUSINESS LOGIC & FLOW
+1. Deployment: When StockDo is first deployed, `npx prisma db seed` is run. This sets up the first admin user and all permission modules.
+2. Security: The Super Admin immediately changes their password in the UI.
+3. Maintenance: If an admin notices that a customer's balance looks incorrect, a developer can run the `backfill-transactions` script to reconcile the ledger against physical bills.
+4. Scale: As new modules are added to StockDo, they must be added to the `modules` array in `seed.ts` to be manageable via the Roles UI.

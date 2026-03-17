@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -90,6 +90,7 @@ export default function MaterialsPage() {
         lowerLimit: true,
         updatedAt: true,
     });
+    const nameInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     const { hasAction } = usePermissions();
     const canAdd = hasAction("Master Data", "add");
@@ -193,6 +194,15 @@ export default function MaterialsPage() {
         setNewMaterial(prev => ({ ...prev, [field]: value }));
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (canAdd && !isSubmitting) {
+                handleAddNew();
+            }
+        }
+    };
+
     const handleAddNew = async () => {
         setIsSubmitting(true);
         try {
@@ -214,12 +224,34 @@ export default function MaterialsPage() {
                 lowerLimit: 0,
             });
             fetchMaterials();
+            setTimeout(() => {
+                nameInputRef.current?.focus();
+            }, 100);
         } catch (error) {
             console.error('Failed to create material:', error);
             toast({
                 variant: 'destructive',
                 title: 'Error',
                 description: 'Failed to create material.',
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDelete = async (id: string, name: string) => {
+        if (!window.confirm(`Are you sure you want to delete material "${name}"?`)) return;
+        setIsSubmitting(true);
+        try {
+            await api.delete(`/materials/${id}`);
+            toast({ title: 'Success', description: 'Material deleted successfully.' });
+            fetchMaterials();
+        } catch (error) {
+            console.error('Failed to delete material:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Failed to delete material.',
             });
         } finally {
             setIsSubmitting(false);
@@ -352,23 +384,22 @@ export default function MaterialsPage() {
                 </DialogContent>
             </Dialog>
 
-            <div className="rounded-md border bg-card overflow-x-auto">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            {visibleColumns.action && <TableHead className="w-[80px]">Action</TableHead>}
-                            {visibleColumns.name && <TableHead>Material Name</TableHead>}
-                            {visibleColumns.materialId && <TableHead>Material ID</TableHead>}
-                            {visibleColumns.unit && <TableHead>Unit</TableHead>}
-                            {visibleColumns.hsn && <TableHead>HSN</TableHead>}
-                            {visibleColumns.sac && <TableHead>SAC</TableHead>}
-                            {visibleColumns.totalQty && <TableHead>Total Qty</TableHead>}
-                            {visibleColumns.damageQty && <TableHead>Damage Qty</TableHead>}
-                            {visibleColumns.shortQty && <TableHead>Short Qty</TableHead>}
-                            {visibleColumns.lowerLimit && <TableHead>Lower Limit</TableHead>}
-                            {visibleColumns.updatedAt && <TableHead>Last Updated</TableHead>}
-                        </TableRow>
-                    </TableHeader>
+            <Table wrapperClassName="max-h-[calc(100vh-250px)] overflow-auto relative rounded-md border bg-card">
+                <TableHeader>
+                    <TableRow>
+                        {visibleColumns.action && <TableHead className="w-[80px] sticky top-0 z-20 bg-card shadow-sm border-b">Action</TableHead>}
+                        {visibleColumns.name && <TableHead className="sticky top-0 z-20 bg-card shadow-sm border-b">Material Name</TableHead>}
+                        {visibleColumns.materialId && <TableHead className="sticky top-0 z-20 bg-card shadow-sm border-b">Material ID</TableHead>}
+                        {visibleColumns.unit && <TableHead className="sticky top-0 z-20 bg-card shadow-sm border-b">Unit</TableHead>}
+                        {visibleColumns.hsn && <TableHead className="sticky top-0 z-20 bg-card shadow-sm border-b">HSN</TableHead>}
+                        {visibleColumns.sac && <TableHead className="sticky top-0 z-20 bg-card shadow-sm border-b">SAC</TableHead>}
+                        {visibleColumns.totalQty && <TableHead className="sticky top-0 z-20 bg-card shadow-sm border-b">Total Qty</TableHead>}
+                        {visibleColumns.damageQty && <TableHead className="sticky top-0 z-20 bg-card shadow-sm border-b">Damage Qty</TableHead>}
+                        {visibleColumns.shortQty && <TableHead className="sticky top-0 z-20 bg-card shadow-sm border-b">Short Qty</TableHead>}
+                        {visibleColumns.lowerLimit && <TableHead className="sticky top-0 z-20 bg-card shadow-sm border-b">Lower Limit</TableHead>}
+                        {visibleColumns.updatedAt && <TableHead className="sticky top-0 z-20 bg-card shadow-sm text-right border-b">Last Updated</TableHead>}
+                    </TableRow>
+                </TableHeader>
                     <TableBody>
                         {isLoading ? (
                             <TableRow>
@@ -381,7 +412,7 @@ export default function MaterialsPage() {
                                 {materials.map((material) => (
                                     <TableRow key={material.id}>
                                         {visibleColumns.action && (
-                                            <TableCell>
+                                            <TableCell className="space-x-3 whitespace-nowrap">
                                                 <Button
                                                     variant="link"
                                                     className={`p-0 h-auto font-normal underline ${canEdit ? 'text-blue-600' : 'text-muted-foreground cursor-not-allowed'}`}
@@ -390,6 +421,16 @@ export default function MaterialsPage() {
                                                 >
                                                     Edit
                                                 </Button>
+                                                {canDelete && (
+                                                    <Button
+                                                        variant="link"
+                                                        className={`p-0 h-auto font-normal underline text-red-600`}
+                                                        onClick={() => handleDelete(material.id, material.name)}
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        Delete
+                                                    </Button>
+                                                )}
                                             </TableCell>
                                         )}
                                         {visibleColumns.name && <TableCell className="font-medium">{material.name}</TableCell>}
@@ -424,8 +465,10 @@ export default function MaterialsPage() {
                                     {visibleColumns.name && (
                                         <TableCell>
                                             <Input
+                                                ref={nameInputRef}
                                                 value={newMaterial.name}
                                                 onChange={(e) => handleNewMaterialChange('name', e.target.value)}
+                                                onKeyDown={handleKeyDown}
                                                 placeholder="Name"
                                                 className="h-8 min-w-[120px]"
                                                 disabled={!canAdd}
@@ -438,6 +481,13 @@ export default function MaterialsPage() {
                                             <Input
                                                 value={newMaterial.unit}
                                                 onChange={(e) => handleNewMaterialChange('unit', e.target.value)}
+                                                onBlur={(e) => {
+                                                    const val = parseInt(e.target.value) || 0;
+                                                    if (newMaterial.totalQty === 0) {
+                                                        handleNewMaterialChange('totalQty', val);
+                                                    }
+                                                }}
+                                                onKeyDown={handleKeyDown}
                                                 placeholder="Unit"
                                                 className="h-8 w-[80px]"
                                             />
@@ -448,6 +498,7 @@ export default function MaterialsPage() {
                                             <Input
                                                 value={newMaterial.hsn}
                                                 onChange={(e) => handleNewMaterialChange('hsn', e.target.value)}
+                                                onKeyDown={handleKeyDown}
                                                 placeholder="HSN"
                                                 className="h-8 w-[80px]"
                                             />
@@ -458,6 +509,7 @@ export default function MaterialsPage() {
                                             <Input
                                                 value={newMaterial.sac}
                                                 onChange={(e) => handleNewMaterialChange('sac', e.target.value)}
+                                                onKeyDown={handleKeyDown}
                                                 placeholder="SAC"
                                                 className="h-8 w-[80px]"
                                             />
@@ -469,6 +521,7 @@ export default function MaterialsPage() {
                                                 type="number"
                                                 value={newMaterial.totalQty}
                                                 onChange={(e) => handleNewMaterialChange('totalQty', parseInt(e.target.value) || 0)}
+                                                onKeyDown={handleKeyDown}
                                                 className="h-8 w-[80px]"
                                             />
                                         </TableCell>
@@ -479,6 +532,7 @@ export default function MaterialsPage() {
                                                 type="number"
                                                 value={newMaterial.damageQty}
                                                 onChange={(e) => handleNewMaterialChange('damageQty', parseInt(e.target.value) || 0)}
+                                                onKeyDown={handleKeyDown}
                                                 className="h-8 w-[80px]"
                                             />
                                         </TableCell>
@@ -489,6 +543,7 @@ export default function MaterialsPage() {
                                                 type="number"
                                                 value={newMaterial.shortQty}
                                                 onChange={(e) => handleNewMaterialChange('shortQty', parseInt(e.target.value) || 0)}
+                                                onKeyDown={handleKeyDown}
                                                 className="h-8 w-[80px]"
                                             />
                                         </TableCell>
@@ -499,6 +554,7 @@ export default function MaterialsPage() {
                                                 type="number"
                                                 value={newMaterial.lowerLimit}
                                                 onChange={(e) => handleNewMaterialChange('lowerLimit', parseInt(e.target.value) || 0)}
+                                                onKeyDown={handleKeyDown}
                                                 className="h-8 w-[80px]"
                                             />
                                         </TableCell>
@@ -513,7 +569,6 @@ export default function MaterialsPage() {
                         )}
                     </TableBody>
                 </Table>
-            </div>
         </div>
     );
 }

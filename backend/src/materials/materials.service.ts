@@ -33,7 +33,7 @@ export class MaterialsService {
 
     findAll() {
         return this.prisma.material.findMany({
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: 'asc' },
         });
     }
 

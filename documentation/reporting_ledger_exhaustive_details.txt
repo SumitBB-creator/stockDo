@@ -1,0 +1,41 @@
+MODULE: REPORTING & LEDGER (TRANSACTIONS) - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Reporting & Ledger module (internally named `Transactions`) is the analytical brain of StockDo. While other modules record data, this module interprets it to produce financial statements, dues lists, tax summaries, and executive dashboards.
+
+2. THE "UNIVERSAL LEDGER" CONCEPT
+Architecture: StockDo uses a unified `transactions` table to track every financial event.
+- Single Source of Truth: Whether it is a Bill (Sales), a Purchase (Acquisition), a Receipt (Cash in), or a Payment (Cash out), it is logged here.
+- Entity Agnostic: The `ledgerAccountId` can represent a Customer, Supplier, or Employee. This allows for a "Master Ledger" that can track the company's net position against any party in the system.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/transactions/transactions.service.ts ---
+* Logic: Dynamic Ledger Replay (`getLedger`)
+  - Calculation: The system does not store a static "Closing Balance" (which could become corrupt). Instead, it "replays" every transaction from day zero to calculate the Opening Balance for any requested period.
+  - Perspective Switch: It automatically flips the "Debit/Credit" logic based on the party type.
+    - For Customers: Bills = Debit (+), Receipts = Credit (-).
+    - For Suppliers: Bills (Purchases) = Credit (+), Payments = Debit (-).
+  - Enrichment: It cross-references `billId` to show literal Bill Numbers instead of cryptic UUIDs in the ledger rows.
+
+* Logic: The Dues List (`getDueslist`)
+  - Scaling: Uses Prisma `groupBy` directly in Postgres to aggregate hundreds of transactions into a single "Net Position" per customer.
+  - Advance Handling: It explicitly identifies "Advance Payments" (where receipts exceed bills) to help management prioritize collections.
+
+* Logic: Balance Sheet Engine (`getBalanceSheet`)
+  - Asset Valuation: 
+    - Fixed Assets: Pulled from Company settings.
+    - Inventory Value: Dynamically calculated by multiplying `material.totalQty` by the "Latest Purchase Price" from the Purchases module.
+    - Cash on Hand: Calculated by replaying all historical Receipt/Payment transactions.
+  - Equity Balance: It uses the accounting equation: `Capital = Assets - Liabilities` to show the owner's net equity in the business.
+
+* Logic: GST Engine (`getGstSummary`)
+  - Tax Mapping: Aggregates CGST, SGST, and IGST components from both Sales (Bills) and Purchases.
+  - Result: Provides a clean summary of "GST Collected" vs "GST Paid," allowing the firm to quickly calculate their tax liability for the month.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Event Trigger: A Bill is finalized or a Receipt is recorded.
+2. Ledger Post: A row is inserted into the `transactions` table.
+3. Pulse Check: The Dashboard module calls `getDashboardSummary` to update the earnings/spendings charts.
+4. Compliance: At month-end, the user downloads the `gst-summary` and `daybook` to provide to their accounting department or auditor.
+5. Strategic View: The `annual-report` provides management with a 12-month bird's-eye view of profitability and material damage/loss trends.

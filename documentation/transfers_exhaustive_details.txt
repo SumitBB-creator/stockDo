@@ -1,0 +1,54 @@
+MODULE: TRANSFERS - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Transfers module handles site-to-site stock movements. Unlike a standard Challan, which moves stock between the company warehouse and a customer, a Transfer moves stock directly from Customer A to Customer B. This is the most complex logistical operation in the system because it must simultaneously update the inventory balances of two different clients.
+
+2. DATABASE TABLES
+--- Table: transfers ---
+* Purpose: The primary log of a site-to-site movement.
+* Critical Fields:
+  - id (UUID): Internal key.
+  - transferNumber (String, e.g., "MTID-0012"): Unique sequential ID with the "MTID" prefix.
+  - fromCustomerId (UUID): The source site (Sender).
+  - toCustomerId (UUID): The destination site (Receiver).
+  - agreementId (UUID): Links to the Receiver's active contract (required for pricing).
+  - senderTransportation / receiverTransportation (Float): Cost tracking for both parties.
+  - returnChallanId / issueChallanId: Direct links to the two automated challans created.
+* Relationships:
+  - items: Links to the materials being moved.
+  - fromCustomer / toCustomer: Ownership context.
+  - challans: Collection of the two linked movement records.
+
+--- Table: transfer_items ---
+* Purpose: Line-item breakdown of the materials being transferred.
+* Fields:
+  - materialId: The specific item.
+  - quantity (Int): The count being moved.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/transfers/transfers.service.ts ---
+* Logic: Atomic "3-in-1" Transaction (`create` method)
+  - When a user saves a Transfer, the service executes a `this.prisma.$transaction` containing three distinct operations:
+    1. It creates a **RETURN Challan** for the Sender (decrementing their site stock balance).
+    2. It creates an **ISSUE Challan** for the Receiver (incrementing their site stock balance).
+    3. It creates the **Transfer** record itself to link them.
+  - This ensures that stock "never disappears"—it is either at site A or site B, but never in between if the database fails during creation.
+* Logic: Cross-Customer Validation
+  - The service enforces that `fromCustomerId` and `toCustomerId` are different.
+  - It performs a strict check against the Receiver's active agreement: every material being transferred MUST be quoted in the receiver's contract. If not, the transfer is rejected.
+* Logic: Automated ID Synchronization
+  - The service manually calculates the next sequence for both CHN and RTN prefixes during the transaction to ensure the automated challans follow the standard global numbering system.
+
+--- backend/src/transfers/dto/create-transfer.dto.ts ---
+* Purpose: Complex Payload Validation.
+  - Ensures a date, source, destination, and agreement are all present.
+  - Uses `@ValidateNested` to check the material list integrity.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Trigger: A site manager requests equipment from another site. Logistics staff enter a Transfer in the dashboard.
+2. Automation: The system generates a Return receipt for the sender and an Issue voucher for the receiver simultaneously.
+3. Accounting Impact:
+   - The Sender's billing period for those items stops on the transfer date.
+   - The Receiver's billing period starts on the transfer date.
+4. Visibility: In stock reports, the quantities are deducted from "Customer A" and added to "Customer B" in one single clock-cycle.

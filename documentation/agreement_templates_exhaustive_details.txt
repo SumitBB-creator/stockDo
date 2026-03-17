@@ -1,0 +1,42 @@
+MODULE: AGREEMENT TEMPLATES - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Agreement Templates module is the "Legal Master" of StockDo. It allows administrators to define the standard intro text and the specific Terms & Conditions (T&C) used when generating customer contracts (Agreements). It provides a way to maintain legal consistency while allowing for dynamic per-customer data injection.
+
+2. TEMPLATE STRUCTURE & PLACEHOLDERS
+
+--- Intro Text ---
+* Logic: A flexible paragraph that introduces the parties.
+* Placeholders: The system looks for specific strings in curly braces and replaces them with live data during PDF generation:
+  - `{date}`: The date the agreement is signed.
+  - `{party1}`: The Company name (StockDo entity).
+  - `{party2}`: The Customer name.
+
+--- Terms & Conditions ---
+* Logic: An array of numbered clauses.
+* Common Placeholders:
+  - `{siteAddress}`: The specific location where shuttering material is delivered.
+  - `{residenceAddress}`: Customer's permanent home address.
+  - `{authorizedRepresentative}`: The person appointed by the customer to sign challans.
+  - `{minimumRentPeriod}`: The baseline billing days (e.g., "15 Days minimum").
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/agreement-templates/agreement-templates.service.ts ---
+* Logic: Auto-Initialization
+  - `onModuleInit()`: This is a NestJS lifecycle hook. When the server starts for the first time, the system checks if any templates exist.
+  - `initializeDefaultTemplate()`: If empty, it creates a "Standard Agreement" with 8 default clauses covering hire basis, payments, damage costs, and legal jurisdiction (New Delhi).
+* Logic: CRUD Operations
+  - `getActiveTemplate()`: Fetches the template marked with `isActive: true`. Currently, the system supports one active global template.
+
+--- frontend/src/app/dashboard/agreement/template/page.tsx ---
+* Logic: Dynamic Builder UI
+  - Allows admins to reorder terms using "Up" and "Down" arrows.
+  - Provides a real-time editing interface for individual clauses.
+  - Syncs the updated JSON structure (Intro + Terms Array) back to the backend.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Drafting: Admin enters the "Agreement Template" dashboard and refines the legal language.
+2. Saving: The terms are stored as a JSON array in the `agreement_templates` database table.
+3. Generation: When a user creates a "New Agreement" for a customer, the system fetches this "Active" template.
+4. Injection: The `AgreementDocument.tsx` component (Printing module) maps the customer's specific details into the placeholders, producing a legally binding document ready for capture-signature or PDF export.

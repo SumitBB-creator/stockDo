@@ -313,7 +313,7 @@ export default function EditAgreementPage() {
                             name="residenceAddress"
                             render={({ field }) => (
                                 <FormItem className="col-span-2 md:col-span-1">
-                                    <FormLabel>Residence Address</FormLabel>
+                                    <FormLabel>Office Address</FormLabel>
                                     <div className="rounded-md border bg-muted p-2.5 text-sm min-h-[80px] whitespace-pre-wrap">
                                         {field.value || "N/A"}
                                     </div>

@@ -191,6 +191,32 @@ const styles = StyleSheet.create({
         width: '100%',
         marginTop: 40,
     },
+    notesSection: {
+        marginTop: 10,
+        marginBottom: 20,
+    },
+    notesTitle: {
+        fontSize: 10,
+        fontFamily: 'Helvetica-Bold',
+        marginBottom: 8,
+        color: '#111827',
+    },
+    noteItem: {
+        flexDirection: 'row',
+        marginBottom: 4,
+        paddingLeft: 10,
+    },
+    noteNumber: {
+        width: 20,
+        fontSize: 9,
+        color: '#4B5563',
+    },
+    noteText: {
+        flex: 1,
+        fontSize: 9,
+        color: '#4B5563',
+        lineHeight: 1.4,
+    },
 });
 
 interface ChallanDocumentProps {
@@ -283,12 +309,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                 {(challan.driverName || challan.transporterName || challan.biltyNumber || challan.licenseNumber) && (
                     <View style={styles.detailsGrid}>
                         <View style={styles.detailsCol}>
-                            {challan.driverName && (
-                                <View style={styles.detailRow}>
-                                    <Text style={styles.detailLabel}>Driver Name:</Text>
-                                    <Text style={styles.detailValue}>{challan.driverName}</Text>
-                                </View>
-                            )}
+
                             {challan.licenseNumber && (
                                 <View style={styles.detailRow}>
                                     <Text style={styles.detailLabel}>License No:</Text>
@@ -303,12 +324,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                             )}
                         </View>
                         <View style={styles.detailsCol}>
-                            {challan.transporterName && (
-                                <View style={styles.detailRow}>
-                                    <Text style={styles.detailLabel}>Transporter:</Text>
-                                    <Text style={styles.detailValue}>{challan.transporterName}</Text>
-                                </View>
-                            )}
+
                             {challan.biltyNumber && (
                                 <View style={styles.detailRow}>
                                     <Text style={styles.detailLabel}>Bilty No:</Text>
@@ -371,48 +387,52 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                     ))}
                 </View>
 
+                {/* Notes Section */}
+                <View style={styles.notesSection}>
+                    <Text style={styles.notesTitle}>Notes :</Text>
+                    <View style={styles.noteItem}>
+                        <Text style={styles.noteNumber}>1.</Text>
+                        <Text style={styles.noteText}>Responsibility of goods once removed from our godown shall rest with customer.</Text>
+                    </View>
+                    <View style={styles.noteItem}>
+                        <Text style={styles.noteNumber}>2.</Text>
+                        <Text style={styles.noteText}>Customer will be responsible for transportation of goods both ways.</Text>
+                    </View>
+                    <View style={styles.noteItem}>
+                        <Text style={styles.noteNumber}>3.</Text>
+                        <Text style={styles.noteText}>Customer will be Responsible for all cuts/breakage/damage/shortage of goods at the cost at that time.</Text>
+                    </View>
+                    <View style={styles.noteItem}>
+                        <Text style={styles.noteNumber}>4.</Text>
+                        <Text style={styles.noteText}>Work timing is 09:00 AM to 05:00 PM, TUESDAY Closed.</Text>
+                    </View>
+                    <View style={styles.noteItem}>
+                        <Text style={styles.noteNumber}>5.</Text>
+                        <Text style={styles.noteText}>Minimum rent will be charged for one month.</Text>
+                    </View>
+                    <View style={styles.noteItem}>
+                        <Text style={styles.noteNumber}>6.</Text>
+                        <Text style={styles.noteText}>In case of shortage cost will be charged as per Shuttering Materials Items Commitment under Agreement.</Text>
+                    </View>
+                    <View style={styles.noteItem}>
+                        <Text style={styles.noteNumber}>7.</Text>
+                        <Text style={styles.noteText}>All disputes are subject to Delhi Jurisdiction only.</Text>
+                    </View>
+                    <View style={styles.noteItem}>
+                        <Text style={styles.noteNumber}>8.</Text>
+                        <Text style={styles.noteText}>At any point of time Choudhary Timber is entitled to remove their goods from the site.</Text>
+                    </View>
+                </View>
+
+
                 {/* Summary row for values if present */}
-                {(challan.goodsValue || challan.transportationCost || challan.greenTax || challan.weight) && (
+                {(challan.greenTax) && (
                     <View style={styles.detailsGrid}>
                         <View style={styles.detailsCol}>
-                            {challan.goodsValue != null && (
-                                <View style={styles.detailRow}>
-                                    <Text style={styles.detailLabel}>Goods Value:</Text>
-                                    <Text style={styles.detailValue}>₹ {challan.goodsValue?.toFixed(2)}</Text>
-                                </View>
-                            )}
-                            {challan.transportationCost != null && (
-                                <>
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailLabel}>Transport Cost:</Text>
-                                        <Text style={styles.detailValue}>₹ {challan.transportationCost?.toFixed(2)}</Text>
-                                    </View>
-                                    {company?.gstin && company?.gstOnTransportation && challan.transportationCost > 0 && (
-                                        <>
-                                            <View style={styles.detailRow}>
-                                                <Text style={styles.detailLabel}>
-                                                    {company.state?.toLowerCase() === challan.customer?.officeState?.toLowerCase()
-                                                        ? 'Transport GST (CGST+SGST):'
-                                                        : 'Transport GST (IGST 18%):'}
-                                                </Text>
-                                                <Text style={styles.detailValue}>₹ {(challan.transportationCost * 0.18).toFixed(2)}</Text>
-                                            </View>
-                                            <View style={styles.detailRow}>
-                                                <Text style={styles.detailLabel}>Total Transport:</Text>
-                                                <Text style={styles.detailValue}>₹ {(challan.transportationCost * 1.18).toFixed(2)}</Text>
-                                            </View>
-                                        </>
-                                    )}
-                                </>
-                            )}
+
                         </View>
                         <View style={styles.detailsCol}>
-                            {challan.weight != null && (
-                                <View style={styles.detailRow}>
-                                    <Text style={styles.detailLabel}>Weight:</Text>
-                                    <Text style={styles.detailValue}>{challan.weight} kg</Text>
-                                </View>
-                            )}
+
                             {challan.greenTax != null && (
                                 <View style={styles.detailRow}>
                                     <Text style={styles.detailLabel}>Green Tax:</Text>

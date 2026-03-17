@@ -1,0 +1,36 @@
+MODULE: SALES & PURCHASES (TRADING & GST) - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+This module serves as the primary "Trading & Tax" hub of StockDo. It unifies the logic for Capital Inflow (Purchases of material) and Revenue Generation (Sales/Billing of rental services). It manages the "Input Tax Credit" (ITC) acquired from suppliers and the "Output GST" collected from customers.
+
+2. LOGICAL MAPPING
+In the StockDo architecture:
+- "SALES" = The revenue generated via finalized **Bills** (Rental services).
+- "PURCHASES" = The expenditure recorded via **Purchase** vouchers (Material acquisition).
+
+3. FINANCIAL IMPACT & WORKFLOW
+
+--- Purchase Cycle (Input Tax) ---
+- Trigger: Company buys 500 Props from a supplier.
+- Document: A `Purchase` record is created.
+- GST Impact: The system records the CGST/SGST or IGST paid to the supplier. This amount qualifies as "Input Tax Credit" (ITC).
+- Ledger: The Supplier's account is credited (Account Payable).
+
+--- Sales/Billing Cycle (Output Tax) ---
+- Trigger: Monthly generation of rental invoices for customers.
+- Document: A `Bill` record is finalized.
+- GST Impact: The system calculates the tax based on the customer's state. This is "Output GST" which must be remitted to the government.
+- Ledger: The Customer's account is debited (Account Receivable).
+
+4. TAX REPORTING ENGINE
+- Logic: `getGstSummary(fromDate, toDate)`
+- Methodology:
+  - It performs a dual-table aggregation.
+  - Sales Side: Sums up `taxableAmount`, `cgst`, `sgst`, and `igst` from all non-cancelled `Bills`.
+  - Purchase Side: Sums up the same fields from all non-cancelled `Purchases`.
+- Result: Provides a "Net GST Liability" report (Total Output - Total Input), allowing the company to prepare for GSTR-1 and GSTR-3B filings.
+
+5. CORE BUSINESS LOGIC & FLOW
+1. Compliance: The system enforces that GST is only calculated if the `Company` and `Customer/Supplier` have valid GSTINs.
+2. Inter-State Trading: If the `Place of Supply` (Customer Site) is in a different state than the `Warehouse`, the system automatically switches from CGST/SGST to IGST.
+3. Profitability: By comparing "Total Sales (Bill value)" vs "Total Purchases", the dashboard calculates the "Gross Trading Margin," helping the owner understand if the rental revenue is covering the cost of new material acquisitions.

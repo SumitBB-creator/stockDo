@@ -1,0 +1,43 @@
+MODULE: PRINTING & PDF GENERATION - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Printing & PDF Generation module is a frontend-centric system responsible for converting digital records (Bills, Challans, Agreements) into high-fidelity, printable PDF documents. It ensures that the "Digital" data in StockDo matches the "Physical" paperwork required for warehouse operations and legal compliance.
+
+2. TECHNOLOGY STACK
+* Core Engine: `@react-pdf/renderer`
+* Approach: Client-side generation. The PDF is constructed in the user's browser using React components, meaning no server-side "Puppeteer" or "PDF-Lib" overhead is required.
+* Styling: Uses a specialized CSS-in-JS engine provided by React-PDF that supports A4 page layouts, Flexbox, and absolute positioning for signatures.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- frontend/src/components/[Module]/[Document].tsx ---
+Example: `components/challan/ChallanDocument.tsx` or `components/billing/BillDocument.tsx`
+* Logic: Prop-Driven Templating
+  - These are "Pure" components. They accept `data` (the record), `company` (global settings), and `logoUrl`.
+  - Conditional Layouts: In `ChallanDocument.tsx`, the column structure changes dynamically based on `challan.type`.
+    - ISSUE: Shows HSN/SAC and Rate columns.
+    - RETURN: Hides rates (for security) and adds `Damage Qty` and `Short Qty` columns for warehouse auditing.
+
+* Logic: Financial Summarization (Frontend Re-calculation)
+  - To ensure visual consistency, components like `BillDocument.tsx` perform their own GST and Grand Total calculations using the same logic as the backend.
+  - State-Aware GST: If the company and customer states match, it renders CGST/SGST rows; otherwise, it renders an IGST row.
+
+--- frontend/src/app/dashboard/[Module]/[id]/page.tsx ---
+* Logic: The PDF Hub
+  - The dashboard pages use the `<PDFDownloadLink>` or `<PDFViewer>` components to provide the user with a "Print Preview."
+  - It fetches the latest Company Logo from the `SupabaseService` URL before rendering the PDF to ensure the branding is current.
+
+4. DOCUMENT TYPES SUPPORTED
+1. Delivery Challan (Issue/Return)
+2. Tax Invoices (Bills)
+3. Formal Rental Agreements (using templates from Company Settings)
+4. Customer Statements (Ledgers)
+5. Dues List & Daybooks
+6. Performance Reports (Annual/Monthly)
+
+5. CORE BUSINESS LOGIC & FLOW
+1. Record Finalization: A user finalizes a Bill in the dashboard.
+2. Template Selection: The app selects the `BillDocument.tsx` template.
+3. Metadata Merging: The app pulls the Company's GSTIN, Logo, and Address from the `CompanyStore`.
+4. PDF Translation: `@react-pdf/renderer` converts the React JSX into a binary PDF blob.
+5. Physical Output: The user clicks "Print," and the browser's native print dialog opens with a pixel-perfect A4 representation, including legal footers and signature lines.

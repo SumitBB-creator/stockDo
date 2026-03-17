@@ -1,0 +1,38 @@
+MODULE: AUTHENTICATION & SECURITY - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Authentication & Security module governs access to the StockDo ecosystem. It ensures that only registered staff can access the dashboard and that their actions are restricted based on cryptographically signed identity tokens (JWT).
+
+2. SECURITY STANDARDS
+* Password Hashing: Uses `bcrypt` with a salt factor of 10. Raw passwords are never stored in the database.
+* Token Standard: JSON Web Tokens (JWT).
+* Authentication Strategy: Passport-JWT (Bearer Token).
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/auth/auth.service.ts ---
+* Logic: Credential Validation
+  - `validateUser()`: Fetches a user by email and uses `bcrypt.compare()` to check the password. If valid, it strips the sensitive password field before returning the user object.
+* Logic: Token Issuance
+  - `login()`: Generates a signed JWT. The "Payload" is critical—it contains the user's `email`, `userId` (as `sub`), and their `role` object. This allows the API to verify permissions without a database lookup on every request.
+
+--- backend/src/auth/jwt.strategy.ts ---
+* Logic: The Gatekeeper
+  - This file defines how the backend "reads" a token.
+  - It expects the token in the `Authorization: Bearer <token>` header.
+  - It validates the signature using the `JWT_SECRET` stored in the `.env` file.
+  - If the signature is valid and the token hasn't expired, it attaches the `user` object to the Request (e.g., `req.user`), making it available to all controllers.
+
+--- frontend/src/store/auth-store.ts (Zustand) ---
+* Logic: Client-Side Perimeter
+  - Manages the `access_token` in the browser.
+  - Persists the login state so users don't have to log in on every refresh.
+  - Automatically clears the state (Logs out) if the API returns a `401 Unauthorized` response.
+
+4. USER LIFECYCLE & SECURITY FLOW
+1. Handshake: User enters credentials on the Login page.
+2. Validation: Backend verifies the Bcrypt hash.
+3. Signing: Backend issues a JWT signed with a secret key.
+4. Storage: Frontend stores the token in the AuthStore/LocalStorage.
+5. Authorized Requests: For every subsequent action (e.g., "Add Customer"), the frontend sends the token.
+6. Guarding: The `JwtAuthGuard` on the backend intercepts the request, verifies the signature, and allows the action to proceed.

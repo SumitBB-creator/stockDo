@@ -1,0 +1,37 @@
+MODULE: FRONTEND API ARCHITECTURE & REQUEST LIFECYCLE - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+This module documentation covers the communication layer of StockDo. It explains how the frontend (React/Next.js) securely talks to the backend (NestJS), how it manages session State, and how it handles data transformation across the "Bridge."
+
+2. THE "API BRIDGE" (Axios Interceptors)
+* Logic: `frontend/src/lib/api.ts`
+* Security Injection: 
+  - The "Request Interceptor" automatically pulls the JWT token from the global Zustand auth-store.
+  - If a token exists, it is injected into the `Authorization: Bearer <token>` header of every single request.
+  - This ensures developers don't have to manually handle auth for every fetch call.
+* Response Unwrapping:
+  - The backend (NestJS) sends every response wrapped in a `{ data: ... }` object for standardization.
+  - The "Response Interceptor" automatically detects this wrap and "unwraps" it: `response.data = response.data.data`.
+  - This keeps the component code clean (e.g., `const customers = await fetchCustomers()` instead of `const customers = (await fetchCustomers()).data`).
+
+3. GLOBAL STATE MANAGEMENT (Zustand)
+* Logic: `frontend/src/store/auth-store.ts`
+* Persistence: The auth-store is "Hydrated" from localStorage. This ensures that if the user refreshes the page, their session, user details, and permissions are preserved without needing a re-login.
+* Reactivity: Components like the Sidebar or Navbar subscribe to this store to dynamically show the current logged-in user or hide modules based on whether a token is present.
+
+4. DYNAMIC ENDPOINT MAPPING
+The `api.ts` file acts as a "Central Registry" for the entire system:
+* Pattern: 
+  - `fetchXXX`: HTTP GET for lists or single items.
+  - `createXXX`: HTTP POST for new records.
+  - `updateXXX`: HTTP PATCH for modifications.
+  - `deleteXXX`: HTTP DELETE for removals.
+* Flexibility: It uses the `NEXT_PUBLIC_API_URL` environment variable, allowing the app to switch between `localhost:3001` (Development) and Cloud IP/Vercel (Production) without changing code.
+
+5. CORE BUSINESS LOGIC & FLOW
+1. Trigger: A user opens the "Agreements" page.
+2. Store Check: The Page component verifies the user is authorized.
+3. Fetching: `fetchAgreements()` is called from the component's `useEffect`.
+4. Interception: Axios adds the JWT, sends the request, and then strips the outer JSON wrapper from the response.
+5. Display: The component receives a clean array of agreements and renders the table.
+6. Error Handling: If the server returns a 401 (Expired Token), the interceptor can be extended to automatically redirect the user to the Login page.

@@ -1,0 +1,44 @@
+MODULE: VEHICLES - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Vehicles module provides fleet management and compliance tracking. Its primary purpose beyond simple asset tracking is to manage the "Compliance Lifecycle" of company-owned vehicles by alerting staff about critical upcoming regulatory deadlines (Insurance, Permits, Taxes, etc.).
+
+2. DATABASE TABLES
+--- Table: vehicles ---
+* Purpose: Stores master records for all company vehicles and their regulatory due dates.
+* Critical Fields:
+  - vehicleNumber (String, Unique): The registration number.
+  - vehicleType (String): Car, Truck, Crane, etc.
+  - Status (String): Active/Inactive.
+* Compliance Fields (Due Dates):
+  - nextServiceDue: Date for mechanical maintenance.
+  - pollutionDue: Expiry for PUC (Pollution Under Control).
+  - insuranceDue: Expiry for vehicle insurance coverage.
+  - roadTaxDue: Expiry for state road tax payments.
+  - tokenTaxDue: Expiry for commercial token taxes.
+  - nationalPermitDue / statePermitDue: Regulatory permissions for transport.
+  - fitnessTestDue: Mandatory commercial vehicle fitness certification.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/vehicles/vehicles.service.ts ---
+* Logic: Lightweight CRUD
+  - The service provides standard Create, Read, Update, Delete (CRUD) operations.
+  - It handles ISO date strings for all compliance fields, storing them as standard DateTime objects in Postgres.
+  - It sorts the vehicle list by most recently added (`createdAt: 'desc'`).
+
+--- backend/src/vehicles/dto/create-vehicle.dto.ts ---
+* Logic: Schema Enforcement
+  - Uses `@IsDateString()` to ensure that frontend inputs for compliance dates are valid year-month-day formats.
+  - This prevents data corruption in the "Due Date" engine.
+
+--- frontend/src/app/dashboard/vehicles/page.tsx ---
+* Logic: Compliance Dashboard (Frontend Logic)
+  - This is where the "Intelligence" of the module resides.
+  - Alert logic: The UI compares the stored `Due Dates` against the current system date.
+  - Visual Indicators: Vehicles with dates in the past or approaching soon (e.g., within 15-30 days) are highlighted as "Critical" or "Warning" to prompt the fleet manager to take action.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Asset Creation: When a new vehicle is bought, it is recorded with all its initial permit and tax expiry dates.
+2. Routine Updates: After a vehicle is serviced or a tax is paid, the user updates the specific "Due Date" field to the next expiry.
+3. Operations: On every login, the dashboard (via the vehicles page) scans these dates to ensure the company never operates a vehicle with expired insurance or permits, which would be a major legal risk.

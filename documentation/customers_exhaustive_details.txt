@@ -1,0 +1,53 @@
+MODULE: CUSTOMERS - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Customers module is the primary master data repository in StockDo. Since every Quotation, Agreement, Challan, and Bill is linked to a customer, this module serves as the anchor for the entire application's data structure.
+
+2. DATABASE TABLES
+--- Table: customers ---
+* Purpose: Stores identity and contact information for all clients and their specific project sites.
+* Critical Fields:
+  - id (UUID): Unique internal primary key.
+  - name (String): Business or individual name.
+  - ledgerAccountId (String, e.g., "LAID000512"): A globally unique ID used across the accounting system. Generated automatically with the "LAID" prefix.
+  - PAN (String): Tax ID for financial reporting.
+  - Office Address: A full set of fields (Address, City, Pin, State, Country, Phone, Fax, Email, GST) for the administrative headquarters.
+  - Site Address: A duplicate set of fields specifically for the physical location where materials are delivered. This is crucial as GST rates (SGST/CGST vs IGST) are often calculated based on site location.
+* Database Relationships:
+  - Quotations: track professional offers made to the customer.
+  - Agreements: track the currently active contract terms.
+  - Challans: track physical stock movements (Issue/Return).
+  - Bills: track financial invoices generated monthly.
+  - Transfers: track stock being moved from one customer site to another.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/customers/customers.service.ts ---
+* Logic: Automated Ledger ID Generation (`create` method)
+  - The system maintains a shared ledger for Customers, Employees, and Suppliers.
+  - When a new customer is created, the service asynchronously finds the last record from all three tables.
+  - It uses a custom helper `extractId` to parse the numeric part of the `LAIDXXXXXX` strings.
+  - It finds the maximum existing numeric ID, increments it by 1, and pads it back to a 6-digit string.
+  - This ensures no ID collisions across the entire enterprise database.
+* Logic: Sorted Retrieval (`findAll` method)
+  - Automatically sorts customers by `created_at` in descending order, ensuring the most recently added clients appear at the top of the dashboard.
+
+--- backend/src/customers/customers.controller.ts ---
+* Purpose: REST API layer.
+* Security: Every endpoint is protected by the `JwtAuthGuard`. Only authenticated users can access or modify customer data.
+* Methods: Implements the standard 5-point CRUD pattern (Create, List, Get-One, Update, Delete).
+
+--- backend/src/customers/dto/create-customer.dto.ts & update-customer.dto.ts ---
+* Purpose: Strict Payload Validation.
+* Key Features:
+  - Uses `class-validator` to ensure data integrity.
+  - Validation: `@IsEmail()`, `@IsOptional()`, and `@IsNotEmpty()`.
+  - The update DTO uses `PartialType`, allowing users to update only specific fields (like just a phone number) without sending the entire customer object.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Data Entry: When a user creates a customer, they provide both Office and Site details. 
+2. Auto-Logic: The backend assigns the unique LAID.
+3. Integration: 
+   - When creating a Bill, the service pulls `officeState` and `siteState` to determine GST types.
+   - When rendering a PDF Challan, the frontend pulls the Site Address details for the "Delivery To" section.
+4. Consistency: Deleting a customer record is restricted or handled via cascading logic in Prisma to prevent "orphaned" bills or challans.

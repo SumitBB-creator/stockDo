@@ -1,0 +1,45 @@
+MODULE: SUPPLIERS - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Suppliers module manages the master database of external vendors from whom the company purchases materials or services. It serves as the primary anchor for the Purchases module and ensures that every vendor has a unique financial identity in the system.
+
+2. DATABASE TABLES
+--- Table: suppliers ---
+* Purpose: Stores master records for all material providers.
+* Critical Fields:
+  - name (String): The legal name of the firm or individual.
+  - ledgerAccountId (String, Unique): The global "LAID" used to track payables.
+  - gstIn: The supplier's GST number, used to validate Input Tax Credit (ITC) in purchase records.
+  - pan: Used for TDS and tax compliance.
+  - relationType / relationName: Standard legal identification logic used across all master data modules.
+* Relationships:
+  - purchases: One supplier can have many historical purchase records.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/suppliers/suppliers.service.ts ---
+* Logic: Unified Ledger Identity (`create` method)
+  - Crucial Architecture: Suppliers do not have their own isolated numbering system. They participate in the "Universal Ledger."
+  - The `create` method performs a cross-module scan of the `customer`, `employee`, and `supplier` tables.
+  - It finds the maximum `LAID` suffix and increments it (e.g., if the last employee was `LAID000500`, the next supplier will be `LAID000501`).
+  - This prevents "Entity Collision" in the `transactions` table, where a single transaction number must uniquely identify a party.
+
+* Logic: Standard CRUD
+  - Supports full lifecycle management (Find, Update, Delete).
+  - Deleting a supplier is guarded by the database schema; if they have associated `Purchase` records, the operation will fail unless those dependencies are handled.
+
+--- backend/src/suppliers/dto/create-supplier.dto.ts ---
+* Logic: Input Sanitization
+  - Ensures a `name` is always provided.
+  - Uses `@IsEmail()` and `@IsString()` to validate contact and tax details before they reach the Prisma layer.
+
+--- frontend/src/app/dashboard/suppliers/page.tsx ---
+* Logic: Vendor Portal
+  - A large-scale table (22KB file) that allows filtering by name, city, or GST status.
+  - Includes deep-links to the "Purchases" module to quickly view what items were bought from a specific supplier.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Vendor Registration: A new supplier is added when a new material source is found.
+2. Financial Mapping: The system automatically assigns a `LAID` number.
+3. Transactional Linkage: When a user creates a "Purchase," they select the supplier. The system then uses the supplier's `ledgerAccountId` to post the financial credit, appearing in both the Purchases history and the General Ledger.
+4. Compliance: The `gstIn` recorded here is automatically pulled into GST summaries to help the company claim back taxes paid on acquisitions.

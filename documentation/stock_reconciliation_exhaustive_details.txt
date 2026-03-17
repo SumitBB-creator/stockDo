@@ -1,0 +1,37 @@
+MODULE: STOCK RECONCILIATION & INVENTORY TRACKING - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+This module defines the mathematical core of StockDo's inventory management. It differentiates between "Total Inventory" (what the company owns) and "Available Inventory" (what is physically present in the warehouse versus what is out on hire at various customer sites).
+
+2. COMPANY STOCK RECONCILIATION
+* Calculation Logic: `getCompanyStock()`
+* Methodology:
+  1. Base: Start with the `totalQty` for every material as defined in the Material Master.
+  2. Movement Audit: Fetch every Challan in the system history.
+  3. Net Issue Calculation: 
+     - For every `ISSUE`, increment the `issuedQty` counter for that material.
+     - For every `RETURN`, decrement the `issuedQty` counter.
+  4. Availability formula: `Available = Total - Net_Issues`.
+* Business Value: This ensures the company never commits to an order that exceeds its physical capacity.
+
+3. CUSTOMER (SITE) STOCK TRACKING
+* Calculation Logic: `getCustomerStock(customerId)`
+* Methodology:
+  - This is a "Per-Point" audit.
+  - It filters all movements where `customerId` matches.
+  - It performs a running tally: `[Issues] - [Returns]`.
+* Result: Provides a real-time list of exactly what materials (and in what quantities) are currently sitting at a customer's construction site.
+* Importance: This data is the input for the "Monthly Billing Engine," which charges rent based on this site balance.
+
+4. SHORTAGE & CRITICAL ALERTS
+* Logic: `DashboardSummary` & `ShortageNoticePage`
+* Threshold: The system constantly compares the `AvailableQty` against the `lowerLimit` (Safety Stock) set in the material profile.
+* Feedback: If `Available <= lowerLimit`, the system flags a "LOW STOCK" alert. If `Available == 0`, it flags a "CRITICAL OUT" status.
+
+5. CORE BUSINESS LOGIC & FLOW
+1. Scenario: A site supervisor returns 50 props.
+2. Entry: A "Return Challan" is created in the system.
+3. Impact: 
+   - The "Customer Stock" for that site immediately drops by 50.
+   - The "Company Stock" Availability immediately increases by 50.
+4. Validation: If the supervisor tries to return 60 props (more than they have on-site), the system detects a data discrepancy, aiding in loss prevention or identifying unrecorded issues.

@@ -1,0 +1,61 @@
+MODULE: QUOTATIONS - EXHAUSTIVE DETAILS
+
+1. OVERVIEW
+The Quotations module manages the "Sales" part of the business. It allows staff to create professional price proposals for customers. Unlike Agreements, Quotations are non-binding until accepted, which is why they include a robust Versioning (History) system to track negotiations.
+
+2. DATABASE TABLES
+--- Table: quotations ---
+* Purpose: The main header for a price proposal.
+* Critical Fields:
+  - id (UUID): Internal key.
+  - quotationId (String, e.g., "QTN-0042"): Sequential, professional ID.
+  - customerId (UUID): Links to the customer receiving the quote.
+  - status (String): "Draft" or "Finalized".
+  - version (Int): Starts at 1 and increments every time the quote is modified.
+* Relationships:
+  - items: Links to individual material rates for this specific quote.
+  - versions: Links to historical snapshots of this quote.
+
+--- Table: quotation_items ---
+* Purpose: Stores the specific rates offered for each material in a quote.
+* Fields:
+  - materialId: The item being quoted.
+  - hireRate: The daily rent proposed.
+  - damageRecoveryRate / shortRecoveryRate: Proposed penalty rates.
+  - rateAppliedAs: Usually "Nos/Days" (the unit of billing).
+
+--- Table: quotation_versions ---
+* Purpose: The "Historical Audit Trail".
+* Critical Fields:
+  - quotationId: Foreign key to the parent quote.
+  - version (Int): The version number of the snapshot.
+  - data (JSON): A complete "Time-Machine" snapshot of the Quotation and its Items at that point in time.
+
+3. FILE-BY-FILE CODE EXPLANATION
+
+--- backend/src/quotations/quotations.service.ts ---
+* Logic: Sequence ID Generation (`generateQuotationId`)
+  - Looks at the `lastQuotation` created.
+  - Splits the ID by the hyphen.
+  - Increments the number and pads to 4 digits (e.g., QTN-0005 -> QTN-0006).
+* Logic: Atomic Versioning (`update` method)
+  - This is the most complex part of the module.
+  - It uses a `this.prisma.$transaction` to ensure two things happen perfectly:
+    1. A snapshot of the "Old" data is fetched and saved into the `QuotationVersion` table as a JSON blob.
+    2. The "Main" Quotation is updated with new rates, and the `version` column is incremented by 1.
+  - This prevents data loss during negotiations—you can always see what the previous price was.
+* Logic: Item Replacement
+  - During an update, the service deletes all existing `QuotationItems` for that ID and recreates them. This is a "destructive update" pattern that ensures the list is always fresh without needing complex ID tracking for individual lines.
+
+--- backend/src/quotations/quotations.controller.ts ---
+* Purpose: API Gateway.
+* Methods:
+  - `findAll`: Returns all quotes, including nested customer and material data.
+  - `findLatestByCustomer`: Used by the "Agreement" module to quickly pull the most recent pricing for a customer site.
+  - `getVersions`: Returns all snapshots for a specific quote, sorted by version number.
+
+4. CORE BUSINESS LOGIC & FLOW
+1. Drafting: User creates a QTN and adds Materials + Rates.
+2. Negotiation: The customer asks for a discount. The User updates the QTN in the system.
+3. Versioning: The system automatically "Archives" the old price in the `quotation_versions` table and updates the main QTN.
+4. Acceptance: Once finalized, the system uses the `findLatestByCustomer` logic to convert the Quotation into a formal, binding **Agreement**.
