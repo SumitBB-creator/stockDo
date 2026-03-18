@@ -7,6 +7,8 @@ export interface Customer {
     ledgerAccountId?: string;
     relationType?: string;
     relationName?: string;
+    relativeAadhar?: string;
+    residenceAddress?: string;
     pan?: string;
 
     // Office
@@ -44,6 +46,8 @@ export interface CreateCustomerDto {
     ledgerAccountId?: string;
     relationType?: string;
     relationName?: string;
+    relativeAadhar?: string;
+    residenceAddress?: string;
     pan?: string;
 
     officeAddress?: string;

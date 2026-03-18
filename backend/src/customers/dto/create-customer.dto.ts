@@ -19,6 +19,14 @@ export class CreateCustomerDto {
 
     @IsString()
     @IsOptional()
+    relativeAadhar?: string;
+
+    @IsString()
+    @IsOptional()
+    residenceAddress?: string;
+
+    @IsString()
+    @IsOptional()
     pan?: string;
 
     @IsEmail()

@@ -49,6 +49,8 @@ const formSchema = z.object({
     ledgerAccountId: z.string().optional(),
     relationType: z.string().optional(),
     relationName: z.string().optional(),
+    relativeAadhar: z.string().optional(),
+    residenceAddress: z.string().optional(),
     pan: z.string().optional(),
     email: z.string().email('Invalid email').optional().or(z.literal('')),
     phone: z.string().optional(),
@@ -91,6 +93,8 @@ export default function CustomersPage() {
             ledgerAccountId: '',
             relationType: 'C/O',
             relationName: '',
+            relativeAadhar: '',
+            residenceAddress: '',
             pan: '',
             email: '',
             phone: '',
@@ -126,6 +130,8 @@ export default function CustomersPage() {
                 ledgerAccountId: editingCustomer.ledgerAccountId || '',
                 relationType: editingCustomer.relationType || 'C/O',
                 relationName: editingCustomer.relationName || '',
+                relativeAadhar: editingCustomer.relativeAadhar || '',
+                residenceAddress: editingCustomer.residenceAddress || '',
                 pan: editingCustomer.pan || '',
                 email: editingCustomer.email || '',
                 phone: editingCustomer.phone || '',
@@ -154,6 +160,8 @@ export default function CustomersPage() {
                 ledgerAccountId: '',
                 relationType: 'C/O',
                 relationName: '',
+                relativeAadhar: '',
+                residenceAddress: '',
                 pan: '',
                 email: '',
                 phone: '',
@@ -302,11 +310,14 @@ export default function CustomersPage() {
                                                 {!editingCustomer && <p className="text-xs text-muted-foreground">Auto-generated on save</p>}
                                             </FormItem>
                                         )} />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="flex gap-2">
                                             <FormField control={form.control} name="relationType" render={({ field }) => (
                                                 <FormItem className="w-24">
                                                     <FormLabel>Relation</FormLabel>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                                                         <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
                                                         <SelectContent>
                                                             <SelectItem value="Owner Name">Owner Name</SelectItem>
@@ -326,6 +337,23 @@ export default function CustomersPage() {
                                                 </FormItem>
                                             )} />
                                         </div>
+                                        <FormField control={form.control} name="relativeAadhar" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Relative Aadhar No</FormLabel>
+                                                <FormControl><Input placeholder="Aadhar Number" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField control={form.control} name="residenceAddress" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Relative Residence Address</FormLabel>
+                                                <FormControl><Textarea placeholder="Residence Address" {...field} className="h-10" /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
                                         <FormField control={form.control} name="pan" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>PAN</FormLabel>
