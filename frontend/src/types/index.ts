@@ -222,10 +222,6 @@ export interface Challan {
     timeIn?: string;
     receiverName?: string;
     receiverMobile?: string;
-    driverMobile?: string;
-    licenseNumber?: string;
-    timeOut?: string;
-    timeIn?: string;
     
     createdAt: string;
     updatedAt: string;
