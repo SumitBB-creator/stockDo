@@ -192,3 +192,51 @@ export interface CreateMaterialDto {
 
     status?: string;
 }
+
+export interface Challan {
+    id: string;
+    challanNumber: string;
+    manualChallanNumber?: string;
+    date: string;
+    customerId: string;
+    customer?: Customer;
+    agreementId?: string;
+    agreement?: any;
+    vehicleNumber?: string;
+    eWayBillNo?: string;
+    driverName?: string;
+    remarks?: string;
+    type: 'ISSUE' | 'RETURN';
+    items: ChallanItem[];
+    
+    // Additional Transport Fields
+    goodsValue?: number;
+    weight?: number;
+    transportationCost?: number;
+    greenTax?: number;
+    transporterName?: string;
+    biltyNumber?: string;
+    driverMobile?: string;
+    licenseNumber?: string;
+    timeOut?: string;
+    timeIn?: string;
+    receiverName?: string;
+    receiverMobile?: string;
+    driverMobile?: string;
+    licenseNumber?: string;
+    timeOut?: string;
+    timeIn?: string;
+    
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface ChallanItem {
+    id: string;
+    challanId: string;
+    materialId: string;
+    material?: Material;
+    quantity: number;
+    damageQuantity?: number;
+    shortQuantity?: number;
+}

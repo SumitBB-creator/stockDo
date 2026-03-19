@@ -1,6 +1,7 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import { format } from 'date-fns';
+import { toWords } from '@/lib/utils';
 
 const styles = StyleSheet.create({
     page: {
@@ -69,6 +70,13 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         textTransform: 'uppercase',
         marginBottom: 4,
+    },
+    underlinedTitle: {
+        fontSize: 10,
+        fontFamily: 'Helvetica-Bold',
+        textDecoration: 'underline',
+        marginBottom: 4,
+        color: '#6B7280',
     },
     customerName: {
         fontSize: 12,
@@ -158,7 +166,7 @@ const styles = StyleSheet.create({
         marginBottom: 3,
     },
     detailLabel: {
-        width: 100,
+        width: 115,
         fontSize: 9,
         fontFamily: 'Helvetica-Bold',
         color: '#6B7280',
@@ -180,10 +188,13 @@ const styles = StyleSheet.create({
         width: '45%',
     },
     signature: {
-        width: '35%',
+        width: '45%',
         alignItems: 'flex-end',
-        justifyContent: 'space-between',
-        height: 80,
+    },
+    boldText: {
+        fontSize: 10,
+        fontFamily: 'Helvetica-Bold',
+        color: '#111827',
     },
     signLine: {
         borderTopWidth: 1,
@@ -251,35 +262,57 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                     </View>
                 </View>
 
+                {/* Not for Sale Header */}
+                <View style={{ alignItems: 'center', marginBottom: 5 }}>
+                    <Text style={{
+                        fontSize: 10,
+                        fontFamily: 'Helvetica-Bold',
+                        textDecoration: 'underline',
+                        color: '#111827'
+                    }}>
+                        NOT FOR SALE / ON HIRE BASIS ONLY
+                    </Text>
+                </View>
+
                 {/* Customer & Meta Info */}
-                <View style={styles.section}>
+                <View style={[styles.section, { borderBottomWidth: 1, borderBottomColor: '#111827', paddingBottom: 10, marginBottom: 10 }]}>
                     <View style={styles.customerSection}>
-                        <Text style={styles.sectionTitle}>{isReturn ? 'Received From' : 'Delivered To'}</Text>
-                        <Text style={styles.customerName}>{challan.customer?.name}</Text>
-                        {(() => {
-                            const customer = challan.customer;
-                            if (!customer) return null;
-                            const relation = customer.relationName ? `${customer.relationType || 'C/O'}-Mr. ${customer.relationName}` : '';
-                            const address = customer.siteAddress || customer.residenceAddress || customer.officeAddress || customer.address || '';
-                            const city = customer.siteCity || customer.residenceCity || customer.officeCity || customer.city || '';
-                            const state = customer.siteState || customer.residenceState || customer.officeState || customer.state || '';
-                            const pin = customer.sitePin || customer.residencePin || customer.officePin || customer.pin || '';
+                        <Text style={styles.underlinedTitle}>Details of Cosignee (Shiped To) :</Text>
+                        <Text style={[styles.customerName, { textTransform: 'uppercase', fontSize: 10, marginBottom: 4 }]}>
+                            M/S {challan.customer?.name} {challan.customer?.relationName ? `${challan.customer.relationType || 'Dir. Of-MR.'} ${challan.customer.relationName}` : ''}
+                        </Text>
+                        <Text style={[styles.underlinedTitle, { fontSize: 9, marginBottom: 2 }]}>Site Address :</Text>
 
-                            const mainParts = [address, city].filter(Boolean);
-                            let formattedAddress = mainParts.join(', ');
-                            if (state || pin) {
-                                const statePin = [state, pin].filter(Boolean).join(' - ');
-                                if (statePin) formattedAddress += ` (${statePin})`;
-                            }
+                        <View style={styles.detailRow}>
+                            <Text style={[styles.detailLabel, { width: 80, color: '#6B7280' }]}>Address</Text>
+                            <Text style={styles.detailValue}>
+                                : {(() => {
+                                    const c = challan.customer;
+                                    if (!c) return '';
+                                    const addr = c.siteAddress || c.officeAddress || '';
+                                    const city = c.siteCity || c.officeCity || '';
+                                    const pin = c.sitePin || c.officePin || '';
+                                    const state = c.siteState || c.officeState || '';
+                                    return `${addr}, ${city}-${pin} (${state})`;
+                                })()}
+                            </Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                            <Text style={[styles.detailLabel, { width: 80, color: '#6B7280' }]}>Contact No</Text>
+                            <Text style={styles.detailValue}>: {challan.customer?.sitePhone || challan.customer?.officePhone || ''}</Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                            <Text style={[styles.detailLabel, { width: 80, color: '#6B7280' }]}>Email</Text>
+                            <Text style={styles.detailValue}>: {challan.customer?.siteEmail || challan.customer?.officeEmail || ''}</Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                            <Text style={[styles.detailLabel, { width: 80, color: '#6B7280' }]}>GSTIN/UIN</Text>
+                            <Text style={styles.detailValue}>: {challan.customer?.siteGst || challan.customer?.officeGst || ''}</Text>
+                        </View>
 
-                            return (
-                                <>
-                                    {relation && <Text style={styles.text}>{relation}</Text>}
-                                    <Text style={styles.text}>{formattedAddress}</Text>
-                                    {customer.officeGst && <Text style={styles.text}>GSTIN: {customer.officeGst}</Text>}
-                                </>
-                            );
-                        })()}
+                        <Text style={[styles.customerName, { fontSize: 9, marginTop: 4, color: '#6B7280' }]}>
+                            STATE NAME : {(challan.customer?.siteState || challan.customer?.officeState || '').toUpperCase()} / STATE CODE : {(challan.customer?.siteGst || challan.customer?.officeGst || '').substring(0, 2)}
+                        </Text>
                     </View>
                     <View style={styles.metaSection}>
                         <View style={styles.metaRow}>
@@ -300,6 +333,18 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                             <View style={styles.metaRow}>
                                 <Text style={styles.metaLabel}>Vehicle No:</Text>
                                 <Text style={styles.metaValue}>{challan.vehicleNumber}</Text>
+                            </View>
+                        )}
+                        {
+                            <View style={styles.metaRow}>
+                                <Text style={styles.metaLabel}>E-Way Bill No:</Text>
+                                <Text style={styles.metaValue}>........................</Text>
+                            </View>
+                        }
+                        {(challan.customer?.sitePhone || challan.customer?.officePhone) && (
+                            <View style={styles.metaRow}>
+                                <Text style={styles.metaLabel}>Phone No:</Text>
+                                <Text style={styles.metaValue}>{challan.customer?.sitePhone || challan.customer?.officePhone}</Text>
                             </View>
                         )}
                     </View>
@@ -385,6 +430,89 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                             <Text style={[styles.colUnit, styles.cellText]}>{item.material?.unit || 'Nos'}</Text>
                         </View>
                     ))}
+                    {/* Total Row */}
+                    <View style={[styles.tableRow, { borderTopWidth: 1, borderTopColor: '#111827', backgroundColor: '#F9FAFB' }]}>
+                        <Text style={[styles.colSr, styles.cellText]}></Text>
+                        <Text style={[isReturn ? styles.colDescReturn : styles.colDesc, styles.cellText, { fontFamily: 'Helvetica-Bold' }]}>Total</Text>
+                        {isReturn ? (
+                            <>
+                                <Text style={[styles.colRetQty, styles.cellText, { fontFamily: 'Helvetica-Bold' }]}>
+                                    {challan.items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0)}
+                                </Text>
+                                <Text style={[styles.colDmgQty, styles.cellText, { fontFamily: 'Helvetica-Bold' }]}>
+                                    {challan.items?.reduce((sum: number, item: any) => sum + (item.damageQuantity || 0), 0)}
+                                </Text>
+                                <Text style={[styles.colShortQty, styles.cellText, { fontFamily: 'Helvetica-Bold' }]}>
+                                    {challan.items?.reduce((sum: number, item: any) => sum + (item.shortQuantity || 0), 0)}
+                                </Text>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={[styles.colHsn, styles.cellText]}></Text>
+                                <Text style={[styles.colQty, styles.cellText, { fontFamily: 'Helvetica-Bold' }]}>
+                                    {challan.items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0)}
+                                </Text>
+                            </>
+                        )}
+                        <Text style={[styles.colUnit, styles.cellText]}></Text>
+                    </View>
+                </View>
+
+                {/* Transport & Summary Section */}
+                <View style={{ marginTop: 5, marginBottom: 5 }}>
+                    <View style={[styles.detailRow, { borderBottomWidth: 1, borderBottomColor: '#E5E7EB', paddingBottom: 4, marginBottom: 8 }]}>
+                        <Text style={[styles.detailLabel, { width: 120 }]}>Total in Words :</Text>
+                        <Text style={styles.detailValue}>
+                            {toWords(Math.round(challan.items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) || 0))}
+                        </Text>
+                    </View>
+
+                    <View style={styles.detailsGrid}>
+                        <View style={styles.detailsCol}>
+                            <View style={styles.detailRow}>
+                                <Text style={styles.detailLabel}>Goods Value (Approx.)</Text>
+                                <Text style={styles.detailValue}>: Rs. {challan.goodsValue?.toFixed(2) || '0.00'}</Text>
+                            </View>
+                            <View style={styles.detailRow}>
+                                <Text style={styles.detailLabel}>Transportation</Text>
+                                <Text style={styles.detailValue}>: Rs. {challan.transportationCost?.toFixed(2) || '0.00'}</Text>
+                            </View>
+                            <View style={styles.detailRow}>
+                                <Text style={styles.detailLabel}>Transportor Name</Text>
+                                <Text style={styles.detailValue}>: {challan.transporterName || 'N/A'}</Text>
+                            </View>
+                            <View style={styles.detailRow}>
+                                <Text style={styles.detailLabel}>Driver Name</Text>
+                                <Text style={styles.detailValue}>: {challan.driverName || '........................'}</Text>
+                            </View>
+                            <View style={styles.detailRow}>
+                                <Text style={styles.detailLabel}>Driver Mobile No</Text>
+                                <Text style={styles.detailValue}>: {challan.driverMobile || '........................'}</Text>
+                            </View>
+                        </View>
+                        <View style={styles.detailsCol}>
+                            <View style={styles.detailRow}>
+                                <Text style={styles.detailLabel}>Weight (Approx.)</Text>
+                                <Text style={styles.detailValue}>: {challan.weight?.toFixed(2) || '0.00'} Kg.</Text>
+                            </View>
+                            <View style={styles.detailRow}>
+                                <Text style={styles.detailLabel}>Green Tax</Text>
+                                <Text style={styles.detailValue}>: Rs. {challan.greenTax?.toFixed(2) || '0.00'}</Text>
+                            </View>
+                            <View style={styles.detailRow}>
+                                <Text style={styles.detailLabel}>Bilty No</Text>
+                                <Text style={styles.detailValue}>: {challan.biltyNumber || 'N/A'}</Text>
+                            </View>
+                            <View style={styles.detailRow}>
+                                <Text style={styles.detailLabel}>Driver License No</Text>
+                                <Text style={styles.detailValue}>: {challan.licenseNumber || '........................'}</Text>
+                            </View>
+                            <View style={styles.detailRow}>
+                                <Text style={styles.detailLabel}>Time Out</Text>
+                                <Text style={styles.detailValue}>: {challan.timeOut || '00:00 AM'}</Text>
+                            </View>
+                        </View>
+                    </View>
                 </View>
 
                 {/* Notes Section */}
@@ -404,7 +532,9 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                     </View>
                     <View style={styles.noteItem}>
                         <Text style={styles.noteNumber}>4.</Text>
-                        <Text style={styles.noteText}>Work timing is 09:00 AM to 05:00 PM, TUESDAY Closed.</Text>
+                        <Text style={styles.noteText}>
+                            Timing of Business is 09:00 AM to 05:00 PM, <Text style={{ fontFamily: 'Helvetica-Bold' }}>TUESDAY Closed.</Text>
+                        </Text>
                     </View>
                     <View style={styles.noteItem}>
                         <Text style={styles.noteNumber}>5.</Text>
@@ -416,52 +546,35 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                     </View>
                     <View style={styles.noteItem}>
                         <Text style={styles.noteNumber}>7.</Text>
-                        <Text style={styles.noteText}>All disputes are subject to Delhi Jurisdiction only.</Text>
+                        <Text style={styles.noteText}>All disputes are subject to South Delhi Jurisdiction only.</Text>
                     </View>
                     <View style={styles.noteItem}>
                         <Text style={styles.noteNumber}>8.</Text>
-                        <Text style={styles.noteText}>At any point of time Choudhary Timber is entitled to remove their goods from the site.</Text>
+                        <Text style={styles.noteText}>At any point of time {company?.companyName || 'Company Name'} is entitled to remove their goods from the site.</Text>
+                    </View>
+                    <View style={styles.noteItem}>
+                        <Text style={styles.noteNumber}>9.</Text>
+                        <Text style={styles.noteText}>The goods at all times remain the sole property of the firm.</Text>
                     </View>
                 </View>
 
 
-                {/* Summary row for values if present */}
-                {(challan.greenTax) && (
-                    <View style={styles.detailsGrid}>
-                        <View style={styles.detailsCol}>
 
-                        </View>
-                        <View style={styles.detailsCol}>
-
-                            {challan.greenTax != null && (
-                                <View style={styles.detailRow}>
-                                    <Text style={styles.detailLabel}>Green Tax:</Text>
-                                    <Text style={styles.detailValue}>₹ {challan.greenTax?.toFixed(2)}</Text>
-                                </View>
-                            )}
-                        </View>
-                    </View>
-                )}
-
-                {/* Footer */}
-                <View style={styles.footer}>
+                {/* Footer Acknowledgement */}
+                <View style={[styles.footer, { borderTopWidth: 0, marginTop: 15 }]}>
                     <View style={styles.receiverBox}>
-                        <Text style={styles.sectionTitle}>Receiver's Acknowledgement</Text>
-                        <View style={{ marginTop: 30 }}>
-                            <View style={styles.signLine} />
-                            <Text style={[styles.text, { fontSize: 8, marginTop: 4 }]}>
-                                Name: {challan.receiverName || '_________________'}
-                            </Text>
-                            <Text style={[styles.text, { fontSize: 8, marginTop: 2 }]}>
-                                Mobile: {challan.receiverMobile || '_________________'}
+                        <Text style={styles.boldText}>Receiver's Sign & Mobile No</Text>
+                        <View style={{ marginTop: 15 }}>
+                            <Text style={styles.boldText}>
+                                Receiver Name : ...................................
                             </Text>
                         </View>
                     </View>
                     <View style={styles.signature}>
-                        <Text style={[styles.text, { fontSize: 10, textAlign: 'right' }]}>For {company?.companyName || 'Company'}</Text>
-                        <View style={{ width: '100%', alignItems: 'flex-end' }}>
-                            <View style={styles.signLine} />
-                            <Text style={[styles.text, { fontSize: 8, marginTop: 4 }]}>Authorized Signatory</Text>
+                        <Text style={styles.boldText}>Authorized Signatory</Text>
+                        <View style={{ marginTop: 15, flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={styles.boldText}>For : </Text>
+                            <Text style={[styles.boldText, { fontSize: 11 }]}>{company?.companyName || 'Company Name'}</Text>
                         </View>
                     </View>
                 </View>

@@ -63,6 +63,7 @@ export class ChallansService {
                     greenTax: createChallanDto.greenTax,
                     transporterName: createChallanDto.transporterName,
                     biltyNumber: createChallanDto.biltyNumber,
+                    eWayBillNo: createChallanDto.eWayBillNo,
                     receiverName: createChallanDto.receiverName,
                     receiverMobile: createChallanDto.receiverMobile,
                     driverMobile: createChallanDto.driverMobile,

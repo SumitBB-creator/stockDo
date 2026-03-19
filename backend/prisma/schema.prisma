@@ -360,6 +360,7 @@ model Challan {
   greenTax           Float?  @map("green_tax")
   transporterName    String? @map("transporter_name")
   biltyNumber        String? @map("bilty_number")
+  eWayBillNo         String? @map("eway_bill_no")
 
   receiverName   String? @map("receiver_name")
   receiverMobile String? @map("receiver_mobile")

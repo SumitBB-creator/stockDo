@@ -39,6 +39,7 @@ const formSchema = z.object({
     date: z.string().min(1, "Date is required"),
     manualChallanNumber: z.string().optional(),
     vehicleNumber: z.string().optional(),
+    eWayBillNo: z.string().optional(),
 
     // Items
     items: z.array(z.object({
@@ -83,6 +84,7 @@ export default function CreateChallanPage() {
             items: [],
             manualChallanNumber: '',
             vehicleNumber: '',
+            eWayBillNo: '',
             goodsValue: undefined,
             weight: undefined,
             transportationCost: undefined,
@@ -146,6 +148,7 @@ export default function CreateChallanPage() {
                 })),
                 manualChallanNumber: values.manualChallanNumber || undefined,
                 vehicleNumber: values.vehicleNumber || undefined,
+                eWayBillNo: values.eWayBillNo || undefined,
                 transporterName: values.transporterName || undefined,
                 biltyNumber: values.biltyNumber || undefined,
                 receiverName: values.receiverName || undefined,
@@ -411,6 +414,20 @@ export default function CreateChallanPage() {
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
                                     <FormLabel>Transporter Name</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} value={field.value || ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="eWayBillNo"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>E-Way Bill No</FormLabel>
                                     <FormControl>
                                         <Input {...field} value={field.value || ''} />
                                     </FormControl>

@@ -48,6 +48,7 @@ const formSchema = z.object({
     agreementId: z.string().optional(),
     date: z.date(),
     vehicleNumber: z.string().optional(),
+    eWayBillNo: z.string().optional(),
     goodsValue: z.number().optional(),
     weight: z.number().optional(),
     transportationCost: z.number().optional(),
@@ -95,6 +96,7 @@ export default function CreateReturnPage() {
             agreementId: '',
             date: new Date(),
             vehicleNumber: '',
+            eWayBillNo: '',
             goodsValue: undefined,
             weight: undefined,
             transportationCost: undefined,
@@ -208,6 +210,7 @@ export default function CreateReturnPage() {
             if (values.agreementId) payload.agreementId = values.agreementId;
             if (values.manualChallanNumber) payload.manualChallanNumber = values.manualChallanNumber;
             if (values.vehicleNumber) payload.vehicleNumber = values.vehicleNumber;
+            if (values.eWayBillNo) payload.eWayBillNo = values.eWayBillNo;
             if (values.remarks) payload.remarks = values.remarks;
             if (values.transporterName) payload.transporterName = values.transporterName;
             if (values.biltyNumber) payload.biltyNumber = values.biltyNumber;
@@ -575,6 +578,7 @@ export default function CreateReturnPage() {
                             {[
                                 { name: "goodsValue", label: "Goods Value", type: "number" },
                                 { name: "transportationCost", label: "Transportation", type: "number" },
+                                { name: "eWayBillNo", label: "E-Way Bill No", type: "text" },
                                 { name: "transporterName", label: "Transporter Name", type: "text" },
                                 { name: "receiverName", label: "Receiver Name", type: "text" },
                                 { name: "driverName", label: "Driver Name", type: "text" },

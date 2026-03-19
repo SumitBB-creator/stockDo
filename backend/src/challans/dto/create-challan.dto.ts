@@ -85,6 +85,10 @@ export class CreateChallanDto {
 
     @IsString()
     @IsOptional()
+    eWayBillNo?: string;
+
+    @IsString()
+    @IsOptional()
     receiverName?: string;
 
     @IsString()
