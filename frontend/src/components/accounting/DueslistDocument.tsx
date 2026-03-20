@@ -117,7 +117,16 @@ const styles = StyleSheet.create({
         fontSize: 8,
         fontFamily: 'Helvetica-Bold',
         color: '#111827',
-    }
+    },
+    pageNumber: {
+        position: 'absolute',
+        fontSize: 10,
+        bottom: 15,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        color: '#9CA3AF',
+    },
 });
 
 interface DueslistDocumentProps {
@@ -235,6 +244,11 @@ const DueslistDocument: React.FC<DueslistDocumentProps> = ({ dues, company, logo
                         </View>
                     </View>
                 </View>
+                <Text 
+                    style={styles.pageNumber} 
+                    render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 
+                    fixed 
+                />
             </Page>
         </Document>
     );

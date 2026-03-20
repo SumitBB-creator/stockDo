@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Loader2, Save, Receipt as ReceiptIcon, ArrowLeft } from 'lucide-react';
+import { Loader2, Save, Receipt as ReceiptIcon, ArrowLeft, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,7 +27,10 @@ export default function ReceiptEntryPage() {
     const [paymentAs, setPaymentAs] = useState('Advance Payment');
     const [amount, setAmount] = useState('');
     const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-    const [paymentMode, setPaymentMode] = useState('BANK TRANSFER');
+    const [paymentMode, setPaymentMode] = useState('CASH');
+    const [bankName, setBankName] = useState('');
+    const [branchName, setBranchName] = useState('');
+    const [bankState, setBankState] = useState('');
     const [reference, setReference] = useState('');
     const [notes, setNotes] = useState(''); // Serves as 'On Account of'
 
@@ -89,7 +92,7 @@ export default function ReceiptEntryPage() {
         }
     };
 
-    const handleSaveReceipt = async () => {
+    const handleSaveReceipt = async (shouldPrint = false) => {
         if (!selectedParty) {
             toast({ title: "Validation Error", description: "Please select an account.", variant: "destructive" });
             return;
@@ -101,9 +104,11 @@ export default function ReceiptEntryPage() {
 
         setSubmitting(true);
         try {
+            const bankInfo = [bankName, branchName, bankState].filter(Boolean).join(', ');
             const description = [
                 paymentAs,
                 `via ${paymentMode}`,
+                bankInfo ? `to ${bankInfo}` : '',
                 reference ? `(Ref: ${reference})` : '',
                 notes ? `- ${notes}` : ''
             ].filter(Boolean).join(' ');
@@ -117,7 +122,7 @@ export default function ReceiptEntryPage() {
                 transactionDate.setHours(today.getHours(), today.getMinutes(), today.getSeconds());
             }
 
-            await createTransaction({
+            const result = await createTransaction({
                 customerId: selectedParty,
                 date: transactionDate,
                 type: 'RECEIPT',
@@ -127,7 +132,12 @@ export default function ReceiptEntryPage() {
             });
 
             toast({ title: "Receipt Saved", description: "Payment receipt recorded successfully." });
-            router.push('/dashboard/accounting/receipt');
+            
+            if (shouldPrint && result?.id) {
+                router.push(`/dashboard/accounting/receipt/${result.id}`);
+            } else {
+                router.push('/dashboard/accounting/receipt');
+            }
 
         } catch (error) {
             console.error("Failed to save receipt:", error);
@@ -183,6 +193,10 @@ export default function ReceiptEntryPage() {
                                 <RadioGroupItem value="Loss Payment" id="r4" />
                                 <Label htmlFor="r4" className="cursor-pointer">Loss</Label>
                             </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="Discount Payment" id="r5" />
+                                <Label htmlFor="r5" className="cursor-pointer">Discount</Label>
+                            </div>
                         </RadioGroup>
                     </div>
 
@@ -234,10 +248,46 @@ export default function ReceiptEntryPage() {
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 <option value="CASH">Cash</option>
-                                <option value="BANK TRANSFER">Bank Transfer (NEFT/RTGS/IMPS)</option>
+                                <option value="NEFT">NEFT</option>
+                                <option value="RTGS">RTGS</option>
+                                <option value="IMPS">IMPS</option>
                                 <option value="UPI">UPI / QR Code</option>
                                 <option value="CHEQUE">Cheque</option>
                             </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="bankName">Bank Name</Label>
+                            <Input
+                                id="bankName"
+                                placeholder="Bank Name"
+                                value={bankName}
+                                onChange={(e) => setBankName(e.target.value)}
+                                disabled={submitting}
+                            />
+                        </div>
+
+                        <div className="space-y-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="branchName">Branch Name</Label>
+                                <Input
+                                    id="branchName"
+                                    placeholder="Branch Name"
+                                    value={branchName}
+                                    onChange={(e) => setBranchName(e.target.value)}
+                                    disabled={submitting}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="bankState">Bank State</Label>
+                                <Input
+                                    id="bankState"
+                                    placeholder="State"
+                                    value={bankState}
+                                    onChange={(e) => setBankState(e.target.value)}
+                                    disabled={submitting}
+                                />
+                            </div>
                         </div>
 
                         <div className="space-y-2">
@@ -274,7 +324,16 @@ export default function ReceiptEntryPage() {
                         >
                             Cancel
                         </Button>
-                        <Button onClick={handleSaveReceipt} disabled={submitting} className="min-w-[150px]">
+                        <Button
+                            variant="secondary"
+                            onClick={() => handleSaveReceipt(true)}
+                            disabled={submitting}
+                            className="gap-2"
+                        >
+                            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+                            Save & Print
+                        </Button>
+                        <Button onClick={() => handleSaveReceipt(false)} disabled={submitting} className="min-w-[150px]">
                             {submitting ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

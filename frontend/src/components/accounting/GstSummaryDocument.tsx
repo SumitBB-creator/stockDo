@@ -130,7 +130,16 @@ const styles = StyleSheet.create({
     summaryValue: {
         fontSize: 12,
         fontWeight: 'bold',
-    }
+    },
+    pageNumber: {
+        position: 'absolute',
+        fontSize: 10,
+        bottom: 15,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        color: '#9CA3AF',
+    },
 });
 
 interface GstSummaryDocumentProps {
@@ -256,7 +265,7 @@ export const GstSummaryDocument: React.FC<GstSummaryDocumentProps> = ({ summary,
                 </View>
 
                 {/* Footer / Signatures */}
-                <View style={{ marginTop: 50, flexDirection: 'row', justifyContent: 'space-between' }}>
+                <View style={{ marginTop: 50, flexDirection: 'row', justifyContent: 'space-between' }} wrap={false}>
                     <View style={{ width: '40%', borderTopWidth: 1, borderTopColor: '#000', paddingTop: 5, textAlign: 'center' }}>
                         <Text style={{ fontSize: 9 }}>Prepared By</Text>
                     </View>
@@ -264,6 +273,11 @@ export const GstSummaryDocument: React.FC<GstSummaryDocumentProps> = ({ summary,
                         <Text style={{ fontSize: 9 }}>Authorized Signatory</Text>
                     </View>
                 </View>
+                <Text 
+                    style={styles.pageNumber} 
+                    render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 
+                    fixed 
+                />
             </Page>
         </Document>
     );

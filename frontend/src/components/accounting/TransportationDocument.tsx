@@ -117,7 +117,16 @@ const styles = StyleSheet.create({
         fontSize: 9,
         fontFamily: 'Helvetica-Bold',
         color: '#111827',
-    }
+    },
+    pageNumber: {
+        position: 'absolute',
+        fontSize: 10,
+        bottom: 15,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        color: '#9CA3AF',
+    },
 });
 
 interface TransportationDocumentProps {
@@ -230,6 +239,11 @@ const TransportationDocument: React.FC<TransportationDocumentProps> = ({ challan
                         </View>
                     </View>
                 </View>
+                <Text 
+                    style={styles.pageNumber} 
+                    render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 
+                    fixed 
+                />
             </Page>
         </Document>
     );

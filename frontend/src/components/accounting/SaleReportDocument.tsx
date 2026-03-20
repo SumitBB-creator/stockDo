@@ -169,7 +169,16 @@ const styles = StyleSheet.create({
     footerText: {
         fontSize: 8,
         color: '#9CA3AF',
-    }
+    },
+    pageNumber: {
+        position: 'absolute',
+        fontSize: 10,
+        bottom: 15,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        color: '#9CA3AF',
+    },
 });
 
 interface SaleReportDocumentProps {
@@ -309,10 +318,12 @@ export const SaleReportPage: React.FC<SaleReportDocumentProps> = ({ bills, compa
             {/* Footer */}
             <View style={styles.footer} fixed>
                 <Text style={styles.footerText}>Generated on {format(new Date(), 'dd MMM yyyy HH:mm')}</Text>
-                <Text style={styles.footerText} render={({ pageNumber, totalPages }) => (
-                    `Page ${pageNumber} of ${totalPages}`
-                )} />
             </View>
+            <Text 
+                style={styles.pageNumber} 
+                render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 
+                fixed 
+            />
         </Page>
     );
 };

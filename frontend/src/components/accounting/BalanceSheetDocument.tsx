@@ -137,7 +137,16 @@ const styles = StyleSheet.create({
     footerLabel: {
         fontSize: 9,
         color: '#4B5563',
-    }
+    },
+    pageNumber: {
+        position: 'absolute',
+        fontSize: 10,
+        bottom: 15,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        color: '#9CA3AF',
+    },
 });
 
 interface BalanceSheetDocumentProps {
@@ -286,6 +295,11 @@ const BalanceSheetDocument: React.FC<BalanceSheetDocumentProps> = ({ data, compa
                         <Text style={styles.footerLabel}>For {company?.companyName || 'Company'}</Text>
                     </View>
                 </View>
+                <Text 
+                    style={styles.pageNumber} 
+                    render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 
+                    fixed 
+                />
             </Page>
         </Document>
     );

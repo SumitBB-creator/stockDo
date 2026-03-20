@@ -159,8 +159,16 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontFamily: 'Helvetica-Bold',
         marginBottom: 40,
-    }
-
+    },
+    pageNumber: {
+        position: 'absolute',
+        fontSize: 10,
+        bottom: 15,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        color: '#9CA3AF',
+    },
 });
 
 interface AgreementDocumentProps {
@@ -335,6 +343,11 @@ const AgreementDocument: React.FC<AgreementDocumentProps> = ({ agreement, compan
                     </View>
                 </View>
 
+                <Text 
+                    style={styles.pageNumber} 
+                    render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 
+                    fixed 
+                />
             </Page>
         </Document>
     );

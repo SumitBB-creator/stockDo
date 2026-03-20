@@ -194,6 +194,15 @@ const styles = StyleSheet.create({
         borderRadius: 4,
         textTransform: 'uppercase',
     },
+    pageNumber: {
+        position: 'absolute',
+        fontSize: 10,
+        bottom: 20,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        color: '#9CA3AF',
+    },
 });
 
 interface BillDocumentProps {
@@ -387,6 +396,11 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                 </View>
             </View>
         </View>
+        <Text 
+            style={styles.pageNumber} 
+            render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 
+            fixed 
+        />
     </Page>
 );
 

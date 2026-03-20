@@ -175,6 +175,15 @@ const styles = StyleSheet.create({
         width: '100%',
         marginTop: 40,
     },
+    pageNumber: {
+        position: 'absolute',
+        fontSize: 10,
+        bottom: 15,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        color: '#9CA3AF',
+    },
 });
 
 interface QuotationDocumentProps {
@@ -286,6 +295,11 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, compan
                     </View>
                 </View>
             </View>
+            <Text 
+                style={styles.pageNumber} 
+                render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 
+                fixed 
+            />
         </Page>
     </Document>
 );

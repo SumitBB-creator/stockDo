@@ -131,7 +131,16 @@ const styles = StyleSheet.create({
         borderBottomColor: '#E5E7EB',
         marginTop: 10,
         marginBottom: 20,
-    }
+    },
+    pageNumber: {
+        position: 'absolute',
+        fontSize: 10,
+        bottom: 20,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        color: '#9CA3AF',
+    },
 });
 
 interface NoteDocumentProps {
@@ -284,6 +293,11 @@ const NoteDocument: React.FC<NoteDocumentProps> = ({ note, company, logoUrl }) =
                     </View>
                 </View>
 
+                <Text 
+                    style={styles.pageNumber} 
+                    render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 
+                    fixed 
+                />
             </Page>
         </Document>
     );

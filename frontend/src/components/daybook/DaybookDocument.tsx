@@ -148,7 +148,16 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: '#6B7280',
         marginTop: 20,
-    }
+    },
+    pageNumber: {
+        position: 'absolute',
+        fontSize: 10,
+        bottom: 20,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        color: '#9CA3AF',
+    },
 });
 
 interface DaybookDocumentProps {
@@ -255,6 +264,11 @@ const DaybookDocument: React.FC<DaybookDocumentProps> = ({ transactions, company
                 </View>
 
                 <Text style={styles.footerLabel}>End of Daybook for {format(new Date(date), 'dd MMMM yyyy')}</Text>
+                <Text 
+                    style={styles.pageNumber} 
+                    render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 
+                    fixed 
+                />
             </Page>
         </Document>
     );

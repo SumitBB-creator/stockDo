@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     metaRow: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
-        marginBottom: 2,
+        marginBottom: 5,
         width: '100%',
     },
     metaLabel: {
@@ -228,6 +228,15 @@ const styles = StyleSheet.create({
         color: '#4B5563',
         lineHeight: 1.4,
     },
+    pageNumber: {
+        position: 'absolute',
+        fontSize: 10,
+        bottom: 20,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        color: '#9CA3AF',
+    },
 });
 
 interface ChallanDocumentProps {
@@ -246,7 +255,13 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
+                        <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#000000', marginBottom: 2 }}>
+                            Received the following Items on Hire Basis From :
+                        </Text>
                         <Text style={styles.companyName}>{company?.companyName || 'Company Name'}</Text>
+                        <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#000000', marginBottom: 4 }}>
+                            (Service Provider of Shuttering & Scaffolding Goods on Hire)
+                        </Text>
                         <Text style={styles.companyAddress}>{company?.address1} {company?.address2}</Text>
                         <Text style={styles.companyAddress}>{company?.city ? `${company.city}, ` : ''}{company?.state} {company?.pin ? `- ${company.pin}` : ''}</Text>
                         {company?.phone && <Text style={styles.companyAddress}>Phone: {company.phone}</Text>}
@@ -316,37 +331,29 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                     </View>
                     <View style={styles.metaSection}>
                         <View style={styles.metaRow}>
-                            <Text style={styles.metaLabel}>Challan #:</Text>
-                            <Text style={styles.metaValue}>{challan.challanNumber}</Text>
-                        </View>
-                        {challan.manualChallanNumber && (
-                            <View style={styles.metaRow}>
-                                <Text style={styles.metaLabel}>Manual #:</Text>
-                                <Text style={styles.metaValue}>{challan.manualChallanNumber}</Text>
-                            </View>
-                        )}
-                        <View style={styles.metaRow}>
                             <Text style={styles.metaLabel}>Date:</Text>
                             <Text style={styles.metaValue}>{format(new Date(challan.date), 'dd MMM yyyy')}</Text>
                         </View>
-                        {challan.vehicleNumber && (
-                            <View style={styles.metaRow}>
-                                <Text style={styles.metaLabel}>Vehicle No:</Text>
-                                <Text style={styles.metaValue}>{challan.vehicleNumber}</Text>
-                            </View>
-                        )}
-                        {
-                            <View style={styles.metaRow}>
-                                <Text style={styles.metaLabel}>E-Way Bill No:</Text>
-                                <Text style={styles.metaValue}>........................</Text>
-                            </View>
-                        }
-                        {(challan.customer?.sitePhone || challan.customer?.officePhone) && (
-                            <View style={styles.metaRow}>
-                                <Text style={styles.metaLabel}>Phone No:</Text>
-                                <Text style={styles.metaValue}>{challan.customer?.sitePhone || challan.customer?.officePhone}</Text>
-                            </View>
-                        )}
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaLabel}>Challan No:</Text>
+                            <Text style={styles.metaValue}>{challan.challanNumber}</Text>
+                        </View>
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaLabel}>Manual Challan:</Text>
+                            <Text style={styles.metaValue}>{challan.manualChallanNumber || '........................'}</Text>
+                        </View>
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaLabel}>Vehicle No:</Text>
+                            <Text style={styles.metaValue}>{challan.vehicleNumber || '........................'}</Text>
+                        </View>
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaLabel}>E-Way Bill No:</Text>
+                            <Text style={styles.metaValue}>{challan.eWayBillNo || '........................'}</Text>
+                        </View>
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaLabel}>Phone No:</Text>
+                            <Text style={styles.metaValue}>{challan.customer?.sitePhone || challan.customer?.officePhone || '........................'}</Text>
+                        </View>
                     </View>
                 </View>
 
@@ -471,7 +478,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                         <View style={styles.detailsCol}>
                             <View style={styles.detailRow}>
                                 <Text style={styles.detailLabel}>Goods Value (Approx.)</Text>
-                                <Text style={styles.detailValue}>: Rs. {challan.goodsValue?.toFixed(2) || '0.00'}</Text>
+                                <Text style={styles.detailValue}>: {challan.goodsValue ? `Rs. ${challan.goodsValue.toFixed(2)}` : ''}</Text>
                             </View>
                             <View style={styles.detailRow}>
                                 <Text style={styles.detailLabel}>Transportation</Text>
@@ -493,7 +500,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                         <View style={styles.detailsCol}>
                             <View style={styles.detailRow}>
                                 <Text style={styles.detailLabel}>Weight (Approx.)</Text>
-                                <Text style={styles.detailValue}>: {challan.weight?.toFixed(2) || '0.00'} Kg.</Text>
+                                <Text style={styles.detailValue}>: {challan.weight ? `${challan.weight.toFixed(2)} Kg.` : ''}</Text>
                             </View>
                             <View style={styles.detailRow}>
                                 <Text style={styles.detailLabel}>Green Tax</Text>
@@ -533,7 +540,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                     <View style={styles.noteItem}>
                         <Text style={styles.noteNumber}>4.</Text>
                         <Text style={styles.noteText}>
-                            Timing of Business is 09:00 AM to 05:00 PM, <Text style={{ fontFamily: 'Helvetica-Bold' }}>TUESDAY Closed.</Text>
+                            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Timing of Business is 09:00 AM to 05:00 PM, TUESDAY Closed.</Text>
                         </Text>
                     </View>
                     <View style={styles.noteItem}>
@@ -578,6 +585,11 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                         </View>
                     </View>
                 </View>
+                <Text 
+                    style={styles.pageNumber} 
+                    render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 
+                    fixed 
+                />
             </Page>
         </Document>
     );
