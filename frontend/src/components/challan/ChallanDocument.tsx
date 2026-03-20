@@ -358,23 +358,8 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                 </View>
 
                 {/* Additional Details Grid */}
-                {(challan.driverName || challan.transporterName || challan.biltyNumber || challan.licenseNumber) && (
+                {(challan.biltyNumber) && (
                     <View style={styles.detailsGrid}>
-                        <View style={styles.detailsCol}>
-
-                            {challan.licenseNumber && (
-                                <View style={styles.detailRow}>
-                                    <Text style={styles.detailLabel}>License No:</Text>
-                                    <Text style={styles.detailValue}>{challan.licenseNumber}</Text>
-                                </View>
-                            )}
-                            {challan.driverMobile && (
-                                <View style={styles.detailRow}>
-                                    <Text style={styles.detailLabel}>Driver Mobile:</Text>
-                                    <Text style={styles.detailValue}>{challan.driverMobile}</Text>
-                                </View>
-                            )}
-                        </View>
                         <View style={styles.detailsCol}>
 
                             {challan.biltyNumber && (
