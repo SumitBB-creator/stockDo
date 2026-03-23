@@ -18,8 +18,8 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Search, Settings as SettingsIcon, Loader2, FileText } from 'lucide-react';
-import { fetchQuotations } from '@/lib/api';
+import { Plus, Search, Settings as SettingsIcon, Loader2, FileText, Trash2, Edit } from 'lucide-react';
+import { fetchQuotations, deleteQuotation } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -41,9 +41,7 @@ export default function QuotationsPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
-        loadQuotations();
-    }, []);
+
 
     const loadQuotations = async () => {
         try {
@@ -61,6 +59,29 @@ export default function QuotationsPage() {
             setLoading(false);
         }
     };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this quotation?')) return;
+        try {
+            await deleteQuotation(id);
+            toast({
+                title: 'Success',
+                description: 'Quotation deleted successfully',
+            });
+            loadQuotations();
+        } catch (error) {
+            console.error('Failed to delete quotation:', error);
+            toast({
+                title: 'Error',
+                description: 'Failed to delete quotation',
+                variant: 'destructive',
+            });
+        }
+    };
+
+    useEffect(() => {
+        loadQuotations();
+    }, []);
 
     const filteredQuotations = quotations.filter((q) =>
         q.quotationId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -129,10 +150,13 @@ export default function QuotationsPage() {
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
                                             <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/quotation/${quotation.id}`)}>
-                                                View
+                                                <FileText className="h-4 w-4 mr-1" /> View
                                             </Button>
                                             <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/quotation/${quotation.id}/edit`)}>
-                                                Edit
+                                                <Edit className="h-4 w-4 mr-1" /> Edit
+                                            </Button>
+                                            <Button variant="ghost" size="sm" onClick={() => handleDelete(quotation.id)}>
+                                                <Trash2 className="h-4 w-4 text-destructive" />
                                             </Button>
                                         </div>
                                     </TableCell>

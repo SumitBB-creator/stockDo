@@ -6,7 +6,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Printer } from 'lucide-react';
 
 import { cn, formatCustomerAddress } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -112,10 +112,10 @@ export default function CreateQuotationPage() {
         }
     };
 
-    const onSubmit = async (data: QuotationFormValues) => {
+    const handleSave = async (data: QuotationFormValues, shouldPrint: boolean = false) => {
         try {
             setLoading(true);
-            await createQuotation({
+            const result = await createQuotation({
                 ...data,
                 date: data.date.toISOString(),
             });
@@ -123,7 +123,12 @@ export default function CreateQuotationPage() {
                 title: 'Success',
                 description: 'Quotation created successfully',
             });
-            router.push('/dashboard/quotation');
+            
+            if (shouldPrint && result?.id) {
+                router.push(`/dashboard/quotation/${result.id}`);
+            } else {
+                router.push('/dashboard/quotation');
+            }
         } catch (error) {
             console.error('Failed to create quotation:', error);
             toast({
@@ -135,6 +140,8 @@ export default function CreateQuotationPage() {
             setLoading(false);
         }
     };
+
+    const onSubmit = (data: QuotationFormValues) => handleSave(data, false);
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
@@ -371,8 +378,15 @@ export default function CreateQuotationPage() {
                     </div>
 
                     <div className="flex justify-end gap-4">
-                        <Button type="button" variant="outline" onClick={() => router.back()}>
-                            Cancel
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={loading}
+                            onClick={form.handleSubmit((data) => handleSave(data, true))}
+                            className="gap-2"
+                        >
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+                            Print
                         </Button>
                         <Button type="submit" disabled={loading}>
                             {loading ? (
@@ -383,6 +397,9 @@ export default function CreateQuotationPage() {
                             ) : (
                                 'Create Quotation'
                             )}
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => router.back()}>
+                            Cancel
                         </Button>
                     </div>
                 </form>

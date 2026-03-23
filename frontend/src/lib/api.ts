@@ -300,6 +300,11 @@ export const fetchTransfers = async () => {
     return response.data;
 };
 
+export const fetchTransfer = async (id: string) => {
+    const response = await api.get(`/transfers/${id}`);
+    return response.data;
+};
+
 export const createTransfer = async (data: any) => {
     const response = await api.post('/transfers', data);
     return response.data;

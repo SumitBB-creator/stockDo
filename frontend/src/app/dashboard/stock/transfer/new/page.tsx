@@ -165,7 +165,7 @@ export default function NewTransferPage() {
         }
     }, [toCustomerId, update, form]);
 
-    const onSubmit = async (values: FormValues) => {
+    const handleSave = async (values: FormValues, shouldPrint: boolean = false) => {
         setLoading(true);
         try {
             const sanitizedData = {
@@ -177,12 +177,17 @@ export default function NewTransferPage() {
                 })),
             };
 
-            await createTransfer(sanitizedData);
+            const result = await createTransfer(sanitizedData);
             toast({
                 title: 'Success',
                 description: 'Material transfer recorded successfully.',
             });
-            router.push('/dashboard/stock/transfer');
+            
+            if (shouldPrint && result.id) {
+                router.push(`/dashboard/stock/transfer/${result.id}`);
+            } else {
+                router.push('/dashboard/stock/transfer');
+            }
         } catch (error: any) {
             console.error('Transfer failed:', error);
             toast({
@@ -195,6 +200,10 @@ export default function NewTransferPage() {
         }
     };
 
+    const onSubmit = (values: FormValues) => {
+        handleSave(values, false);
+    };
+
     return (
         <div className="max-w-6xl mx-auto space-y-6 pb-20">
             <div className="flex items-center justify-between border-b pb-4">
@@ -203,16 +212,23 @@ export default function NewTransferPage() {
                     <p className="text-muted-foreground text-sm">Move stock between sites and generate linked challans.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => router.back()}>
-                        <X className="h-4 w-4 mr-2" /> Exit
+                    <Button
+                        variant="outline"
+                        onClick={form.handleSubmit((data) => handleSave(data, true))}
+                        disabled={loading}
+                    >
+                        <Printer className="h-4 w-4 mr-2" /> Print
                     </Button>
                     <Button
                         className="bg-blue-600 hover:bg-blue-500"
-                        onClick={form.handleSubmit(onSubmit as any)}
+                        onClick={form.handleSubmit((data) => handleSave(data, false))}
                         disabled={loading}
                     >
                         {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                         Save Transfer
+                    </Button>
+                    <Button variant="outline" onClick={() => router.back()}>
+                        <X className="h-4 w-4 mr-2" /> Cancel
                     </Button>
                 </div>
             </div>

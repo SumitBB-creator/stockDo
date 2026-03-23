@@ -6,7 +6,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Plus, Trash2, Loader2, ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, Loader2, ArrowLeft, Check, ChevronsUpDown, Printer } from 'lucide-react';
 import { cn, formatCustomerAddress } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Autocomplete } from '@/components/ui/autocomplete';
@@ -183,15 +183,20 @@ export default function CreateAgreementPage() {
         }
     };
 
-    const onSubmit = async (data: AgreementFormValues) => {
+    const handleSave = async (data: AgreementFormValues, shouldPrint: boolean = false) => {
         try {
             setLoading(true);
-            await createAgreement(data);
+            const result = await createAgreement(data);
             toast({
                 title: 'Success',
                 description: 'Agreement created successfully',
             });
-            router.push('/dashboard/agreement');
+            
+            if (shouldPrint && result?.id) {
+                router.push(`/dashboard/agreement/${result.id}`);
+            } else {
+                router.push('/dashboard/agreement');
+            }
         } catch (error) {
             console.error('Failed to create agreement:', error);
             toast({
@@ -203,6 +208,8 @@ export default function CreateAgreementPage() {
             setLoading(false);
         }
     };
+
+    const onSubmit = (data: AgreementFormValues) => handleSave(data, false);
 
     if (initialLoading) {
         return (
@@ -510,12 +517,22 @@ export default function CreateAgreementPage() {
                     </div>
 
                     <div className="flex justify-end space-x-4">
-                        <Button variant="outline" type="button" onClick={() => router.back()}>
-                            Cancel
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={loading}
+                            onClick={form.handleSubmit((data) => handleSave(data, true))}
+                            className="gap-2"
+                        >
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+                            Print
                         </Button>
                         <Button type="submit" disabled={loading}>
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Create Agreement
+                        </Button>
+                        <Button variant="outline" type="button" onClick={() => router.back()}>
+                            Cancel
                         </Button>
                     </div>
                 </form>

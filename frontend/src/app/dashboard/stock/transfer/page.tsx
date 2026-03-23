@@ -136,9 +136,11 @@ export default function TransferListPage() {
                                     </TableCell>
                                     <TableCell>{transfer.vehicleNumber || '-'}</TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="View Details">
-                                            <FileText className="h-4 w-4" />
-                                        </Button>
+                                        <Link href={`/dashboard/stock/transfer/${transfer.id}`}>
+                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="View Details">
+                                                <FileText className="h-4 w-4" />
+                                            </Button>
+                                        </Link>
                                     </TableCell>
                                 </TableRow>
                             ))
