@@ -48,6 +48,9 @@ const companySchema = z.object({
     logo: z.string().optional(),
     gstOnTransportation: z.boolean().default(false).optional(),
     fixedAssetsValue: z.number().default(0).optional(),
+    bankName: z.string().optional(),
+    accountNumber: z.string().optional(),
+    ifscCode: z.string().optional(),
 });
 
 type CompanyFormValues = z.infer<typeof companySchema>;
@@ -79,6 +82,9 @@ export default function CompanyPage() {
             logo: '',
             gstOnTransportation: false,
             fixedAssetsValue: 0,
+            bankName: '',
+            accountNumber: '',
+            ifscCode: '',
         },
     });
 
@@ -107,6 +113,9 @@ export default function CompanyPage() {
                         logo: data.logo || '',
                         gstOnTransportation: data.gstOnTransportation || false,
                         fixedAssetsValue: data.fixedAssetsValue || 0,
+                        bankName: data.bankName || '',
+                        accountNumber: data.accountNumber || '',
+                        ifscCode: data.ifscCode || '',
                     });
                 }
             } catch (error) {
@@ -276,6 +285,29 @@ export default function CompanyPage() {
                                 <FormMessage />
                             </FormItem>
                         )} />
+                        
+                        <FormField control={form.control} name="bankName" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Bank Name</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="accountNumber" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Account Number</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="ifscCode" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>IFSC Code</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+
                         <FormField control={form.control} name="fixedAssetsValue" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Fixed Assets Valuation (Current)</FormLabel>

@@ -91,7 +91,7 @@ export default function CustomersPage() {
         defaultValues: {
             name: '',
             ledgerAccountId: '',
-            relationType: 'C/O',
+            relationType: 'C/o',
             relationName: '',
             relativeAadhar: '',
             residenceAddress: '',
@@ -128,7 +128,7 @@ export default function CustomersPage() {
             form.reset({
                 name: editingCustomer.name,
                 ledgerAccountId: editingCustomer.ledgerAccountId || '',
-                relationType: editingCustomer.relationType || 'C/O',
+                relationType: editingCustomer.relationType || 'C/o',
                 relationName: editingCustomer.relationName || '',
                 relativeAadhar: editingCustomer.relativeAadhar || '',
                 residenceAddress: editingCustomer.residenceAddress || '',
@@ -158,7 +158,7 @@ export default function CustomersPage() {
             form.reset({
                 name: '',
                 ledgerAccountId: '',
-                relationType: 'C/O',
+                relationType: 'C/o',
                 relationName: '',
                 relativeAadhar: '',
                 residenceAddress: '',
@@ -316,30 +316,31 @@ export default function CustomersPage() {
                                         <div className="flex gap-2">
                                             <FormField control={form.control} name="relationType" render={({ field }) => (
                                                 <FormItem className="w-24">
-                                                    <FormLabel>Relation</FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                                                         <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
-                                                        <SelectContent>
-                                                            <SelectItem value="Owner Name">Owner Name</SelectItem>
-                                                            <SelectItem value="Proprietor Name">Proprietor Name</SelectItem>
-                                                            <SelectItem value="Director Name">Director Name</SelectItem>
-                                                            <SelectItem value="C/O">C/O</SelectItem>
-                                                        </SelectContent>
+                                                         <SelectContent>
+                                                             <SelectItem value="Prop of">Prop of</SelectItem>
+                                                             <SelectItem value="Dirc of">Dirc of</SelectItem>
+                                                             <SelectItem value="C/o">C/o</SelectItem>
+                                                             <SelectItem value="S/o">S/o</SelectItem>
+                                                             <SelectItem value="D/o">D/o</SelectItem>
+                                                             <SelectItem value="W/o">W/o</SelectItem>
+                                                         </SelectContent>
                                                     </Select>
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
                                             <FormField control={form.control} name="relationName" render={({ field }) => (
                                                 <FormItem className="flex-1">
-                                                    <FormLabel>Relative Name</FormLabel>
-                                                    <FormControl><Input placeholder="Relative Name" {...field} /></FormControl>
+                                                    <FormLabel>Reference Name</FormLabel>
+                                                    <FormControl><Input placeholder="Reference Name" {...field} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
                                         </div>
                                         <FormField control={form.control} name="relativeAadhar" render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Relative Aadhar No</FormLabel>
+                                                <FormLabel>Reference Aadhar No</FormLabel>
                                                 <FormControl><Input placeholder="Aadhar Number" {...field} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -349,7 +350,7 @@ export default function CustomersPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <FormField control={form.control} name="residenceAddress" render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Relative Residence Address</FormLabel>
+                                                <FormLabel>Reference Residence Address</FormLabel>
                                                 <FormControl><Textarea placeholder="Residence Address" {...field} className="h-10" /></FormControl>
                                                 <FormMessage />
                                             </FormItem>

@@ -216,6 +216,9 @@ model Company {
   gstin        String?
   history      String? @db.Text
   logo         String?
+  bankName      String? @map("bank_name")
+  accountNumber String? @map("account_number")
+  ifscCode      String? @map("ifsc_code")
 
   gstOnTransportation Boolean @default(false) @map("gst_on_transportation")
   ledgerAccountId     String? @unique @map("ledger_account_id")

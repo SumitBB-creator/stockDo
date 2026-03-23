@@ -75,7 +75,7 @@ export default function EmployeesPage() {
         defaultValues: {
             name: '',
             ledgerAccountId: '',
-            relationType: 'C/O',
+            relationType: 'C/o',
             relationName: '',
             pan: '',
             address: '',
@@ -99,7 +99,7 @@ export default function EmployeesPage() {
             form.reset({
                 name: editingEmployee.name,
                 ledgerAccountId: editingEmployee.ledgerAccountId || '',
-                relationType: editingEmployee.relationType || 'C/O',
+                relationType: editingEmployee.relationType || 'C/o',
                 relationName: editingEmployee.relationName || '',
                 pan: editingEmployee.pan || '',
                 address: editingEmployee.address || '',
@@ -116,7 +116,7 @@ export default function EmployeesPage() {
             form.reset({
                 name: '',
                 ledgerAccountId: '',
-                relationType: 'C/O',
+                relationType: 'C/o',
                 relationName: '',
                 pan: '',
                 address: '',
@@ -257,14 +257,15 @@ export default function EmployeesPage() {
                                         <div className="flex gap-2">
                                             <FormField control={form.control} name="relationType" render={({ field }) => (
                                                 <FormItem className="w-24">
-                                                    <FormLabel>Relation</FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                         <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
                                                         <SelectContent>
-                                                            <SelectItem value="Owner Name">Owner Name</SelectItem>
-                                                            <SelectItem value="Proprietor Name">Proprietor Name</SelectItem>
-                                                            <SelectItem value="Director Name">Director Name</SelectItem>
-                                                            <SelectItem value="C/O">C/O</SelectItem>
+                                                            <SelectItem value="Prop of">Prop of</SelectItem>
+                                                            <SelectItem value="Dirc of">Dirc of</SelectItem>
+                                                            <SelectItem value="C/o">C/o</SelectItem>
+                                                            <SelectItem value="S/o">S/o</SelectItem>
+                                                            <SelectItem value="D/o">D/o</SelectItem>
+                                                            <SelectItem value="W/o">W/o</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                     <FormMessage />
@@ -272,8 +273,8 @@ export default function EmployeesPage() {
                                             )} />
                                             <FormField control={form.control} name="relationName" render={({ field }) => (
                                                 <FormItem className="flex-1">
-                                                    <FormLabel>Relative Name</FormLabel>
-                                                    <FormControl><Input placeholder="Relative Name" {...field} /></FormControl>
+                                                    <FormLabel>Reference Name</FormLabel>
+                                                    <FormControl><Input placeholder="Reference Name" {...field} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />

@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { Plus, Trash2, Loader2, ArrowLeft, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Autocomplete } from '@/components/ui/autocomplete';
 import {
     Form,
     FormControl,
@@ -530,74 +531,22 @@ function MaterialCombobox({
     onSelect: (material: any) => void;
     isOptionDisabled?: (id: string) => boolean;
 }) {
-    const [open, setOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
-
-    useEffect(() => {
-        if (value && !open) {
-            const material = materials.find(m => m.id === value);
-            if (material) {
-                setSearchTerm(material.name);
-            }
-        }
-    }, [open, value, materials]);
+    const autocompleteItems = materials.map(m => ({
+        value: m.id,
+        label: m.name
+    }));
 
     return (
-        <Command className="overflow-visible bg-transparent [&_[cmdk-input-wrapper]]:border-0 [&_[cmdk-input-wrapper]]:px-0 [&_[cmdk-input-wrapper]_svg]:hidden [&_[cmdk-input]]:h-auto [&_[cmdk-input]]:py-0">
-            <Popover open={open} onOpenChange={setOpen}>
-                <PopoverAnchor asChild>
-                    <div className="group border border-input px-3 py-2 text-sm ring-offset-background rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-                        <CommandInput
-                            placeholder="Select Material"
-                            value={searchTerm}
-                            onValueChange={(val) => {
-                                setSearchTerm(val);
-                                setOpen(true);
-                            }}
-                            onFocus={() => setOpen(true)}
-                            className="h-5 w-full border-0 p-0 focus-visible:ring-0"
-                        />
-                    </div>
-                </PopoverAnchor>
-                <PopoverContent
-                    className="p-0 w-[--radix-popover-anchor-width] min-w-[300px]"
-                    align="start"
-                    onOpenAutoFocus={(e) => e.preventDefault()}
-                >
-                    <div className="relative">
-                        <div className="absolute top-0 z-[9999] w-full min-w-[300px] rounded-md border bg-popover text-popover-foreground shadow-md outline-none">
-                            <CommandList>
-                                <CommandEmpty>No material found.</CommandEmpty>
-                                <CommandGroup>
-                                    {materials.map((material) => (
-                                        <CommandItem
-                                            key={material.id}
-                                            value={material.name}
-                                            disabled={isOptionDisabled ? isOptionDisabled(material.id) : false}
-                                            onSelect={() => {
-                                                if (isOptionDisabled && isOptionDisabled(material.id)) return;
-                                                onChange(material.id);
-                                                onSelect(material);
-                                                setSearchTerm(material.name);
-                                                setOpen(false);
-                                            }}
-                                            className={cn("cursor-pointer", isOptionDisabled && isOptionDisabled(material.id) && "opacity-50 cursor-not-allowed")}
-                                        >
-                                            {material.name}
-                                            <Check
-                                                className={cn(
-                                                    "ml-auto h-4 w-4",
-                                                    material.id === value ? "opacity-100" : "opacity-0"
-                                                )}
-                                            />
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </CommandList>
-                        </div>
-                    </div>
-                </PopoverContent>
-            </Popover>
-        </Command>
+        <Autocomplete
+            items={autocompleteItems}
+            value={value}
+            onChange={(val) => {
+                onChange(val);
+                const material = materials.find(m => m.id === val);
+                if (material) onSelect(material);
+            }}
+            placeholder="Select Material"
+            isOptionDisabled={isOptionDisabled}
+        />
     );
 }

@@ -197,7 +197,7 @@ const AgreementDocument: React.FC<AgreementDocumentProps> = ({ agreement, compan
     const party1String = `${companyName}${party1CO} ${party1Address}`;
 
     // Construct Party 2 String
-    const party2CO = customer?.relationName ? ` ${customer.relationType || 'C/O'}-Mr. ${customer.relationName}` : '';
+    const party2CO = customer?.relationName ? ` ${customer.relationType || 'C/o'}-Mr. ${customer.relationName}` : '';
     let customerAddress = customer?.siteAddress || customer?.residenceAddress || customer?.officeAddress || customer?.address || '';
     const customerCity = customer?.siteCity || customer?.officeCity;
     const customerState = customer?.siteState || customer?.officeState;
@@ -310,7 +310,7 @@ const AgreementDocument: React.FC<AgreementDocumentProps> = ({ agreement, compan
                 {/* Table */}
                 <View style={styles.table}>
                     <View style={styles.tableHeader}>
-                        <Text style={[styles.tableCellHeader, styles.colSr]}>Sr.No.</Text>
+                        <Text style={[styles.tableCellHeader, styles.colSr]}>Sr.</Text>
                         <Text style={[styles.tableCellHeader, styles.colItem]}>Item Name</Text>
                         <Text style={[styles.tableCellHeader, styles.colHire]}>Hire Rate</Text>
                         <Text style={[styles.tableCellHeader, styles.colRecD]}>Recovery Rate(Damage Material)</Text>

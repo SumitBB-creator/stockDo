@@ -15,7 +15,7 @@ const styles = StyleSheet.create({
     header: {
         marginBottom: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#111827',
+        borderBottomColor: '#E5E7EB',
         paddingBottom: 10,
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -119,9 +119,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         backgroundColor: '#F9FAFB',
         borderBottomWidth: 1,
-        borderBottomColor: '#111827',
+        borderBottomColor: '#E5E7EB',
         borderTopWidth: 1,
-        borderTopColor: '#111827',
+        borderTopColor: '#E5E7EB',
         paddingVertical: 6,
     },
     tableRow: {
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     footer: {
         marginTop: 'auto',
         borderTopWidth: 1,
-        borderTopColor: '#111827',
+        borderTopColor: '#E5E7EB',
         paddingTop: 10,
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -290,7 +290,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                 </View>
 
                 {/* Customer & Meta Info */}
-                <View style={[styles.section, { borderBottomWidth: 1, borderBottomColor: '#111827', paddingBottom: 10, marginBottom: 10 }]}>
+                <View style={[styles.section, { borderBottomWidth: 1, borderBottomColor: '#E5E7EB', paddingBottom: 10, marginBottom: 10 }]}>
                     <View style={styles.customerSection}>
                         <Text style={styles.underlinedTitle}>Details of Cosignee (Shiped To) :</Text>
                         <Text style={[styles.customerName, { textTransform: 'uppercase', fontSize: 10, marginBottom: 4 }]}>
@@ -423,7 +423,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                         </View>
                     ))}
                     {/* Total Row */}
-                    <View style={[styles.tableRow, { borderTopWidth: 1, borderTopColor: '#111827', backgroundColor: '#F9FAFB' }]}>
+                    <View style={[styles.tableRow, { borderTopWidth: 1, borderTopColor: '#E5E7EB', backgroundColor: '#F9FAFB' }]}>
                         <Text style={[styles.colSr, styles.cellText]}></Text>
                         <Text style={[isReturn ? styles.colDescReturn : styles.colDesc, styles.cellText, { fontFamily: 'Helvetica-Bold' }]}>Total</Text>
                         {isReturn ? (

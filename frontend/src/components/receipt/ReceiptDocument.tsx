@@ -141,6 +141,21 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: '#9CA3AF',
     },
+    topCenteredHeader: {
+        alignItems: 'center',
+        marginBottom: 10,
+        textTransform: 'uppercase',
+    },
+    topReceiptLabel: {
+        fontSize: 14,
+        fontFamily: 'Helvetica-Bold',
+        letterSpacing: 2,
+    },
+    topAdvanceLabel: {
+        fontSize: 10,
+        fontFamily: 'Helvetica',
+        marginTop: 2,
+    },
 });
 
 interface ReceiptDocumentProps {
@@ -165,9 +180,21 @@ const ReceiptDocument: React.FC<ReceiptDocumentProps> = ({ receipt, company, log
     // Attempt to extract payment method and reference
     let paymentMode = "Cash";
     let receiptType = "RECEIPT";
+    let paymentAsDisplay = "Advance Payment";
 
-    if (mainDesc.includes('Advance')) receiptType = "ADVANCE RECEIPT";
-    else if (mainDesc.includes('Bill')) receiptType = "BILL RECEIPT";
+    if (mainDesc.includes('Advance')) {
+        receiptType = "ADVANCE RECEIPT";
+        paymentAsDisplay = "Advance Payment";
+    } else if (mainDesc.includes('Bill')) {
+        receiptType = "BILL RECEIPT";
+        paymentAsDisplay = "Bill Payment";
+    } else if (mainDesc.includes('Refund')) {
+        paymentAsDisplay = "Refund Payment";
+    } else if (mainDesc.includes('Loss')) {
+        paymentAsDisplay = "Loss Payment";
+    } else if (mainDesc.includes('Discount')) {
+        paymentAsDisplay = "Discount Payment";
+    }
 
     if (mainDesc.includes('via ')) {
         const pParts = mainDesc.split('via ');
@@ -220,6 +247,12 @@ const ReceiptDocument: React.FC<ReceiptDocumentProps> = ({ receipt, company, log
     return (
         <Document>
             <Page size="A4" style={styles.page}>
+
+                {/* Top Middle Labels */}
+                <View style={styles.topCenteredHeader}>
+                    <Text style={styles.topReceiptLabel}>Receipt</Text>
+                    <Text style={styles.topAdvanceLabel}>({paymentAsDisplay})</Text>
+                </View>
 
                 {/* New Header Header Format */}
                 <View style={styles.header}>

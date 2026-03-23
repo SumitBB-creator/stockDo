@@ -65,8 +65,16 @@ const styles = StyleSheet.create({
         backgroundColor: '#f0f0f0',
         fontWeight: 'bold',
     },
+    tableColSr: {
+        width: '5%',
+        borderRightWidth: 1,
+        borderRightColor: '#000',
+        textAlign: 'center',
+        height: '100%',
+        justifyContent: 'center',
+    },
     tableColMain: {
-        width: '35%',
+        width: '30%',
         borderRightWidth: 1,
         borderRightColor: '#000',
         paddingLeft: 5,
@@ -199,6 +207,7 @@ export const GstSummaryDocument: React.FC<GstSummaryDocumentProps> = ({ summary,
                 <View style={styles.table}>
                     {/* Header Row */}
                     <View style={[styles.tableRow, styles.tableHeaderRow]}>
+                        <View style={styles.tableColSr}><Text style={styles.columnHeader}>Sr.</Text></View>
                         <View style={styles.tableColMain}><Text style={styles.columnHeader}>PARTICULARS</Text></View>
                         <View style={styles.tableCol}><Text style={styles.columnHeader}>TAXABLE VAL</Text></View>
                         <View style={styles.tableCol}><Text style={styles.columnHeader}>SGST</Text></View>
@@ -209,6 +218,7 @@ export const GstSummaryDocument: React.FC<GstSummaryDocumentProps> = ({ summary,
 
                     {/* Balance B/F */}
                     <View style={styles.tableRow}>
+                        <View style={styles.tableColSr}><Text style={styles.cellText}>1</Text></View>
                         <View style={styles.tableColMain}><Text style={styles.cellText}>Balance Brought Forward</Text></View>
                         <View style={styles.tableCol}><Text style={styles.cellText}>-</Text></View>
                         <View style={styles.tableCol}><Text style={styles.cellText}>0.00</Text></View>
@@ -219,6 +229,7 @@ export const GstSummaryDocument: React.FC<GstSummaryDocumentProps> = ({ summary,
 
                     {/* Sales */}
                     <View style={styles.tableRow}>
+                        <View style={styles.tableColSr}><Text style={styles.cellText}>2</Text></View>
                         <View style={styles.tableColMain}><Text style={styles.cellText}>Add: Sales</Text></View>
                         <View style={styles.tableCol}><Text style={styles.cellText}>{formatCurrency(summary?.sales.taxable)}</Text></View>
                         <View style={styles.tableCol}><Text style={styles.cellText}>{formatCurrency(summary?.sales.sgst)}</Text></View>
@@ -229,6 +240,7 @@ export const GstSummaryDocument: React.FC<GstSummaryDocumentProps> = ({ summary,
 
                     {/* Purchases */}
                     <View style={[styles.tableRow, styles.footerRow]}>
+                        <View style={styles.tableColSr}><Text style={[styles.cellText, styles.boldText]}>3</Text></View>
                         <View style={styles.tableColMain}><Text style={[styles.cellText, styles.boldText]}>Less: Purchases (Input Tax)</Text></View>
                         <View style={styles.tableCol}><Text style={[styles.cellText, styles.boldText]}>{formatCurrency(summary?.purchases.taxable)}</Text></View>
                         <View style={styles.tableCol}><Text style={[styles.cellText, styles.boldText]}>{formatCurrency(summary?.purchases.sgst)}</Text></View>
@@ -239,6 +251,7 @@ export const GstSummaryDocument: React.FC<GstSummaryDocumentProps> = ({ summary,
 
                     {/* Net Payable */}
                     <View style={[styles.tableRow, styles.netPayableRow]}>
+                        <View style={styles.tableColSr}><Text style={[styles.cellText, styles.boldText, { fontSize: 10 }]}>4</Text></View>
                         <View style={styles.tableColMain}><Text style={[styles.cellText, styles.boldText, { fontSize: 10 }]}>NET GST PAYABLE</Text></View>
                         <View style={styles.tableCol}><Text style={[styles.cellText, styles.boldText]}>-</Text></View>
                         <View style={styles.tableCol}><Text style={[styles.cellText, styles.boldText]}>{formatCurrency(netSgst)}</Text></View>

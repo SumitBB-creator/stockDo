@@ -97,15 +97,22 @@ const styles = StyleSheet.create({
         backgroundColor: '#f0f0f0',
         fontWeight: 'bold',
     },
+    tableColSr: {
+        width: '10%',
+        borderRightWidth: 1,
+        borderRightColor: '#000',
+        padding: 5,
+        textAlign: 'center',
+    },
     tableCol: {
-        width: '33.33%',
+        width: '30%',
         borderRightWidth: 1,
         borderRightColor: '#000',
         padding: 5,
         textAlign: 'center',
     },
     tableColLast: {
-        width: '33.33%',
+        width: '30%',
         padding: 5,
         textAlign: 'center',
     },
@@ -191,12 +198,14 @@ export const AnnualReportDocument: React.FC<AnnualReportDocumentProps> = ({ data
                 <Text style={styles.sectionTitle}>Monthly Breakdown</Text>
                 <View style={styles.table}>
                     <View style={[styles.tableRow, styles.tableHeaderRow]}>
+                        <View style={styles.tableColSr}><Text style={styles.tableCell}>Sr.</Text></View>
                         <View style={styles.tableCol}><Text style={styles.tableCell}>Month</Text></View>
                         <View style={styles.tableCol}><Text style={styles.tableCell}>Earnings</Text></View>
                         <View style={styles.tableColLast}><Text style={styles.tableCell}>Spendings</Text></View>
                     </View>
                     {financials.monthlyData.map((m: any, i: number) => (
                         <View key={i} style={styles.tableRow}>
+                            <View style={styles.tableColSr}><Text style={styles.tableCell}>{i + 1}</Text></View>
                             <View style={styles.tableCol}><Text style={styles.tableCell}>{m.month}</Text></View>
                             <View style={styles.tableCol}><Text style={styles.tableCell}>{formatCurrency(m.earnings)}</Text></View>
                             <View style={styles.tableColLast}><Text style={styles.tableCell}>{formatCurrency(m.spendings)}</Text></View>

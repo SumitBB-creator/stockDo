@@ -107,19 +107,20 @@ const styles = StyleSheet.create({
         borderRightWidth: 0,
     },
     // Column Widths
+    colSr: { width: '5%', textAlign: 'center' },
     colTime: { width: '10%', textAlign: 'center' },
-    colEntity: { width: '25%' },
+    colEntity: { width: '22%' },
     colPart: { width: '25%' },
     colRef: { width: '12%', textAlign: 'center' },
-    colDebit: { width: '14%' },
-    colCredit: { width: '14%' },
+    colDebit: { width: '13%' },
+    colCredit: { width: '13%' },
 
     totalsRow: {
         flexDirection: 'row',
         backgroundColor: '#F9FAFB',
     },
     totalsLabel: {
-        width: '72%', // Sum of Time, Entity, Part, Ref
+        width: '74%', // Sum of Sr, Time, Entity, Part, Ref
         padding: 6,
         fontSize: 10,
         fontFamily: 'Helvetica-Bold',
@@ -128,7 +129,7 @@ const styles = StyleSheet.create({
         borderRightColor: '#000000',
     },
     totalsValueDebit: {
-        width: '14%',
+        width: '13%',
         padding: 6,
         fontSize: 10,
         fontFamily: 'Helvetica-Bold',
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
         borderRightColor: '#000000',
     },
     totalsValueCredit: {
-        width: '14%',
+        width: '13%',
         padding: 6,
         fontSize: 10,
         fontFamily: 'Helvetica-Bold',
@@ -225,6 +226,7 @@ const DaybookDocument: React.FC<DaybookDocumentProps> = ({ transactions, company
                 {/* Main Table */}
                 <View style={styles.table}>
                     <View style={styles.tableHeader}>
+                        <Text style={[styles.tableCellHeader, styles.colSr]}>Sr.</Text>
                         <Text style={[styles.tableCellHeader, styles.colTime]}>Time</Text>
                         <Text style={[styles.tableCellHeader, styles.colEntity]}>Party / Entity</Text>
                         <Text style={[styles.tableCellHeader, styles.colPart]}>Particulars</Text>
@@ -240,6 +242,7 @@ const DaybookDocument: React.FC<DaybookDocumentProps> = ({ transactions, company
                     ) : (
                         transactions.map((t, idx) => (
                             <View key={idx} style={styles.tableRow}>
+                                <Text style={[styles.tableCell, styles.colSr]}>{idx + 1}</Text>
                                 <Text style={[styles.tableCell, styles.colTime]}>{format(new Date(t.date), 'HH:mm')}</Text>
                                 <Text style={[styles.tableCell, styles.colEntity]}>{t.entityName}</Text>
                                 <View style={[styles.tableCell, styles.colPart]}>

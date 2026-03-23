@@ -22,6 +22,7 @@ interface AutocompleteProps {
     className?: string;
     disabled?: boolean;
     emptyMessage?: string;
+    isOptionDisabled?: (value: string) => boolean;
 }
 
 export function Autocomplete({
@@ -31,7 +32,8 @@ export function Autocomplete({
     placeholder = "Search...",
     className,
     disabled = false,
-    emptyMessage = "No results found."
+    emptyMessage = "No results found.",
+    isOptionDisabled
 }: AutocompleteProps) {
     const [open, setOpen] = React.useState(false)
     const [searchQuery, setSearchQuery] = React.useState("")
@@ -154,9 +156,13 @@ export function Autocomplete({
                                     onMouseDown={(e) => {
                                         // prevent default to keep input focus if desired, or just let click happen
                                         e.preventDefault();
+                                        if (isOptionDisabled && isOptionDisabled(item.value)) return;
                                         handleSelect(item);
                                     }}
-                                    className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                                    className={cn(
+                                        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                        isOptionDisabled && isOptionDisabled(item.value) && "opacity-50 cursor-not-allowed"
+                                    )}
                                 >
                                     <Check
                                         className={cn(

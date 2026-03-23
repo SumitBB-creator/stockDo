@@ -206,7 +206,7 @@ const TransportationDocument: React.FC<TransportationDocumentProps> = ({ challan
                 {/* Table */}
                 <View style={styles.table}>
                     <View style={styles.tableRow}>
-                        <View style={[styles.tableColHeader, { width: '4%' }]}><Text style={styles.tableCellHeader}>Sr</Text></View>
+                        <View style={[styles.tableColHeader, { width: '4%' }]}><Text style={styles.tableCellHeader}>Sr.</Text></View>
                         <View style={[styles.tableColHeader, { width: '8%' }]}><Text style={styles.tableCellHeader}>Challan</Text></View>
                         <View style={[styles.tableColHeader, { width: '6%' }]}><Text style={styles.tableCellHeader}>Date</Text></View>
                         <View style={[styles.tableColHeader, { width: '8%' }]}><Text style={styles.tableCellHeader}>Vehicle No</Text></View>

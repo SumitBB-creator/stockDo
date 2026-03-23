@@ -229,7 +229,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, compan
                     <Text style={styles.customerName}>{quotation.customer?.name}</Text>
                     {(() => {
                         const customer = quotation.customer;
-                        const relation = customer?.relationName ? `${customer.relationType || 'C/O'}-Mr. ${customer.relationName}` : '';
+                        const relation = customer?.relationName ? `${customer.relationType || 'C/o'}-Mr. ${customer.relationName}` : '';
 
                         let customerAddress = customer?.siteAddress || customer?.residenceAddress || customer?.officeAddress || customer?.address || '';
                         const customerCity = customer?.siteCity || customer?.officeCity;

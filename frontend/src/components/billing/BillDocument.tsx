@@ -14,7 +14,7 @@ const styles = StyleSheet.create({
     header: {
         marginBottom: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#111827',
+        borderBottomColor: '#E5E7EB',
         paddingBottom: 10,
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -50,6 +50,17 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
         color: '#E5E7EB',
         letterSpacing: 2,
+    },
+    taxInvoice: {
+        fontSize: 12,
+        fontFamily: 'Helvetica-Bold',
+        textAlign: 'center',
+        textTransform: 'uppercase',
+        marginBottom: 10,
+        paddingBottom: 5,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        color: '#111827',
     },
     section: {
         marginBottom: 20,
@@ -93,6 +104,14 @@ const styles = StyleSheet.create({
         textAlign: 'right',
         marginRight: 10,
     },
+    underlinedTitle: {
+        fontSize: 10,
+        fontFamily: 'Helvetica-Bold',
+        textDecoration: 'underline',
+        marginBottom: 4,
+        color: '#374151',
+        textTransform: 'uppercase',
+    },
     metaValue: {
         fontFamily: 'Helvetica',
         color: '#111827',
@@ -111,9 +130,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         backgroundColor: '#F9FAFB',
         borderBottomWidth: 1,
-        borderBottomColor: '#111827',
+        borderBottomColor: '#E5E7EB',
         borderTopWidth: 1,
-        borderTopColor: '#111827',
+        borderTopColor: '#E5E7EB',
         paddingVertical: 6,
     },
     tableRow: {
@@ -122,9 +141,10 @@ const styles = StyleSheet.create({
         borderBottomColor: '#E5E7EB',
         paddingVertical: 6,
     },
+    colSr: { width: '5%', textAlign: 'center' },
     colFromDate: { width: '10%', textAlign: 'center' },
     colToDate: { width: '10%', textAlign: 'center' },
-    colParticulars: { width: '28%', paddingLeft: 5 },
+    colParticulars: { width: '23%', paddingLeft: 5 },
     colHsn: { width: '10%', textAlign: 'center' },
     colBalance: { width: '10%', paddingRight: 5, textAlign: 'right' },
     colDays: { width: '6%', paddingRight: 5, textAlign: 'right' },
@@ -144,7 +164,7 @@ const styles = StyleSheet.create({
     totalRow: {
         flexDirection: 'row',
         borderTopWidth: 2,
-        borderTopColor: '#111827',
+        borderTopColor: '#E5E7EB',
         paddingVertical: 8,
         backgroundColor: '#F9FAFB',
     },
@@ -161,7 +181,7 @@ const styles = StyleSheet.create({
     footer: {
         marginTop: 'auto',
         borderTopWidth: 1,
-        borderTopColor: '#111827',
+        borderTopColor: '#E5E7EB',
         paddingTop: 10,
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -213,10 +233,14 @@ interface BillDocumentProps {
 
 export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }) => (
     <Page size="A4" style={styles.page}>
+        <Text style={styles.taxInvoice}>Tax Invoice</Text>
         {/* Header */}
         <View style={styles.header}>
             <View style={styles.headerLeft}>
                 <Text style={styles.companyName}>{company?.companyName || 'Company Name'}</Text>
+                <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#000000', marginBottom: 4 }}>
+                    (Service Provider of Shuttering & Scaffolding Goods on Hire)
+                </Text>
                 <Text style={styles.companyAddress}>{company?.address1} {company?.address2}</Text>
                 <Text style={styles.companyAddress}>{company?.city ? `${company.city}, ` : ''}{company?.state} {company?.pin ? `- ${company.pin}` : ''}</Text>
                 {company?.phone && <Text style={styles.companyAddress}>Phone: {company.phone}</Text>}
@@ -228,7 +252,7 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                 {logoUrl && (
                     <Image style={styles.logo} src={logoUrl} />
                 )}
-                <Text style={styles.title}>Bill</Text>
+                <Text style={styles.title}>Invoice</Text>
             </View>
         </View>
 
@@ -240,7 +264,7 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                 {(() => {
                     const customer = bill.customer;
                     if (!customer) return null;
-                    const relation = customer.relationName ? `${customer.relationType || 'C/O'}-Mr. ${customer.relationName}` : '';
+                    const relation = customer.relationName ? `${customer.relationType || 'C/o'}-Mr. ${customer.relationName}` : '';
                     const address = customer.siteAddress || customer.residenceAddress || customer.officeAddress || customer.address || '';
                     const city = customer.siteCity || customer.residenceCity || customer.officeCity || customer.city || '';
                     const state = customer.siteState || customer.residenceState || customer.officeState || customer.state || '';
@@ -264,20 +288,32 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
             </View>
             <View style={styles.metaSection}>
                 <View style={styles.metaRow}>
-                    <Text style={styles.metaLabel}>Bill #:</Text>
-                    <Text style={styles.metaValue}>{bill.billNumber}</Text>
+                    <Text style={[styles.metaLabel, { textAlign: 'left', width: 90 }]}>Invoice No</Text>
+                    <Text style={[styles.metaValue, { textAlign: 'left', width: 120 }]}>: {bill.billNumber}</Text>
                 </View>
                 <View style={styles.metaRow}>
-                    <Text style={styles.metaLabel}>From Date:</Text>
-                    <Text style={styles.metaValue}>{format(new Date(bill.dateFrom), 'dd MMM yyyy')}</Text>
+                    <Text style={[styles.metaLabel, { textAlign: 'left', width: 90 }]}>Invoice Date</Text>
+                    <Text style={[styles.metaValue, { textAlign: 'left', width: 120 }]}>: {format(new Date(bill.generationDate || bill.createdAt), 'dd MMM yyyy')}</Text>
                 </View>
                 <View style={styles.metaRow}>
-                    <Text style={styles.metaLabel}>To Date:</Text>
-                    <Text style={styles.metaValue}>{format(new Date(bill.dateTo), 'dd MMM yyyy')}</Text>
+                    <Text style={[styles.metaLabel, { textAlign: 'left', width: 90 }]}>Invoice Period</Text>
+                    <Text style={[styles.metaValue, { textAlign: 'left', width: 120 }]}>: {format(new Date(bill.dateFrom), 'dd/MM/yy')} to {format(new Date(bill.dateTo), 'dd/MM/yy')}</Text>
                 </View>
-                <View style={styles.metaRow}>
-                    <Text style={styles.metaLabel}>Generated:</Text>
-                    <Text style={styles.metaValue}>{format(new Date(bill.generationDate || bill.createdAt), 'dd MMM yyyy')}</Text>
+
+                <View style={{ marginTop: 10, width: '100%', alignItems: 'flex-start' }}>
+                    <Text style={styles.underlinedTitle}>Banking Details</Text>
+                    <View style={styles.metaRow}>
+                        <Text style={[styles.metaLabel, { textAlign: 'left', width: 90 }]}>Bank Name</Text>
+                        <Text style={[styles.metaValue, { textAlign: 'left', width: 120 }]}>: {company?.bankName || '........................'}</Text>
+                    </View>
+                    <View style={styles.metaRow}>
+                        <Text style={[styles.metaLabel, { textAlign: 'left', width: 90 }]}>A/C No</Text>
+                        <Text style={[styles.metaValue, { textAlign: 'left', width: 120 }]}>: {company?.accountNumber || '........................'}</Text>
+                    </View>
+                    <View style={styles.metaRow}>
+                        <Text style={[styles.metaLabel, { textAlign: 'left', width: 90 }]}>IFSC Code</Text>
+                        <Text style={[styles.metaValue, { textAlign: 'left', width: 120 }]}>: {company?.ifscCode || '........................'}</Text>
+                    </View>
                 </View>
             </View>
         </View>
@@ -285,6 +321,7 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
         {/* Items Table */}
         <View style={styles.table}>
             <View style={styles.tableHeader}>
+                <Text style={[styles.colSr, styles.headerText]}>Sr.</Text>
                 <Text style={[styles.colFromDate, styles.headerText]}>From Date</Text>
                 <Text style={[styles.colToDate, styles.headerText]}>To Date</Text>
                 <Text style={[styles.colParticulars, styles.headerText]}>Particulars</Text>
@@ -297,6 +334,7 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
             </View>
             {bill.items?.map((item: any, index: number) => (
                 <View key={index} style={styles.tableRow}>
+                    <Text style={[styles.colSr, styles.cellText]}>{index + 1}</Text>
                     <Text style={[styles.colFromDate, styles.cellText]}>
                         {item.fromDate ? format(new Date(item.fromDate), 'dd/MM/yy') : ''}
                     </Text>
@@ -314,29 +352,29 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
             ))}
             {/* Calculation Breakdown Rows */}
             <View style={{ flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E5E7EB', backgroundColor: '#e5e7eb' }}>
-                <Text style={{ width: '40%' }}></Text>
-                <Text style={[styles.colRate, styles.cellText, { width: '45%', color: '#111827' }]}>Total Bill Amount (Hire Charge)</Text>
+                <Text style={{ width: '45%' }}></Text>
+                <Text style={[styles.colRate, styles.cellText, { width: '40%', color: '#111827' }]}>Total Bill Amount (Hire Charge)</Text>
                 <Text style={[styles.colAmount, styles.cellText, { width: '15%', color: '#111827' }]}>
                     {bill.totalAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </Text>
             </View>
             <View style={{ flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E5E7EB', backgroundColor: '#e5e7eb' }}>
-                <Text style={{ width: '40%' }}></Text>
-                <Text style={[styles.colRate, styles.cellText, { width: '45%', color: '#111827' }]}>Transportation ( {bill.transportationCount || 0} )</Text>
+                <Text style={{ width: '45%' }}></Text>
+                <Text style={[styles.colRate, styles.cellText, { width: '40%', color: '#111827' }]}>Transportation ( {bill.transportationCount || 0} )</Text>
                 <Text style={[styles.colAmount, styles.cellText, { width: '15%', color: '#111827' }]}>
                     {(bill.transportationCost || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </Text>
             </View>
             <View style={{ flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E5E7EB', backgroundColor: '#e5e7eb' }}>
-                <Text style={{ width: '40%' }}></Text>
-                <Text style={[styles.colRate, styles.cellText, { width: '45%', color: '#111827' }]}>Green Tax ( {bill.greenTaxCount || 0} )</Text>
+                <Text style={{ width: '45%' }}></Text>
+                <Text style={[styles.colRate, styles.cellText, { width: '40%', color: '#111827' }]}>Green Tax ( {bill.greenTaxCount || 0} )</Text>
                 <Text style={[styles.colAmount, styles.cellText, { width: '15%', color: '#111827' }]}>
                     {(bill.greenTax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </Text>
             </View>
             <View style={{ flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E5E7EB', backgroundColor: '#e5e7eb' }}>
-                <Text style={{ width: '40%' }}></Text>
-                <Text style={[styles.colRate, styles.cellText, { width: '45%', color: '#111827' }]}>
+                <Text style={{ width: '45%' }}></Text>
+                <Text style={[styles.colRate, styles.cellText, { width: '40%', color: '#111827' }]}>
                     Total + Transportation + Green Tax (Before Tax Amount)
                 </Text>
                 <Text style={[styles.colAmount, styles.cellText, { width: '15%', color: '#111827' }]}>
@@ -347,15 +385,15 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
             {bill.gstType === 'CGST_SGST' ? (
                 <>
                     <View style={{ flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
-                        <Text style={{ width: '40%' }}></Text>
-                        <Text style={[styles.colRate, styles.cellText, { width: '45%' }]}>CGST @ {(bill.gstRate || 18) / 2}%:</Text>
+                        <Text style={{ width: '45%' }}></Text>
+                        <Text style={[styles.colRate, styles.cellText, { width: '40%' }]}>CGST @ {(bill.gstRate || 18) / 2}%:</Text>
                         <Text style={[styles.colAmount, styles.cellText, { width: '15%' }]}>
                             {bill.cgst?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </Text>
                     </View>
                     <View style={{ flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
-                        <Text style={{ width: '40%' }}></Text>
-                        <Text style={[styles.colRate, styles.cellText, { width: '45%' }]}>SGST @ {(bill.gstRate || 18) / 2}%:</Text>
+                        <Text style={{ width: '45%' }}></Text>
+                        <Text style={[styles.colRate, styles.cellText, { width: '40%' }]}>SGST @ {(bill.gstRate || 18) / 2}%:</Text>
                         <Text style={[styles.colAmount, styles.cellText, { width: '15%' }]}>
                             {bill.sgst?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </Text>
@@ -363,17 +401,17 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                 </>
             ) : bill.gstType === 'IGST' ? (
                 <View style={{ flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
-                    <Text style={{ width: '40%' }}></Text>
-                    <Text style={[styles.colRate, styles.cellText, { width: '45%' }]}>IGST @ {bill.gstRate || 18}%:</Text>
+                    <Text style={{ width: '45%' }}></Text>
+                    <Text style={[styles.colRate, styles.cellText, { width: '40%' }]}>IGST @ {bill.gstRate || 18}%:</Text>
                     <Text style={[styles.colAmount, styles.cellText, { width: '15%' }]}>
                         {bill.igst?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </Text>
                 </View>
             ) : null}
             {/* Grand Total Row */}
-            <View style={{ flexDirection: 'row', paddingVertical: 8, backgroundColor: '#F3F4F6', borderTopWidth: 2, borderTopColor: '#111827' }}>
-                <Text style={{ width: '40%' }}></Text>
-                <Text style={[styles.colRate, styles.totalLabel, { width: '45%' }]}>Grand Total:</Text>
+            <View style={{ flexDirection: 'row', paddingVertical: 8, backgroundColor: '#F3F4F6', borderTopWidth: 2, borderTopColor: '#E5E7EB' }}>
+                <Text style={{ width: '45%' }}></Text>
+                <Text style={[styles.colRate, styles.totalLabel, { width: '40%' }]}>Grand Total:</Text>
                 <Text style={[styles.colAmount, styles.totalAmount, { width: '15%' }]}>
                     Rs. {(bill.grandTotal || bill.totalAmount)?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </Text>

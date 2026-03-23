@@ -190,7 +190,7 @@ const DueslistDocument: React.FC<DueslistDocumentProps> = ({ dues, company, logo
                 {/* Table */}
                 <View style={styles.table}>
                     <View style={styles.tableRow}>
-                        <View style={[styles.tableColHeader, { width: '3%' }]}><Text style={styles.tableCellHeader}>Sr</Text></View>
+                        <View style={[styles.tableColHeader, { width: '3%' }]}><Text style={styles.tableCellHeader}>Sr.</Text></View>
                         <View style={[styles.tableColHeader, { width: '15%' }]}><Text style={[styles.tableCellHeader, { textAlign: 'left' }]}>Party Name</Text></View>
                         <View style={[styles.tableColHeader, { width: '18%' }]}><Text style={[styles.tableCellHeader, { textAlign: 'left' }]}>Address</Text></View>
                         <View style={[styles.tableColHeader, { width: '8%' }]}><Text style={[styles.tableCellHeader, { textAlign: 'left' }]}>Phone</Text></View>

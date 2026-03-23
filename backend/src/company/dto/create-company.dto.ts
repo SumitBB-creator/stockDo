@@ -79,4 +79,16 @@ export class CreateCompanyDto {
     @IsOptional()
     @IsNumber()
     fixedAssetsValue?: number;
+
+    @IsOptional()
+    @IsString()
+    bankName?: string;
+
+    @IsOptional()
+    @IsString()
+    accountNumber?: string;
+
+    @IsOptional()
+    @IsString()
+    ifscCode?: string;
 }

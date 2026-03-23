@@ -236,7 +236,7 @@ export const SaleReportPage: React.FC<SaleReportDocumentProps> = ({ bills, compa
             {/* Table */}
             <View style={styles.table}>
                 <View style={styles.tableHeader}>
-                    <Text style={[styles.colSr, styles.tableCellHeader]}>Sr.No.</Text>
+                    <Text style={[styles.colSr, styles.tableCellHeader]}>Sr.</Text>
                     <Text style={[styles.colCustomer, styles.tableCellHeader]}>Customer Name & Address</Text>
                     <Text style={[styles.colGstin, styles.tableCellHeader]}>GSTIN/UIN</Text>
                     <Text style={[styles.colBillDate, styles.tableCellHeader]}>Bill Date</Text>

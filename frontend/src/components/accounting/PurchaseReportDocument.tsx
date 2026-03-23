@@ -235,7 +235,7 @@ export const PurchaseReportPage: React.FC<PurchaseReportDocumentProps> = ({ purc
             {/* Table */}
             <View style={styles.table}>
                 <View style={styles.tableHeader}>
-                    <Text style={[styles.colSr, styles.tableCellHeader]}>Sr.No.</Text>
+                    <Text style={[styles.colSr, styles.tableCellHeader]}>Sr.</Text>
                     <Text style={[styles.colSupplier, styles.tableCellHeader]}>Supplier Name & Address</Text>
                     <Text style={[styles.colGstin, styles.tableCellHeader]}>GSTIN/UIN</Text>
                     <Text style={[styles.colDate, styles.tableCellHeader]}>Date</Text>

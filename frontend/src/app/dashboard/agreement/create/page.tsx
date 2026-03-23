@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { Calendar as CalendarIcon, Plus, Trash2, Loader2, ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
 import { cn, formatCustomerAddress } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Autocomplete } from '@/components/ui/autocomplete';
 import {
     Form,
     FormControl,
@@ -49,7 +50,6 @@ import {
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
-import { Autocomplete } from '@/components/ui/autocomplete';
 import { useToast } from '@/hooks/use-toast';
 import { fetchCustomers, fetchMaterials, createAgreement, fetchLatestQuotationByCustomer } from '@/lib/api';
 
@@ -407,7 +407,7 @@ export default function CreateAgreementPage() {
                                                                 <Input
                                                                     type="number"
                                                                     {...field}
-                                                                    onChange={e => field.onChange(parseFloat(e.target.value))}
+                                                                                                                                      onChange={e => field.onChange(parseFloat(e.target.value))}
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />
@@ -537,85 +537,22 @@ function MaterialCombobox({
     onSelect: (material: any) => void;
     isOptionDisabled?: (id: string) => boolean;
 }) {
-    const [open, setOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
-
-    useEffect(() => {
-        if (value && !open) {
-            const material = materials.find(m => m.id === value);
-            if (material) {
-                setSearchTerm(material.name);
-            }
-        }
-    }, [open, value, materials]);
+    const autocompleteItems = materials.map(m => ({
+        value: m.id,
+        label: m.name
+    }));
 
     return (
-        <Command className="overflow-visible bg-transparent [&_[cmdk-input-wrapper]]:border-0 [&_[cmdk-input-wrapper]]:px-0 [&_[cmdk-input-wrapper]_svg]:hidden [&_[cmdk-input]]:h-auto [&_[cmdk-input]]:py-0">
-            <Popover open={open} onOpenChange={setOpen}>
-                <PopoverAnchor asChild>
-                    <div className="group border border-input px-3 py-2 text-sm ring-offset-background rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-                        <CommandInput
-                            placeholder="Select Material"
-                            value={searchTerm}
-                            onValueChange={(val) => {
-                                setSearchTerm(val);
-                                setOpen(true);
-                            }}
-                            onFocus={() => setOpen(true)}
-                            onBlur={() => {
-                                // Small delay to allow click on item
-                                // With Popover, interacting with content might not trigger blur on input immediately if focus moves?
-                                // Actually, if we click PopoverContent, focus moves there.
-                                // But we set onOpenAutoFocus preventDefault.
-                                // If we click item, we select.
-                                // If we click outside, Popover closes (onOpenChange).
-                                // So we might not need onBlur here?
-                                // But if we tab away?
-                                // Let's keep a simple blur handler or rely on Popover's outside click.
-                                // Actually, for Combobox, we usually don't close on blur if interacting with list.
-                                // Popover handles "interact outside".
-                                // So strictly speaking, onBlur is not needed for closing, Popover handles it.
-                                // But if we tab to next field, popover should close. Popover does close on focus interaction outside.
-                            }}
-                            className="h-5 w-full border-0 p-0 focus-visible:ring-0"
-                        />
-                    </div>
-                </PopoverAnchor>
-                <PopoverContent
-                    className="p-0 w-[--radix-popover-anchor-width] min-w-[300px]"
-                    align="start"
-                    onOpenAutoFocus={(e) => e.preventDefault()}
-                >
-                    <CommandList>
-                        <CommandEmpty>No material found.</CommandEmpty>
-                        <CommandGroup>
-                            {materials.map((material) => (
-                                <CommandItem
-                                    key={material.id}
-                                    value={material.name}
-                                    disabled={isOptionDisabled ? isOptionDisabled(material.id) : false}
-                                    onSelect={() => {
-                                        if (isOptionDisabled && isOptionDisabled(material.id)) return;
-                                        onChange(material.id);
-                                        onSelect(material);
-                                        setSearchTerm(material.name);
-                                        setOpen(false);
-                                    }}
-                                    className={cn("cursor-pointer", isOptionDisabled && isOptionDisabled(material.id) && "opacity-50 cursor-not-allowed")}
-                                >
-                                    {material.name}
-                                    <Check
-                                        className={cn(
-                                            "ml-auto h-4 w-4",
-                                            material.id === value ? "opacity-100" : "opacity-0"
-                                        )}
-                                    />
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </PopoverContent>
-            </Popover>
-        </Command>
+        <Autocomplete
+            items={autocompleteItems}
+            value={value}
+            onChange={(val) => {
+                onChange(val);
+                const material = materials.find(m => m.id === val);
+                if (material) onSelect(material);
+            }}
+            placeholder="Select Material"
+            isOptionDisabled={isOptionDisabled}
+        />
     );
 }
