@@ -344,6 +344,7 @@ export default function CreateQuotationPage() {
                                                                     <SelectItem value="Nos">Nos</SelectItem>
                                                                     <SelectItem value="Kg">Kg</SelectItem>
                                                                     <SelectItem value="Sq.Ft">Sq.Ft</SelectItem>
+                                                                    <SelectItem value="Nos/Running Mtr">Nos/Running Mtr</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
                                                             <FormMessage />
