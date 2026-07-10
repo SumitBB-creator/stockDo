@@ -98,7 +98,7 @@ export default function DueslistPage() {
                         <DatePicker
                             
                             value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
+                            onChange={(e: any) => setSelectedDate(e.target.value)}
                         />
                     </div>
 

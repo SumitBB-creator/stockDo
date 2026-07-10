@@ -108,7 +108,7 @@ export default function QuotationsPage() {
                     <Input
                         placeholder="Search quotations..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e: any) => setSearchTerm(e.target.value)}
                         className="pl-8"
                     />
                 </div>

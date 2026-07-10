@@ -256,7 +256,7 @@ export default function UsersPage() {
                                         <TableCell>
                                             <Input
                                                 value={editingUserId ? '' : name}
-                                                onChange={(e) => setName(e.target.value)}
+                                                onChange={(e: any) => setName(e.target.value)}
                                                 placeholder="Full Name"
                                                 className="h-8 min-w-[120px] bg-[#020817] border-slate-700 text-slate-200 placeholder:text-slate-600 focus:ring-blue-500"
                                                 disabled={!canAdd}
@@ -267,7 +267,7 @@ export default function UsersPage() {
                                         <TableCell>
                                             <Input
                                                 value={editingUserId ? '' : email}
-                                                onChange={(e) => setEmail(e.target.value)}
+                                                onChange={(e: any) => setEmail(e.target.value)}
                                                 placeholder="Email"
                                                 className="h-8 min-w-[150px] bg-[#020817] border-slate-700 text-slate-200 placeholder:text-slate-600 focus:ring-blue-500"
                                                 disabled={!canAdd}
@@ -295,7 +295,7 @@ export default function UsersPage() {
                                             <Input
                                                 type="password"
                                                 value={editingUserId ? '' : password}
-                                                onChange={(e) => setPassword(e.target.value)}
+                                                onChange={(e: any) => setPassword(e.target.value)}
                                                 placeholder="Password"
                                                 className="h-8 w-32 bg-[#020817] border-slate-700 text-slate-200 placeholder:text-slate-600 focus:ring-blue-500 ml-auto"
                                             />
@@ -326,7 +326,7 @@ export default function UsersPage() {
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</label>
                             <Input
                                 value={name}
-                                onChange={(e) => setName(e.target.value)}
+                                onChange={(e: any) => setName(e.target.value)}
                                 className="bg-[#020817] border-slate-700 text-slate-200"
                             />
                         </div>
@@ -335,7 +335,7 @@ export default function UsersPage() {
                             <Input
                                 type="email"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={(e: any) => setEmail(e.target.value)}
                                 className="bg-[#020817] border-slate-700 text-slate-200"
                             />
                         </div>

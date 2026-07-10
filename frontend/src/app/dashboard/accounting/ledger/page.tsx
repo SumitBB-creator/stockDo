@@ -165,7 +165,7 @@ export default function LedgerPage() {
                     <DatePicker
                         
                         value={fromDate}
-                        onChange={(e) => setFromDate(e.target.value)}
+                        onChange={(e: any) => setFromDate(e.target.value)}
                         className="w-[160px] h-9"
                     />
                 </div>
@@ -174,7 +174,7 @@ export default function LedgerPage() {
                     <DatePicker
                         
                         value={toDate}
-                        onChange={(e) => setToDate(e.target.value)}
+                        onChange={(e: any) => setToDate(e.target.value)}
                         className="w-[160px] h-9"
                     />
                 </div>

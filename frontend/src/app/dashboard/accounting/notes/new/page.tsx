@@ -190,7 +190,7 @@ export default function NotesEntryPage() {
                             <select
                                 id="type"
                                 value={noteType}
-                                onChange={(e) => setNoteType(e.target.value)}
+                                onChange={(e: any) => setNoteType(e.target.value)}
                                 disabled={submitting}
                                 className={`flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm ring-offset-background font-semibold
                                     ${noteType === 'CREDIT_NOTE' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}
@@ -207,7 +207,7 @@ export default function NotesEntryPage() {
                                 id="date"
                                 
                                 value={date}
-                                onChange={(e) => setDate(e.target.value)}
+                                onChange={(e: any) => setDate(e.target.value)}
                                 disabled={submitting}
                             />
                         </div>
@@ -218,7 +218,7 @@ export default function NotesEntryPage() {
                                     type="checkbox"
                                     id="isTaxable"
                                     checked={isTaxable}
-                                    onChange={(e) => setIsTaxable(e.target.checked)}
+                                    onChange={(e: any) => setIsTaxable(e.target.checked)}
                                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                                 />
                                 <Label htmlFor="isTaxable" className="cursor-pointer font-bold text-slate-700">This is a Taxable Note (Includes GST)</Label>
@@ -230,7 +230,7 @@ export default function NotesEntryPage() {
                                         <Label>GST Type</Label>
                                         <select
                                             value={gstType}
-                                            onChange={(e) => setGstType(e.target.value as any)}
+                                            onChange={(e: any) => setGstType(e.target.value as any)}
                                             className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
                                         >
                                             <option value="CGST_SGST">CGST + SGST (Intra-state)</option>
@@ -255,7 +255,7 @@ export default function NotesEntryPage() {
                                         <Label>Taxable Amount (₹)</Label>
                                         <RateInput
                                             value={amount}
-                                            onChange={(e) => setAmount(e.target.value)}
+                                            onChange={(e: any) => setAmount(e.target.value)}
                                             className="bg-white font-semibold"
                                         />
                                     </div>
@@ -295,7 +295,7 @@ export default function NotesEntryPage() {
                                     id="amount"
                                     placeholder="0.00"
                                     value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
+                                    onChange={(e: any) => setAmount(e.target.value)}
                                     disabled={submitting}
                                     className={`text-lg font-bold ${noteType === 'CREDIT_NOTE' ? 'text-green-600' : 'text-red-600'}`}
                                 />
@@ -308,7 +308,7 @@ export default function NotesEntryPage() {
                                 id="reason"
                                 placeholder="e.g. Volume discount for Q3 OR Shortage deduction..."
                                 value={reason}
-                                onChange={(e) => setReason(e.target.value)}
+                                onChange={(e: any) => setReason(e.target.value)}
                                 disabled={submitting}
                                 className="resize-none"
                                 rows={4}

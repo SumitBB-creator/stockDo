@@ -121,7 +121,7 @@ export const Autocomplete = React.forwardRef<HTMLInputElement, AutocompleteProps
                         type="text"
                         placeholder={placeholder}
                         value={searchQuery}
-                        onChange={(e) => {
+                        onChange={(e: any) => {
                             setSearchQuery(e.target.value)
                             if (!open && e.target.value.length >= 1) {
                                 setOpen(true)

@@ -85,7 +85,7 @@ export default function ReturnListPage() {
                         placeholder="Search returns..."
                         className="pl-8"
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e: any) => setSearchTerm(e.target.value)}
                     />
                 </div>
             </div>

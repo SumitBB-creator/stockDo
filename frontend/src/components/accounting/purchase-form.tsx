@@ -165,7 +165,7 @@ export function PurchaseForm({ id }: { id?: string }) {
                             <Input
                                 placeholder="E.g. INV/24/001"
                                 value={formData.billNumber}
-                                onChange={(e) => setFormData({ ...formData, billNumber: e.target.value })}
+                                onChange={(e: any) => setFormData({ ...formData, billNumber: e.target.value })}
                             />
                         </div>
                         <div className="space-y-2">
@@ -173,7 +173,7 @@ export function PurchaseForm({ id }: { id?: string }) {
                             <DatePicker
                                 
                                 value={formData.date}
-                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                onChange={(e: any) => setFormData({ ...formData, date: e.target.value })}
                             />
                         </div>
                         <div className="space-y-2">
@@ -209,7 +209,7 @@ export function PurchaseForm({ id }: { id?: string }) {
                                     <Input
                                         placeholder="Item description..."
                                         value={item.description}
-                                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                        onChange={(e: any) => handleItemChange(index, 'description', e.target.value)}
                                         required
                                     />
                                 </div>
@@ -218,7 +218,7 @@ export function PurchaseForm({ id }: { id?: string }) {
                                     <Input
                                         type="number"
                                         value={item.quantity}
-                                        onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))}
+                                        onChange={(e: any) => handleItemChange(index, 'quantity', parseFloat(e.target.value))}
                                         required
                                     />
                                 </div>
@@ -227,7 +227,7 @@ export function PurchaseForm({ id }: { id?: string }) {
                                     <Input
                                         type="number"
                                         value={item.rate}
-                                        onChange={(e) => handleItemChange(index, 'rate', parseFloat(e.target.value))}
+                                        onChange={(e: any) => handleItemChange(index, 'rate', parseFloat(e.target.value))}
                                         required
                                     />
                                 </div>

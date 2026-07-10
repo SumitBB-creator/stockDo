@@ -98,7 +98,7 @@ export default function DaybookPage() {
                         <DatePicker
                             
                             value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
+                            onChange={(e: any) => setSelectedDate(e.target.value)}
                             className="w-[180px]"
                         />
                     </div>
@@ -110,7 +110,7 @@ export default function DaybookPage() {
                         placeholder="Search entity..."
                         className="pl-9"
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e: any) => setSearchTerm(e.target.value)}
                     />
                 </div>
             </div>

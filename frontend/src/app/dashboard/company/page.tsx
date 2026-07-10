@@ -316,7 +316,7 @@ export default function CompanyPage() {
                                         type="number"
                                         placeholder="0.00"
                                         {...field}
-                                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                        onChange={(e: any) => field.onChange(parseFloat(e.target.value) || 0)}
                                     />
                                 </FormControl>
                                 <FormDescription>

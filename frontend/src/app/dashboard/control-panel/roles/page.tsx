@@ -302,7 +302,7 @@ export default function RolesPage() {
                                         <TableCell>
                                             <Input
                                                 value={editingRoleId ? '' : roleName}
-                                                onChange={(e) => setRoleName(e.target.value)}
+                                                onChange={(e: any) => setRoleName(e.target.value)}
                                                 placeholder="Enter Role Name"
                                                 className="h-8 bg-[#020817] border-slate-700 text-slate-200 placeholder:text-slate-600 focus:ring-blue-500"
                                                 disabled={!canAdd}

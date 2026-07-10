@@ -467,7 +467,7 @@ export default function MaterialsPage() {
                                             <Input
                                                 ref={nameInputRef}
                                                 value={newMaterial.name}
-                                                onChange={(e) => handleNewMaterialChange('name', e.target.value)}
+                                                onChange={(e: any) => handleNewMaterialChange('name', e.target.value)}
                                                 onKeyDown={handleKeyDown}
                                                 placeholder="Name"
                                                 className="h-8 min-w-[120px]"
@@ -480,7 +480,7 @@ export default function MaterialsPage() {
                                         <TableCell>
                                             <Input
                                                 value={newMaterial.unit}
-                                                onChange={(e) => handleNewMaterialChange('unit', e.target.value)}
+                                                onChange={(e: any) => handleNewMaterialChange('unit', e.target.value)}
                                                 onBlur={(e) => {
                                                     const val = parseInt(e.target.value) || 0;
                                                     if (newMaterial.totalQty === 0) {
@@ -497,7 +497,7 @@ export default function MaterialsPage() {
                                         <TableCell>
                                             <Input
                                                 value={newMaterial.hsn}
-                                                onChange={(e) => handleNewMaterialChange('hsn', e.target.value)}
+                                                onChange={(e: any) => handleNewMaterialChange('hsn', e.target.value)}
                                                 onKeyDown={handleKeyDown}
                                                 placeholder="HSN"
                                                 className="h-8 w-[80px]"
@@ -508,7 +508,7 @@ export default function MaterialsPage() {
                                         <TableCell>
                                             <Input
                                                 value={newMaterial.sac}
-                                                onChange={(e) => handleNewMaterialChange('sac', e.target.value)}
+                                                onChange={(e: any) => handleNewMaterialChange('sac', e.target.value)}
                                                 onKeyDown={handleKeyDown}
                                                 placeholder="SAC"
                                                 className="h-8 w-[80px]"
@@ -520,7 +520,7 @@ export default function MaterialsPage() {
                                             <Input
                                                 type="number"
                                                 value={newMaterial.totalQty}
-                                                onChange={(e) => handleNewMaterialChange('totalQty', parseInt(e.target.value) || 0)}
+                                                onChange={(e: any) => handleNewMaterialChange('totalQty', parseInt(e.target.value) || 0)}
                                                 onKeyDown={handleKeyDown}
                                                 className="h-8 w-[80px]"
                                             />
@@ -531,7 +531,7 @@ export default function MaterialsPage() {
                                             <Input
                                                 type="number"
                                                 value={newMaterial.damageQty}
-                                                onChange={(e) => handleNewMaterialChange('damageQty', parseInt(e.target.value) || 0)}
+                                                onChange={(e: any) => handleNewMaterialChange('damageQty', parseInt(e.target.value) || 0)}
                                                 onKeyDown={handleKeyDown}
                                                 className="h-8 w-[80px]"
                                             />
@@ -542,7 +542,7 @@ export default function MaterialsPage() {
                                             <Input
                                                 type="number"
                                                 value={newMaterial.shortQty}
-                                                onChange={(e) => handleNewMaterialChange('shortQty', parseInt(e.target.value) || 0)}
+                                                onChange={(e: any) => handleNewMaterialChange('shortQty', parseInt(e.target.value) || 0)}
                                                 onKeyDown={handleKeyDown}
                                                 className="h-8 w-[80px]"
                                             />
@@ -553,7 +553,7 @@ export default function MaterialsPage() {
                                             <Input
                                                 type="number"
                                                 value={newMaterial.lowerLimit}
-                                                onChange={(e) => handleNewMaterialChange('lowerLimit', parseInt(e.target.value) || 0)}
+                                                onChange={(e: any) => handleNewMaterialChange('lowerLimit', parseInt(e.target.value) || 0)}
                                                 onKeyDown={handleKeyDown}
                                                 className="h-8 w-[80px]"
                                             />

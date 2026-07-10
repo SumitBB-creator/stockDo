@@ -165,7 +165,7 @@ export function SaleReport({ type, title }: SaleReportProps) {
                                 placeholder="Search by Bill No or Customer..."
                                 className="pl-8"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e: any) => setSearchTerm(e.target.value)}
                             />
                         </div>
                     </div>

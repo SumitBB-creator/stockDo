@@ -118,7 +118,7 @@ export default function AgreementTemplatePage() {
                 <CardContent>
                     <Textarea
                         value={introText}
-                        onChange={(e) => setIntroText(e.target.value)}
+                        onChange={(e: any) => setIntroText(e.target.value)}
                         placeholder="Enter intro paragraph..."
                         className="min-h-[100px] leading-relaxed"
                     />
@@ -143,7 +143,7 @@ export default function AgreementTemplatePage() {
                                 </div>
                                 <Textarea
                                     value={term}
-                                    onChange={(e) => handleTermChange(index, e.target.value)}
+                                    onChange={(e: any) => handleTermChange(index, e.target.value)}
                                     placeholder={`Term ${index + 1} content...`}
                                     className="resize-none min-h-[60px]"
                                 />

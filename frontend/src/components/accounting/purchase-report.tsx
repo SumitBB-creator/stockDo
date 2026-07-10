@@ -275,7 +275,7 @@ export function PurchaseReport({ type = 'ALL', title }: PurchaseReportProps) {
                                 placeholder="Search by PUR No, Bill No or Supplier..."
                                 className="pl-8"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e: any) => setSearchTerm(e.target.value)}
                             />
                         </div>
                     </div>
@@ -347,7 +347,7 @@ export function PurchaseReport({ type = 'ALL', title }: PurchaseReportProps) {
                                                 
                                                 className="h-8 bg-white text-black"
                                                 value={newEntry.date}
-                                                onChange={(e) => setNewEntry({ ...newEntry, date: e.target.value })}
+                                                onChange={(e: any) => setNewEntry({ ...newEntry, date: e.target.value })}
                                             />
                                         </TableCell>
                                         <TableCell className="border-r py-3">
@@ -355,7 +355,7 @@ export function PurchaseReport({ type = 'ALL', title }: PurchaseReportProps) {
                                                 placeholder="Bill No"
                                                 className="h-8 bg-white text-black"
                                                 value={newEntry.billNumber}
-                                                onChange={(e) => setNewEntry({ ...newEntry, billNumber: e.target.value })}
+                                                onChange={(e: any) => setNewEntry({ ...newEntry, billNumber: e.target.value })}
                                             />
                                         </TableCell>
                                         <TableCell className="py-3">
@@ -364,7 +364,7 @@ export function PurchaseReport({ type = 'ALL', title }: PurchaseReportProps) {
                                                 placeholder="0.00"
                                                 className="h-8 bg-white text-right text-black"
                                                 value={newEntry.taxableAmount}
-                                                onChange={(e) => setNewEntry({ ...newEntry, taxableAmount: e.target.value })}
+                                                onChange={(e: any) => setNewEntry({ ...newEntry, taxableAmount: e.target.value })}
                                             />
                                         </TableCell>
                                     </TableRow>

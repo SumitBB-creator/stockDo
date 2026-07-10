@@ -221,7 +221,7 @@ export default function ReceiptEntryPage() {
                                 id="date"
                                 
                                 value={date}
-                                onChange={(e) => setDate(e.target.value)}
+                                onChange={(e: any) => setDate(e.target.value)}
                                 disabled={submitting}
                             />
                         </div>
@@ -232,7 +232,7 @@ export default function ReceiptEntryPage() {
                                 id="amount"
                                 placeholder="0.00"
                                 value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
+                                onChange={(e: any) => setAmount(e.target.value)}
                                 disabled={submitting}
                                 className="text-lg font-semibold tabular-nums"
                             />
@@ -243,7 +243,7 @@ export default function ReceiptEntryPage() {
                             <select
                                 id="mode"
                                 value={paymentMode}
-                                onChange={(e) => setPaymentMode(e.target.value)}
+                                onChange={(e: any) => setPaymentMode(e.target.value)}
                                 disabled={submitting}
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             >
@@ -262,7 +262,7 @@ export default function ReceiptEntryPage() {
                                 id="bankName"
                                 placeholder="Bank Name"
                                 value={bankName}
-                                onChange={(e) => setBankName(e.target.value)}
+                                onChange={(e: any) => setBankName(e.target.value)}
                                 disabled={submitting}
                             />
                         </div>
@@ -274,7 +274,7 @@ export default function ReceiptEntryPage() {
                                     id="branchName"
                                     placeholder="Branch Name"
                                     value={branchName}
-                                    onChange={(e) => setBranchName(e.target.value)}
+                                    onChange={(e: any) => setBranchName(e.target.value)}
                                     disabled={submitting}
                                 />
                             </div>
@@ -284,7 +284,7 @@ export default function ReceiptEntryPage() {
                                     id="bankState"
                                     placeholder="State"
                                     value={bankState}
-                                    onChange={(e) => setBankState(e.target.value)}
+                                    onChange={(e: any) => setBankState(e.target.value)}
                                     disabled={submitting}
                                 />
                             </div>
@@ -296,7 +296,7 @@ export default function ReceiptEntryPage() {
                                 id="reference"
                                 placeholder="e.g. UTR Number, Cheque No"
                                 value={reference}
-                                onChange={(e) => setReference(e.target.value)}
+                                onChange={(e: any) => setReference(e.target.value)}
                                 disabled={submitting}
                             />
                         </div>
@@ -307,7 +307,7 @@ export default function ReceiptEntryPage() {
                                 id="notes"
                                 placeholder="Any specific details regarding this payment..."
                                 value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
+                                onChange={(e: any) => setNotes(e.target.value)}
                                 disabled={submitting}
                                 className="resize-none"
                                 rows={2}

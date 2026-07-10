@@ -79,7 +79,7 @@ export default function TransferListPage() {
                         placeholder="Search transfers..."
                         className="pl-8"
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e: any) => setSearchQuery(e.target.value)}
                     />
                 </div>
             </div>

@@ -309,7 +309,7 @@ export default function CreateChallanPage() {
                                                     <input
                                                         type="checkbox"
                                                         checked={isSelected}
-                                                        onChange={(e) => {
+                                                        onChange={(e: any) => {
                                                             if (e.target.checked) {
                                                                 handleAddItem(item.materialId);
                                                             } else {

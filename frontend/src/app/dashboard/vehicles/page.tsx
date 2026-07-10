@@ -305,7 +305,7 @@ export default function VehiclesPage() {
                                         <TableCell>
                                             <Input
                                                 value={newVehicle.vehicleNumber}
-                                                onChange={(e) => handleNewVehicleChange('vehicleNumber', e.target.value)}
+                                                onChange={(e: any) => handleNewVehicleChange('vehicleNumber', e.target.value)}
                                                 placeholder="Vehicle No."
                                                 className="h-8 min-w-[120px]"
                                             />
@@ -315,7 +315,7 @@ export default function VehiclesPage() {
                                         <TableCell>
                                             <Input
                                                 value={newVehicle.vehicleType}
-                                                onChange={(e) => handleNewVehicleChange('vehicleType', e.target.value)}
+                                                onChange={(e: any) => handleNewVehicleChange('vehicleType', e.target.value)}
                                                 placeholder="Type"
                                                 className="h-8 min-w-[100px]"
                                             />
@@ -400,7 +400,7 @@ export default function VehiclesPage() {
                                         <TableCell>
                                             <Input
                                                 value={newVehicle.details || ''}
-                                                onChange={(e) => handleNewVehicleChange('details', e.target.value)}
+                                                onChange={(e: any) => handleNewVehicleChange('details', e.target.value)}
                                                 placeholder="Details"
                                                 className="h-8 min-w-[150px]"
                                             />

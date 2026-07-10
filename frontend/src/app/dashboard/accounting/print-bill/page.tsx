@@ -136,7 +136,7 @@ export default function PrintBillPage() {
                     <select
                         className="flex h-9 w-[220px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                         value={filterType}
-                        onChange={(e) => {
+                        onChange={(e: any) => {
                             setFilterType(e.target.value);
                             setSelectedYear('');
                             setSelectedMonth('');
@@ -159,7 +159,7 @@ export default function PrintBillPage() {
                                 <select
                                     className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                                     value={selectedCustomer}
-                                    onChange={(e) => setSelectedCustomer(e.target.value)}
+                                    onChange={(e: any) => setSelectedCustomer(e.target.value)}
                                 >
                                     <option value="">--Select Customer--</option>
                                     {customers.map(c => (
@@ -175,7 +175,7 @@ export default function PrintBillPage() {
                                 <select
                                     className="flex h-9 w-[160px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                                     value={selectedMonth}
-                                    onChange={(e) => setSelectedMonth(e.target.value)}
+                                    onChange={(e: any) => setSelectedMonth(e.target.value)}
                                 >
                                     <option value="">--Select Month--</option>
                                     {MONTHS.map(m => (
@@ -191,7 +191,7 @@ export default function PrintBillPage() {
                                 <select
                                     className="flex h-9 w-[120px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                                     value={selectedYear}
-                                    onChange={(e) => setSelectedYear(e.target.value)}
+                                    onChange={(e: any) => setSelectedYear(e.target.value)}
                                 >
                                     <option value="">--Year--</option>
                                     {YEARS.map(y => (

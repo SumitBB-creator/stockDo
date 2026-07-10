@@ -70,7 +70,7 @@ export default function ShortageNoticePage() {
                         placeholder="Search by material..."
                         className="pl-9 bg-[#020817] border-slate-700 text-slate-200 placeholder:text-slate-600 focus:ring-blue-500"
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e: any) => setSearchQuery(e.target.value)}
                     />
                 </div>
                 <div className="text-sm font-medium text-slate-400">

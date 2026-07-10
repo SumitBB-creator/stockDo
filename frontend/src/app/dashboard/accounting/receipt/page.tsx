@@ -113,7 +113,7 @@ export default function ReceiptListPage() {
                     <DatePicker
                         
                         value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
+                        onChange={(e: any) => setSelectedDate(e.target.value)}
                         className="w-[180px]"
                     />
                 </div>

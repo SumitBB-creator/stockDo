@@ -94,7 +94,7 @@ export default function GstSummaryPage() {
                                 id="fromDate"
                                 
                                 value={fromDate}
-                                onChange={(e) => setFromDate(e.target.value)}
+                                onChange={(e: any) => setFromDate(e.target.value)}
                                 className="w-[220px] bg-[#1e293b] border-slate-700 text-white h-10 text-base shadow-inner focus:ring-primary focus:border-primary transition-all"
                             />
                         </div>
@@ -105,7 +105,7 @@ export default function GstSummaryPage() {
                                 id="toDate"
                                 
                                 value={toDate}
-                                onChange={(e) => setToDate(e.target.value)}
+                                onChange={(e: any) => setToDate(e.target.value)}
                                 className="w-[220px] bg-[#1e293b] border-slate-700 text-white h-10 text-base shadow-inner focus:ring-primary focus:border-primary transition-all"
                             />
                         </div>

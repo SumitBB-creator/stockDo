@@ -57,7 +57,7 @@ export default function CompanyStockPage() {
                         placeholder="Search by material or category..."
                         className="pl-9"
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e: any) => setSearchQuery(e.target.value)}
                     />
                 </div>
             </div>
