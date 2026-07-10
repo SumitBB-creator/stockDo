@@ -1,0 +1,74 @@
+================================================================================
+STOCKDO: GST SUMMARY EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document covers the GST Summary Report module under the Accounting section.
+The GST Summary acts as a dedicated tax reconciliation tool. It aggregates the total 
+Output Tax (tax collected from customers via sales) and Input Tax (tax paid to 
+suppliers via purchases) to calculate the Net GST Liability for a chosen period. 
+This is essential for filing monthly or quarterly GST Returns (GSTR-1, GSTR-3B).
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+Unlike Ledgers that deal with gross payments, the GST Summary specifically isolates 
+the `taxableAmount`, `cgst`, `sgst`, and `igst` columns across commercial models.
+
+- OUTPUT TAX: Aggregated from `Bill` records. Represents the tax StockDo's 
+  company owes to the government.
+- INPUT TAX: Aggregated from `Purchase` records. Represents the tax credits (ITC) 
+  the company can claim to offset their output tax.
+- NET PAYABLE: Output Tax minus Input Tax.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* File Location: `frontend/src/app/dashboard/accounting/gst-summary/page.tsx`
+
+--- UI LIFE-CYCLE ---
+1. Date Bounding:
+   - Defaults to the current calendar month (`startOfMonth` to `endOfMonth`).
+   - The user can adjust `fromDate` and `toDate`.
+2. Report Generation:
+   Clicking "Generate Report" calls `fetchGstSummary(fromDate, toDate)`.
+3. Table Rendering:
+   The UI renders a standard Accountant's Tax Statement:
+   - Add: Sales (Output Tax) - Broken down into Taxable Value, SGST, CGST, IGST.
+   - Less: Purchases (Input Tax) - Deducted from the totals.
+   - Net GST Payable: A highlighted final row showing the difference.
+4. Quick KPI Cards:
+   Below the table, three large KPI cards display the gross totals for Output Tax, 
+   Input Tax, and the Final Liability.
+5. Print Functionality:
+   Includes a dedicated `Print Report` button that opens a styled, isolated PDF 
+   layout.
+
+--------------------------------------------------------------------------------
+3. BACKEND SERVICE & CALCULATION LOGIC
+--------------------------------------------------------------------------------
+* API Location: `backend/src/transactions/transactions.controller.ts` -> `@Get('gst-summary')`
+* Service Location: `backend/src/transactions/transactions.service.ts` -> `getGstSummary()`
+
+--- AGGREGATION LOGIC ---
+1. The backend parses `fromDate` to `00:00:00` and `toDate` to `23:59:59`.
+2. Output Tax (Sales):
+   - Queries `Bill` table where `dateTo` falls in the range.
+   - Extracts the base `taxableAmount`. If a bill doesn't have a strict taxable 
+     amount but the company is configured to charge GST on transportation, it 
+     adds `transportationCost` and `greenTax` to the taxable base.
+   - Sums `cgst`, `sgst`, and `igst`.
+3. Input Tax (Purchases):
+   - Queries `Purchase` table.
+   - Sums `totalAmount` (taxable base), `cgst`, `sgst`, and `igst`.
+4. The service returns a structured JSON object containing `{ sales, purchases }`, 
+   leaving the final subtraction logic (Net Liability) to the frontend UI.
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- Dashboard UI Page:     `frontend/src/app/dashboard/accounting/gst-summary/page.tsx`
+- Print Layout Page:     `frontend/src/app/dashboard/accounting/gst-summary/print/page.tsx`
+- Axios Network Wrapper: `frontend/src/lib/api.ts` -> `fetchGstSummary`
+- Backend API Router:    `backend/src/transactions/transactions.controller.ts`
+- Backend Service:       `backend/src/transactions/transactions.service.ts`
+================================================================================

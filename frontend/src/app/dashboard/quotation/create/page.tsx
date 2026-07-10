@@ -19,6 +19,7 @@ import {
     FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { RateInput } from '@/components/ui/rate-input';
 import {
     Select,
     SelectContent,
@@ -223,7 +224,7 @@ export default function CreateQuotationPage() {
                             <h3 className="text-lg font-medium">Items</h3>
                         </div>
                         <div className="p-4">
-                            <Table>
+                            <Table wrapperClassName="max-h-[400px] overflow-y-auto">
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead className="w-[50px]">Sr.</TableHead>
@@ -277,8 +278,7 @@ export default function CreateQuotationPage() {
                                                     render={({ field }) => (
                                                         <FormItem>
                                                             <FormControl>
-                                                                <Input
-                                                                    type="number"
+                                                                <RateInput
                                                                     {...field}
                                                                     onChange={e => field.onChange(parseFloat(e.target.value))}
                                                                 />
@@ -295,8 +295,7 @@ export default function CreateQuotationPage() {
                                                     render={({ field }) => (
                                                         <FormItem>
                                                             <FormControl>
-                                                                <Input
-                                                                    type="number"
+                                                                <RateInput
                                                                     {...field}
                                                                     onChange={e => field.onChange(parseFloat(e.target.value))}
                                                                 />
@@ -313,8 +312,7 @@ export default function CreateQuotationPage() {
                                                     render={({ field }) => (
                                                         <FormItem>
                                                             <FormControl>
-                                                                <Input
-                                                                    type="number"
+                                                                <RateInput
                                                                     {...field}
                                                                     onChange={e => field.onChange(parseFloat(e.target.value))}
                                                                 />

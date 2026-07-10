@@ -20,6 +20,7 @@ import { formatCustomerAddress } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { useRouter } from 'next/navigation';
+import { DatePicker } from '@/components/ui/date-picker';
 
 export default function DueslistPage() {
     const router = useRouter();
@@ -94,8 +95,8 @@ export default function DueslistPage() {
                 <div className="flex items-center gap-6">
                     <div className="space-y-1">
                         <label className="text-sm font-medium text-gray-700">As Of Date</label>
-                        <Input
-                            type="date"
+                        <DatePicker
+                            
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
                         />

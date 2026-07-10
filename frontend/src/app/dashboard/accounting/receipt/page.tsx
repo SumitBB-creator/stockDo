@@ -10,6 +10,7 @@ import { Autocomplete } from '@/components/ui/autocomplete';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Plus, ReceiptText } from 'lucide-react';
 import { api } from '@/lib/api';
+import { DatePicker } from '@/components/ui/date-picker';
 
 // Re-using api but typing the call directly since we don't have a specific fetchReceipts function
 const fetchReceipts = async (date: string, customerId?: string) => {
@@ -109,8 +110,8 @@ export default function ReceiptListPage() {
             <div className="flex items-center justify-between gap-4 flex-wrap">
                 {/* Date Selector */}
                 <div className="flex items-center gap-2">
-                    <Input
-                        type="date"
+                    <DatePicker
+                        
                         value={selectedDate}
                         onChange={(e) => setSelectedDate(e.target.value)}
                         className="w-[180px]"

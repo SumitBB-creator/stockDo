@@ -444,7 +444,7 @@ export default function MaterialsPage() {
                                         {visibleColumns.lowerLimit && <TableCell>{material.lowerLimit}</TableCell>}
                                         {visibleColumns.updatedAt && (
                                             <TableCell className="whitespace-nowrap">
-                                                {format(new Date(material.updatedAt), 'MM/dd/yy hh:mm:ss a')}
+                                                {format(new Date(material.updatedAt), 'dd/MM/yyyy hh:mm:ss a')}
                                             </TableCell>
                                         )}
                                     </TableRow>
@@ -561,7 +561,7 @@ export default function MaterialsPage() {
                                     )}
                                     {visibleColumns.updatedAt && (
                                         <TableCell className="whitespace-nowrap text-muted-foreground text-sm">
-                                            {format(new Date(), 'MM/dd/yy hh:mm:ss a')}
+                                            {format(new Date(), 'dd/MM/yyyy hh:mm:ss a')}
                                         </TableCell>
                                     )}
                                 </TableRow>

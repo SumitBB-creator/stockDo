@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Save, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { DatePicker } from '@/components/ui/date-picker';
 
 export function PurchaseForm({ id }: { id?: string }) {
     const router = useRouter();
@@ -169,8 +170,8 @@ export function PurchaseForm({ id }: { id?: string }) {
                         </div>
                         <div className="space-y-2">
                             <Label>Purchase Date</Label>
-                            <Input
-                                type="date"
+                            <DatePicker
+                                
                                 value={formData.date}
                                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                             />

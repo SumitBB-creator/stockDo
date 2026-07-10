@@ -1,0 +1,76 @@
+================================================================================
+STOCKDO: ANNUAL REPORT EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document covers the Annual Report module under the Accounting section.
+The Annual Report provides a macro-level, comprehensive summary of the business's 
+performance over a full calendar year. It combines financial data (P&L) with 
+operational material statistics (Damages and Shortages) and presents them using 
+interactive charts.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+The Annual Report is the most computationally intensive read-operation in the 
+Accounting section. It aggregates data across five distinct database models:
+1. `Bill` (Sales/Earnings)
+2. `Purchase` (Cost of Goods)
+3. `Transaction` (Operating Expenses)
+4. `Material` (Inventory Growth)
+5. `ChallanItem` (Operational Losses/Damages)
+
+It segments financial data month-by-month to power the frontend trend charts.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* File Location: `frontend/src/app/dashboard/accounting/annual-report/page.tsx`
+
+--- UI COMPONENTS ---
+1. Year Selector:
+   A dropdown allowing historical analysis (up to 5 years back). Defaults to the 
+   current year.
+2. KPI Cards (Financial & Operational):
+   - Total Earnings (Revenue)
+   - Total Spendings (Purchases + Expenses)
+   - Net Profit (with calculated Margin %)
+   - New Materials (Count of new inventory items added this year)
+3. Recharts Integration (Interactive Graphs):
+   - Monthly Performance Bar Chart: Maps Earnings vs Spendings side-by-side for 
+     each of the 12 months.
+   - Profitability Margin Line Chart: Tracks the Net Margin % `(Earnings - Spendings) / Earnings` 
+     month-over-month to visualize business efficiency trends.
+4. Material Loss Summary:
+   Displays the total count of Damaged Materials and Shortage Quantities recorded 
+   across all Return Challans during the year.
+
+--------------------------------------------------------------------------------
+3. BACKEND SERVICE & AGGREGATION LOGIC
+--------------------------------------------------------------------------------
+* API Location: `backend/src/transactions/transactions.controller.ts` -> `@Get('annual-report')`
+* Service Location: `backend/src/transactions/transactions.service.ts` -> `getAnnualReport()`
+
+--- AGGREGATION PIPELINE ---
+1. Date Bounding: `Jan 1, 00:00:00` to `Dec 31, 23:59:59` of the requested year.
+2. Financials:
+   - Fetches `Bills`, `Purchases`, and `Transactions (EXPENSE)`.
+   - Initializes an array of 12 monthly buckets.
+   - Iterates over all fetched records, using `.getMonth()` on their timestamps 
+     to inject their totals into the respective monthly bucket.
+3. Materials:
+   - Queries the `Material` table counting records where `createdAt` falls in the year.
+   - Queries `ChallanItem` nested inside `Challan` (where type is 'RETURN').
+   - Sums the `damageQuantity` and `shortQuantity` across all returned items.
+4. Payload Construction:
+   Returns a heavily structured `{ financials, materials }` JSON object to feed 
+   the Recharts frontend directly without requiring client-side data restructuring.
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- Dashboard UI Page:     `frontend/src/app/dashboard/accounting/annual-report/page.tsx`
+- Print Layout Page:     `frontend/src/app/dashboard/accounting/annual-report/print/page.tsx`
+- Axios Network Wrapper: `frontend/src/lib/api.ts` -> `fetchAnnualReport`
+- Backend API Router:    `backend/src/transactions/transactions.controller.ts`
+- Backend Service:       `backend/src/transactions/transactions.service.ts`
+================================================================================

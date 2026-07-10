@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { fetchCustomers, fetchLedger, fetchCompany, fetchSuppliers, fetchEmployees } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 import { Autocomplete, AutocompleteItem } from '@/components/ui/autocomplete';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
     Table,
     TableBody,
@@ -161,8 +162,8 @@ export default function LedgerPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">From:</span>
-                    <Input
-                        type="date"
+                    <DatePicker
+                        
                         value={fromDate}
                         onChange={(e) => setFromDate(e.target.value)}
                         className="w-[160px] h-9"
@@ -170,8 +171,8 @@ export default function LedgerPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">To:</span>
-                    <Input
-                        type="date"
+                    <DatePicker
+                        
                         value={toDate}
                         onChange={(e) => setToDate(e.target.value)}
                         className="w-[160px] h-9"

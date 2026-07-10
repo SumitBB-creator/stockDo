@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { Loader2, Save, Receipt as ReceiptIcon, ArrowLeft, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { RateInput } from '@/components/ui/rate-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { fetchCustomers, fetchSuppliers, fetchEmployees, fetchCompany, createTransaction } from '@/lib/api';
@@ -13,6 +14,7 @@ import { Autocomplete, AutocompleteItem } from '@/components/ui/autocomplete';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useRouter } from 'next/navigation';
+import { DatePicker } from '@/components/ui/date-picker';
 
 export default function ReceiptEntryPage() {
     const { toast } = useToast();
@@ -215,9 +217,9 @@ export default function ReceiptEntryPage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="date">Payment Date *</Label>
-                            <Input
+                            <DatePicker
                                 id="date"
-                                type="date"
+                                
                                 value={date}
                                 onChange={(e) => setDate(e.target.value)}
                                 disabled={submitting}
@@ -226,10 +228,8 @@ export default function ReceiptEntryPage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="amount">Amount Received (₹) *</Label>
-                            <Input
+                            <RateInput
                                 id="amount"
-                                type="number"
-                                step="0.01"
                                 placeholder="0.00"
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}

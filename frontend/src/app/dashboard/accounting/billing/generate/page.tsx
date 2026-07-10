@@ -172,7 +172,7 @@ export default function GenerateBillPage() {
                                 <span className="text-primary font-mono text-2xl">₹{previewData.totalAmount.toFixed(2)}</span>
                             </CardTitle>
                             <CardDescription>
-                                Period: {format(new Date(previewData.period.start), 'dd MMM yyyy')} - {format(new Date(previewData.period.end), 'dd MMM yyyy')}
+                                Period: {format(new Date(previewData.period.start), 'dd/MM/yyyy')} - {format(new Date(previewData.period.end), 'dd/MM/yyyy')}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>

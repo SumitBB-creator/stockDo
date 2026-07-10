@@ -1,0 +1,101 @@
+================================================================================
+STOCKDO: CREDIT & DEBIT NOTES EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document covers the Credit and Debit Notes module under the Accounting section.
+Notes are manual adjustments to a customer's (or supplier's) ledger to account for 
+scenarios that fall outside standard billing and receipt workflows. 
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+Credit and Debit Notes are not separate database models; they are inserted into 
+the centralized `Transaction` table with `type: 'CREDIT_NOTE'` or `type: 'DEBIT_NOTE'`.
+
+- CREDIT NOTE: Decreases a customer's balance (We owe them money). Examples include 
+  volume discounts, rebates, or refunding a billing error.
+- DEBIT NOTE: Increases a customer's balance (They owe us money). Examples include 
+  penalties for lost scaffolding, damaged equipment, or late return fees.
+
+Taxable Adjustments:
+If a note is issued against a previously billed (and taxed) invoice, the note itself 
+must accurately adjust the GST components (CGST, SGST, or IGST) to ensure the 
+company's output tax liability is correctly reported in the GST Summary.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACES
+--------------------------------------------------------------------------------
+* List View: `frontend/src/app/dashboard/accounting/notes/page.tsx`
+* Entry Form: `frontend/src/app/dashboard/accounting/notes/new/page.tsx`
+
+--- LIST VIEW LOGIC ---
+1. Data Retrieval:
+   Interestingly, the Notes List leverages the existing `daybook` API endpoint. 
+   It fetches all global transactions for a given date, and then filters client-side 
+   to isolate only `CREDIT_NOTE` and `DEBIT_NOTE` types. It can be further narrowed 
+   by selecting a specific customer.
+2. Actions:
+   - View PDF: Opens a printable A4 layout of the Note.
+   - Delete Note: Makes an API call to `DELETE /transactions/:id`. Since Ledgers 
+     are calculated dynamically via Prisma `groupBy`, deleting the transaction 
+     instantly and perfectly reverses its effect across the entire ERP.
+
+--- CREATION LOGIC ---
+1. Party & Type Selection:
+   Uses an Autocomplete component to select a Customer. The UI dynamically styles 
+   itself (Green for Credit, Red for Debit) based on the Note Type dropdown.
+2. Taxable Checkbox & GST Calculation:
+   - Users can toggle `isTaxable`.
+   - If enabled, the user inputs the Base Taxable Amount, GST Type (CGST+SGST vs IGST), 
+     and GST Rate (5%, 12%, 18%, 28%).
+   - A `useEffect` hook dynamically calculates the split:
+     - `CGST/SGST = (Amount * Rate / 2) / 100`
+     - `IGST = (Amount * Rate) / 100`
+   - The Net Value displayed is the Base Amount + Total GST.
+3. Payload Construction:
+   The frontend bundles the final amount, the breakdown of GST, and the reason text 
+   into the `createTransaction` API payload.
+
+```typescript
+// GST Logic Hook Snippet
+useEffect(() => {
+    if (!isTaxable) { setCgst('0'); setSgst('0'); setIgst('0'); return; }
+    const amt = parseFloat(amount) || 0;
+    const rate = parseFloat(gstRate) || 0;
+
+    if (gstType === 'CGST_SGST') {
+        const tax = (amt * (rate / 2)) / 100;
+        setCgst(tax.toFixed(2)); setSgst(tax.toFixed(2)); setIgst('0');
+    } else {
+        const tax = (amt * rate) / 100;
+        setIgst(tax.toFixed(2)); setCgst('0'); setSgst('0');
+    }
+}, [amount, gstType, gstRate, isTaxable]);
+```
+
+--------------------------------------------------------------------------------
+3. BACKEND SERVICE & DATA INTEGRITY
+--------------------------------------------------------------------------------
+* API Location: `backend/src/transactions/transactions.controller.ts`
+* Service Location: `backend/src/transactions/transactions.service.ts`
+
+The backend `create()` function accepts the `CreateTransactionDto` payload containing 
+the `taxableAmount`, `cgst`, `sgst`, and `igst` fields.
+
+Because the Ledger module's aggregation relies entirely on the `type` and `amount` 
+columns, inserting a `CREDIT_NOTE` instantly reduces the customer's `netDue` on 
+the Dues List, while a `DEBIT_NOTE` increases it.
+
+The separate capture of GST metadata inside the `Transaction` table is crucial for 
+the downstream `GST Summary` module, which aggregates these specific tax fields 
+to file monthly returns.
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- Notes Entry Form:      `frontend/src/app/dashboard/accounting/notes/new/page.tsx`
+- Notes List UI:         `frontend/src/app/dashboard/accounting/notes/page.tsx`
+- Notes Print Layout:    `frontend/src/app/dashboard/accounting/notes/[id]/page.tsx`
+- Axios Network Wrapper: `frontend/src/lib/api.ts` -> `createTransaction`
+- Backend API Router:    `backend/src/transactions/transactions.controller.ts` -> `@Post()`, `@Delete()`
+================================================================================

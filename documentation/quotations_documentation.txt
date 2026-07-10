@@ -1,0 +1,264 @@
+================================================================================
+STOCKDO: QUOTATIONS MANAGEMENT LIFECYCLE EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document provides a highly detailed, file-level architectural and operational
+guide for the Quotations (Estimates & Proposals) Management module of StockDo. It 
+covers every phase of the proposal lifecycle (drafting, editing, version auditing, 
+PDF viewing, and deleting), detailing frontend pages, API models, services, and 
+database schemas.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+The Quotations module represents the "Sales and Pre-Contract negotiation" stage of 
+the customer lifecycle. Staff use it to build detailed price proposals.
+
+Unlike finalized Agreements, a Quotation is non-binding and undergoes active 
+revisions as negotiations progress. To handle this, the system incorporates a
+highly advanced **Quotation Versioning (Audit Trail) Engine** that preserves older 
+negotiated rates whenever a quotation is modified.
+
+Lifecycle stages:
+1. Drafting: Staff initiates a QTN, selecting a Customer and adding items with 
+   custom rental rates.
+2. Review & Negotiating: Quotation is sent to the customer. When adjustments are 
+   requested, staff edit the quotation.
+3. Automated Version Snapping: The backend archives the previous proposal rates 
+   in the version history table as a deep JSON blob and increments the version number.
+4. Acceptance: The customer accepts. The system queries the latest quote rates 
+   to auto-populate a binding Agreement.
+
+--------------------------------------------------------------------------------
+2. DATABASE SCHEMAS & TABLES
+--------------------------------------------------------------------------------
+Mapped in backend/prisma/schema.prisma:
+
+A. Main Header Table: quotations (Model: Quotation)
+Defines the meta parameters of the price proposal.
+* Fields:
+  - id: String (UUID, PK)
+  - quotationId: String (Unique. Sequential ID with 4-digit padding, e.g. "QTN-0001")
+  - customerId: String (UUID, FK linking to customers)
+  - date: DateTime (Proposal date)
+  - status: String (Defaulting to "Draft", can transition to Finalized, Sent, etc.)
+  - version: Int (Defaulting to 1. Increments by 1 on every update)
+  - created_at / updated_at: DateTime
+
+B. Proposal Rates Sheet: quotation_items (Model: QuotationItem)
+Details the negotiated rent rates offered for each material type in a quote.
+* Fields:
+  - id: String (UUID, PK)
+  - quotationId: String (UUID, FK linking to quotations, onDelete: Cascade)
+  - materialId: String (UUID, FK linking to materials)
+  - hireRate: Float (Offered daily rent rate per unit)
+  - damageRecoveryRate: Float (Offered recovery rate for physical material damage)
+  - shortRecoveryRate: Float (Offered recovery rate for missing / unreturned items)
+  - rateAppliedAs: String (Defaulting to "Nos/Days")
+
+C. Version Snapshots Table: quotation_versions (Model: QuotationVersion)
+Acts as the "Negotiation Time-Machine". Keeps historical versions intact.
+* Fields:
+  - id: String (UUID, PK)
+  - quotationId: String (UUID, FK linking to quotations, onDelete: Cascade)
+  - version: Int (The version number index at which the snapshot was taken)
+  - data: Json (Deep-copy snapshot of the Quotation and all nested QuotationItems)
+  - created_at: DateTime
+
+--------------------------------------------------------------------------------
+3. LIFECYCLE PHASES & OPERATIONAL LOGIC
+--------------------------------------------------------------------------------
+
+=== A. CREATING A QUOTATION ===
+* Form Path:
+  frontend/src/app/dashboard/quotation/create/page.tsx
+
+Builds new estimates with a dynamic items calculator:
+1. Customer Autocomplete:
+   Uses the Autocomplete search selector displaying customer names, relative detail
+   descriptions (e.g. "S/O Sumit Kumar"), and full postal addresses.
+2. Date Selection:
+   Integrates a Popover with a shadcn/ui Calendar picker component.
+3. Itemized Proposal Table:
+   - Uses react-hook-form useFieldArray to dynamically add, edit, or remove lines.
+   - On selecting a material type, triggers onMaterialSelect(index, materialId) which
+     looks up global defaults in the material master and pre-fills hireRate,
+     damageRecoveryRate, and shortRecoveryRate.
+   - Autocomplete dropdown restricts duplicate material entries by disabling any 
+     material already added to the table.
+4. Save / Print Options:
+   - "Create Quotation": submits proposal and returns to the general listing.
+   - "Print": saves proposal and forwards to the PDF detail layout immediately.
+
+=== B. EDITING A QUOTATION ===
+* Form Path:
+  frontend/src/app/dashboard/quotation/[id]/edit/page.tsx
+
+Modifies active proposals and generates revision histories:
+1. Version History Link:
+   Exposes a prominent "View History" button mapping directly to the quotation's
+   revision list.
+2. Form Populating:
+   Pre-fills the form fields (Customer, Date, and Items table) based on the specific
+   quotation data loaded during the initial load.
+3. Status Transitions:
+   Allows administrators to set quotation status: "Draft", "Finalized", "Sent",
+   "Accepted", or "Rejected".
+4. Action Triggers:
+   - "Save & View": submits partial updates and routes straight to the PDF viewer.
+   - "Update Quotation": submits updates and returns to the general table.
+
+=== C. QUOTATION VERSION HISTORY AUDITING ===
+* Version Page Path:
+  frontend/src/app/dashboard/quotation/[id]/history/page.tsx
+
+Allows administrators to review past rates and track negotiated changes:
+1. Versions Aggregator:
+   Displays a chronological table listing every historical version alongside the
+   current version. Tracks creation dates, material lines count, and sum total
+   of the daily hire rates.
+2. Advanced Visual Diff Engine (Method: computeDiff):
+   Clicking "View Details" triggers a diff algorithm comparing the selected version
+   against its preceding revision:
+   - Header shifts: Detects customer changes, date changes, and status shifts.
+   - Material shifts: Detects item additions (Item Added: [Material Name]), item
+     deletions (Item Removed: [Material Name]), and rate updates.
+   - Visual Diff Styling: Removed parameters are highlighted with red line-throughs
+     (text-red-500 line-through), and additions are shown in green bold text.
+3. Read-Only Snapshot Previewer:
+   Exposes a "Full Snapshot" toggle that displays the entire historical version 
+   as a static read-only coordinate matrix.
+
+=== D. LEGAL PROPOSAL PREVIEW & PDF VIEW ===
+* Detail View Path:
+  frontend/src/app/dashboard/quotation/[id]/page.tsx
+* Helper Component Path:
+  frontend/src/components/quotation/QuotationDocument.tsx
+
+Generates a print-ready legal document:
+1. Hydration Safety Guard:
+   Loads the React-PDF viewer using dynamic imports with 'ssr: false' to prevent
+   server-to-client mismatch compile crashes.
+2. Context Loading:
+   Uses Promise.all() to concurrently fetch the quotation rates (`fetchQuotation(id)`)
+   and the company credentials (`fetchCompany()`) to build headers.
+3. Proposal Generator:
+   Renders standard letterheads, banking details, terms of payment, material rates 
+   schedules, and signature spaces.
+
+=== E. DELETING A QUOTATION ===
+* List Path:
+  frontend/src/app/dashboard/quotation/page.tsx
+
+Managed simply from the general list:
+1. Confirm Dialog:
+   Prevents accidents via native confirmation prompts.
+2. Relational Cleanups:
+   Postgres foreign-key constraints (onDelete: Cascade) ensure that deleting a 
+   Quotation cleans up its linked quotation_items and quotation_versions instantly.
+
+--------------------------------------------------------------------------------
+4. BACKEND TRANSACTIONAL REVISION ENGINE
+--------------------------------------------------------------------------------
+* Backend Controller: backend/src/quotations/quotations.controller.ts
+* Backend Service:    backend/src/quotations/quotations.service.ts
+
+--- A. Sequence ID Generator (Method: generateQuotationId) ---
+Queries the last inserted quotation row, extracts the numeric value, increments by 1,
+and pads to a 4-digit serial structure:
+`const number = parseInt(parts[1]) + 1;`
+`return QTN-${number.toString().padStart(4, '0')}`
+
+--- B. Transactional Snapshot Revision (Method: update) ---
+Uses an explicit database transaction (this.prisma.$transaction) to guarantee that
+historical records are preserved:
+1. Snapshots active data:
+   Deep-copies existingQuotation details and items, inserting them as a new record 
+   in the QuotationVersion table under the current version index.
+2. Line Reset:
+   Deletes all old QuotationItem rows linked to the quote ID:
+   `await tx.quotationItem.deleteMany({ where: { quotationId: id } })`
+3. Refreshes data:
+   Updates the primary headers, increments the version counter by 1, and inserts
+   the updated items list into the table.
+
+```typescript
+return this.prisma.$transaction(async (tx) => {
+    // 1. Create a snapshot of the current version
+    await tx.quotationVersion.create({
+        data: {
+            quotationId: id,
+            version: existingQuotation.version,
+            data: JSON.parse(JSON.stringify(existingQuotation)),
+        },
+    });
+
+    // 2. Handle Items Update
+    if (items) {
+        await tx.quotationItem.deleteMany({ where: { quotationId: id } });
+    }
+
+    // 3. Update Quotation
+    return tx.quotation.update({
+        where: { id },
+        data: {
+            ...quotationData,
+            version: { increment: 1 },
+            ...(items ? {
+                items: { create: items },
+            } : {}),
+        },
+        include: { items: true },
+    });
+});
+```
+
+--------------------------------------------------------------------------------
+5. API ENDPOINT & CONTROLLER MAPPING
+--------------------------------------------------------------------------------
+Protected under global NestJS JWT authentication guards:
+
+- Fetch Proposals:
+  * Route: GET /quotations
+  * Controller: findAll()
+  * Wrapper: fetchQuotations()
+- Fetch Proposal Details:
+  * Route: GET /quotations/:id
+  * Controller: findOne(@Param('id'))
+  * Wrapper: fetchQuotation(id)
+- Fetch Customer Proposal:
+  * Route: GET /quotations/latest/:customerId
+  * Controller: findLatestByCustomer(@Param('customerId'))
+  * Wrapper: fetchLatestQuotationByCustomer(customerId)
+- Create Proposal:
+  * Route: POST /quotations
+  * Controller: create(@Body() payload)
+  * Wrapper: createQuotation(payload)
+- Update Proposal:
+  * Route: PATCH /quotations/:id
+  * Controller: update(@Param('id'), @Body() payload)
+  * Wrapper: updateQuotation(id, payload)
+- Fetch Revisions list:
+  * Route: GET /quotations/:id/versions
+  * Controller: getVersions(@Param('id'))
+  * Wrapper: fetchQuotationVersions(id)
+- Delete Proposal:
+  * Route: DELETE /quotations/:id
+  * Controller: remove(@Param('id'))
+  * Wrapper: deleteQuotation(id)
+
+--------------------------------------------------------------------------------
+6. DIRECTORY AND FILE QUICK REFERENCE
+--------------------------------------------------------------------------------
+* Main Listing View:      frontend/src/app/dashboard/quotation/page.tsx
+* Creation Form Page:     frontend/src/app/dashboard/quotation/create/page.tsx
+* Edit Form Page:         frontend/src/app/dashboard/quotation/[id]/edit/page.tsx
+* PDF Viewer Page:        frontend/src/app/dashboard/quotation/[id]/page.tsx
+* Version History Page:   frontend/src/app/dashboard/quotation/[id]/history/page.tsx
+* PDF Render Component:   frontend/src/components/quotation/QuotationDocument.tsx
+* Backend Controller:     backend/src/quotations/quotations.controller.ts
+* Backend Service:        backend/src/quotations/quotations.service.ts
+* Create Validation DTO:  backend/src/quotations/dto/create-quotation.dto.ts
+* Update Validation DTO:  backend/src/quotations/dto/update-quotation.dto.ts
+* Database Schema Models: backend/prisma/schema.prisma
+================================================================================

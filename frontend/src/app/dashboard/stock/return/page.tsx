@@ -119,7 +119,7 @@ export default function ReturnListPage() {
                             filteredChallans.map((challan) => (
                                 <TableRow key={challan.id} className="hover:bg-muted/50 transition-colors">
                                     <TableCell className="font-medium">{challan.challanNumber}</TableCell>
-                                    <TableCell>{format(new Date(challan.date), 'dd MMM yyyy')}</TableCell>
+                                    <TableCell>{format(new Date(challan.date), 'dd/MM/yyyy')}</TableCell>
                                     <TableCell>
                                         <div className="font-medium">{challan.customer?.name}</div>
                                         <div className="text-xs text-muted-foreground truncate max-w-[250px]">

@@ -1,0 +1,106 @@
+================================================================================
+STOCKDO: PRINT FILTERS (BULK BILLING) EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document covers the Print Filters section under the Accounting module.
+This feature enables accountants to query, filter, and batch-print multiple 
+invoices across various temporal and relational parameters (e.g., specific 
+customers, entire months, or a whole financial year).
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+While standard billing workflows deal with a single invoice generation and 
+printing lifecycle, the "Print Filters" module provides a bulk-operation dashboard.
+
+The module allows the user to construct a complex search query:
+- Year
+- Month & Year
+- Customer & Year
+- Customer & Month-Year
+- Multiple Customers (Comma separated IDs)
+
+The results populate a data grid with checkboxes, allowing users to toggle 
+`selectedBillIds`. Upon triggering "Print Selected", the frontend routes to a 
+specialized bulk-print endpoint (`/print-bulk`) that iterates through the 
+selected IDs, rendering consecutive React-PDF invoice documents.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* File Location: `frontend/src/app/dashboard/accounting/print-bill/page.tsx`
+
+--- UI LIFE-CYCLE ---
+1. Base Data Loading: 
+   On mount, `fetchCustomers()` is called to populate the autocomplete dropdowns.
+2. Filter Selection: 
+   Users choose from a `FILTER_OPTIONS` dropdown (e.g. 'Customer & Year'). Based 
+   on this selection, the UI conditionally renders dropdowns for selecting the 
+   Year, Month, or Customer.
+3. Search Execution: 
+   Clicking "Search" validates the conditionally required fields and triggers 
+   `fetchFilteredBills(...)`. The results are stored in local state (`bills`).
+4. Row Selection: 
+   Users can click individual row checkboxes or a master "Select All" checkbox. 
+   The selections are managed via a `Set<string>` (the `selectedBillIds` state).
+5. Bulk Routing: 
+   Clicking "Print Selected" redirects the user to:
+   `/dashboard/accounting/billing/print-bulk?ids=uuid1,uuid2,uuid3...`
+
+--------------------------------------------------------------------------------
+3. BACKEND QUERY ENGINE & API
+--------------------------------------------------------------------------------
+* API Location: `backend/src/billing/billing.controller.ts`
+* Service Location: `backend/src/billing/billing.service.ts`
+
+The endpoint `GET /billing/filter` processes the dynamic query parameters.
+
+--- QUERY LOGIC (Prisma) ---
+The `getFilteredBills` method dynamically constructs a `whereClause` based on 
+the incoming filters:
+- Dates: Constructs `gte` (Greater Than or Equal) and `lte` (Less Than or Equal) 
+  boundaries.
+  - If a specific `Month` and `Year` is provided, it isolates the 1st to the 
+    last day of that month.
+  - If only `Year` is provided, it spans `January 1` to `December 31`.
+- Customer: Uses exact match if `customerId` is provided. If `customerIds` is 
+  provided (for batching multiple accounts), it splits the string and uses the 
+  `in` operator.
+- State filtering: Hard-codes `status: { not: 'CANCELLED' }` to ensure voided 
+  bills are never pulled into the print queue.
+
+```typescript
+// backend/src/billing/billing.service.ts
+async getFilteredBills(filters: { year?: string; month?: string; customerId?: string; customerIds?: string; fromDate?: string; toDate?: string }) {
+    const whereClause: any = { status: { not: 'CANCELLED' } };
+
+    if (filters.year) {
+        const yearNum = parseInt(filters.year);
+        if (filters.month) {
+            const monthNum = parseInt(filters.month);
+            whereClause.dateFrom = { gte: new Date(yearNum, monthNum - 1, 1) };
+            whereClause.dateTo = { lte: new Date(yearNum, monthNum, 0, 23, 59, 59) };
+        } else {
+            whereClause.dateFrom = { gte: new Date(yearNum, 0, 1) };
+            whereClause.dateTo = { lte: new Date(yearNum, 11, 31, 23, 59, 59) };
+        }
+    }
+
+    if (filters.customerId) whereClause.customerId = filters.customerId;
+
+    return this.prisma.bill.findMany({
+        where: whereClause,
+        include: { customer: true, items: true },
+        orderBy: { dateFrom: 'desc' }
+    });
+}
+```
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- Dashboard UI Page:     `frontend/src/app/dashboard/accounting/print-bill/page.tsx`
+- Axios Network Wrapper: `frontend/src/lib/api.ts` -> `fetchFilteredBills`
+- Backend API Router:    `backend/src/billing/billing.controller.ts` -> `@Get('filter')`
+- Backend Service:       `backend/src/billing/billing.service.ts` -> `getFilteredBills()`
+================================================================================

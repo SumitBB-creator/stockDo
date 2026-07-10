@@ -1,0 +1,1005 @@
+================================================================================
+STOCKDO: MONTHLY & CUSTOM BILLING SYSTEM EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document provides a highly detailed, file-level architectural and operational
+guide for the Monthly and Custom Billing module of StockDo. It describes each visual 
+interface section, the day-by-day FIFO rental lease calculation engine, the database 
+schemas, frontend controller page codes, PDF print layout templates, backend services, 
+and API endpoints.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW & LEASE BILLING SYSTEM
+--------------------------------------------------------------------------------
+The Billing System is the financial engine of StockDo. Unlike simple sales systems, 
+renting scaffolding and shuttering assets requires tracking fluctuating site balances 
+across a calendar timeline. Materials are continuously dispatched (ISSUE) and returned 
+(RETURN) during a billing period, which makes static monthly multiplication inaccurate.
+
+To address this, StockDo implements a day-by-day FIFO calculation system:
+
+- Dynamic Lease Billing Period:
+  Bills are typically generated for a standard calendar month (e.g., May 2026), 
+  but the engine also supports custom date range invoicing (e.g., 15-May to 10-June).
+
+- Day-by-Day Balance Tracking:
+  For each material, the system traces the chronological balance held on-site. 
+  Whenever an item balance changes due to a challan on a specific date, the active period 
+  is closed, calculating the quantity-days (Unit-Days) rent accrued:
+  $$\text{Quantity-Days} = \text{Material Balance} \times \text{Period Span in Days}$$
+  $$\text{Accrued Item Rent} = \text{Quantity-Days} \times \text{Daily Hire Rate}$$
+
+--- FIFO LEASE ALLOCATION ALGORITHM ---
+To calculate bills, the billing service reconstructs customer balances using a First-In, 
+First-Out (FIFO) queue model:
+1. Replay Opening Balance:
+   The system queries all historical challans dated *before* the billing period's 
+   start date. `ISSUE` quantities increase the balance, while `RETURN` quantities 
+   decrease it. The net balances are loaded as "Opening Stock" on day 1.
+2. Daily Replay & Period Splitting:
+   The system steps day-by-day through the billing range.
+   - If an `ISSUE` challan is detected, it is appended as an active issue queue entry, 
+     increasing the material balance.
+   - If a `RETURN` challan is detected, it deducts the returned quantity from the 
+     oldest active issue queue entry first.
+   - If a material balance changes on a day, the active period is closed, logged, 
+     and a new period begins.
+3. Quantify & Aggregate Rent:
+   All closed periods are converted into line items detailing: Material, Period, 
+   Site Balance, Days, Unit-Days, Hire Rate, and accrued Rent. The sum yields the 
+   sub-total hire charges.
+
+--- AUTOMATED TAX (GST) ENGINE ---
+The billing engine automatically calculates tax and charges during finalization based on 
+company settings and customer addresses:
+- GST Rate: Applied if the company has a valid `GSTIN` configured. Defaults to $18\%$.
+- Tax Type Selection (State-wise Rules):
+  The system compares the Company State with the Customer Office State (trimmed, 
+  case-insensitive):
+  - Same State $\rightarrow$ **Intra-State**: `CGST` ($9\%$) + `SGST` ($9\%$) applied.
+  - Different State $\rightarrow$ **Inter-State**: `IGST` ($18\%$) applied.
+- GST-on-Transportation Toggle:
+  If the `gstOnTransportation` setting is enabled in Company settings, CGST/SGST/IGST 
+  taxes are calculated on: Subtotal + Transportation Costs + Green Taxes.
+  If disabled, taxes are calculated strictly on the rental subtotal alone.
+
+--- DOUBLE-ENTRY LEDGER INTEGRATION ---
+To ensure financial statements match billing, finalizing a bill executes a database 
+`$transaction` that:
+1. Creates the `Bill` record and sequential `BillItem` child lines.
+2. Generates a unique, padded sequential invoice number: `BILLXXXXX`.
+3. Automatically posts a `Transaction` row to the customer's ledger account, debiting 
+   the invoice `grandTotal` amount on the cycle end date.
+
+--------------------------------------------------------------------------------
+2. DATABASE RELATIONAL MODELS
+--------------------------------------------------------------------------------
+Billing data is stored in the `Bill`, `BillItem`, and `Transaction` tables.
+
+* Schema File Location: [schema.prisma](file:///c:/Users/lenovo/Desktop/stockDo/backend/prisma/schema.prisma)
+
+1. Model: Bill (`bills` table)
+   - id: String (UUID, PK)
+   - billNumber: String (Unique. Padded serial number: e.g. BILL00001)
+   - customerId: String (UUID, FK to customers)
+   - dateFrom / dateTo: DateTime (Billing cycle coverage range)
+   - generationDate: DateTime (Invoice issuance timestamp)
+   - totalAmount: Float (Sub-total hire charges before taxes)
+   - taxableAmount: Float (Amount used as base for GST calculation)
+   - transportationCount: Int (Number of challans incurring logistics costs)
+   - transportationCost: Float (Total transportation cost aggregated from challans)
+   - greenTaxCount: Int (Number of challans incurring green taxes)
+   - greenTax: Float (Total green tax aggregated from challans)
+   - gstType: String? (Value: 'CGST_SGST' or 'IGST' or null)
+   - gstRate: Float (Tax rate applied e.g., 18.0)
+   - cgst / sgst / igst: Float (Tax charge breakdowns)
+   - grandTotal: Float (Final total invoice amount including GST)
+   - status: BillStatus (Enum value: 'DRAFT', 'FINALIZED', 'PAID', 'CANCELLED')
+   - items: BillItem[] (Nested invoice line items)
+
+2. Model: BillItem (`bill_items` table)
+   - id: String (UUID, PK)
+   - billId: String (UUID, FK to bills, onDelete: Cascade)
+   - description: String (Material title details)
+   - quantity: Float (Total accrued Unit-Days)
+   - rate: Float (Daily rental rate)
+   - amount: Float (Accrued amount: `quantity * rate`)
+   - materialId: String? (UUID, FK to materials)
+   - fromDate / toDate: DateTime (Accrual period boundary)
+   - balance: Float (Site balance held during this sub-period)
+   - days: Int (Day span of this sub-period)
+
+3. Model: Transaction (`transactions` table)
+   - id: String (UUID, PK)
+   - ledgerAccountId: String (UUID, FK to customer's ledger account)
+   - date: DateTime (Transaction entry timestamp)
+   - type: TransactionType (Value: 'BILL')
+   - amount: Float (Debit total invoice value: matches grandTotal)
+   - referenceId: String? (UUID, FK reference to the finalized bill)
+   - transactionNumber: String? (Auto-generated code e.g. R-0001)
+   - description: String (descriptive memo tracking billing period)
+
+--------------------------------------------------------------------------------
+3. BACKEND SERVICES & CALCULATION ENGINE
+--------------------------------------------------------------------------------
+
+--- A. REST API CONTROLLER ---
+* File Location: [billing.controller.ts](file:///c:/Users/lenovo/Desktop/stockDo/backend/src/billing/billing.controller.ts)
+Handles query and mutation routes, delegating logic to the billing service:
+
+```typescript
+import { Controller, Get, Post, Patch, Body, Query, Param } from '@nestjs/common';
+import { BillingService } from './billing.service';
+
+@Controller('billing')
+export class BillingController {
+    constructor(private readonly billingService: BillingService) { }
+
+    // List unbilled customers for a month
+    @Get('unbilled')
+    async getUnbilledCustomers(
+        @Query('month') month: number,
+        @Query('year') year: number,
+    ) {
+        return this.billingService.getUnbilledCustomers(Number(month), Number(year));
+    }
+
+    // Preview bill for a single customer
+    @Get('preview')
+    async previewBill(
+        @Query('customerId') customerId: string,
+        @Query('month') month: number,
+        @Query('year') year: number,
+    ) {
+        return this.billingService.generateBill(customerId, Number(month), Number(year));
+    }
+
+    // List finalized bills for a month
+    @Get()
+    async getBillsByMonth(
+        @Query('month') month: number,
+        @Query('year') year: number,
+    ) {
+        return this.billingService.getBillsByMonth(Number(month), Number(year));
+    }
+
+    // Filter finalized bills based on dynamic parameters
+    @Get('filter')
+    async getFilteredBills(
+        @Query('year') year?: string,
+        @Query('month') month?: string,
+        @Query('customerId') customerId?: string,
+        @Query('customerIds') customerIds?: string,
+        @Query('fromDate') fromDate?: string,
+        @Query('toDate') toDate?: string,
+    ) {
+        return this.billingService.getFilteredBills({ year, month, customerId, customerIds, fromDate, toDate });
+    }
+
+    // Get a single bill by ID
+    @Get(':id')
+    async getBillById(@Param('id') id: string) {
+        return this.billingService.getBillById(id);
+    }
+
+    // Finalize bills for selected customers
+    @Post('finalize')
+    async finalizeBills(@Body() data: { customerIds: string[], month: number, year: number }) {
+        return this.billingService.finalizeBills(data.customerIds, data.month, data.year);
+    }
+
+    // Custom date range preview
+    @Post('custom-preview')
+    async customPreview(@Body() data: { customerId: string, fromDate: string, toDate: string }) {
+        return this.billingService.generateBillCustomRange(data.customerId, new Date(data.fromDate), new Date(data.toDate));
+    }
+
+    // Finalize a custom date range bill
+    @Post('finalize-custom')
+    async finalizeCustomBill(@Body() data: { customerId: string, fromDate: string, toDate: string }) {
+        return this.billingService.finalizeCustomBill(data.customerId, new Date(data.fromDate), new Date(data.toDate));
+    }
+
+    // Cancel a bill
+    @Patch(':id/cancel')
+    async cancelBill(@Param('id') id: string) {
+        return this.billingService.cancelBill(id);
+    }
+}
+```
+
+--- B. CORE BILLING SERVICE ---
+* File Location: [billing.service.ts](file:///c:/Users/lenovo/Desktop/stockDo/backend/src/billing/billing.service.ts)
+
+This service manages the FIFO calculation engine, tax selection rules, 
+automatic invoice serial numbering, and database ledger posting.
+
+```typescript
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { startOfDay, addDays, isBefore, differenceInDays, format } from 'date-fns';
+
+@Injectable()
+export class BillingService {
+    constructor(private prisma: PrismaService) { }
+
+    /**
+     * List all customers with active agreements who haven't been billed for the given month.
+     */
+    async getUnbilledCustomers(month: number, year: number) {
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0); // Last day of month
+        const today = new Date();
+        const toDate = isBefore(today, endDate) ? today : endDate;
+
+        // Get all customers with active agreements
+        const agreements = await this.prisma.agreement.findMany({
+            where: { status: 'Active' },
+            include: { customer: true },
+        });
+
+        // Get all bills for this month (non-cancelled)
+        const existingBills = await this.prisma.bill.findMany({
+            where: {
+                dateFrom: { gte: startDate },
+                dateTo: { lte: endDate },
+                status: { not: 'CANCELLED' },
+            },
+        });
+
+        const billedCustomerIds = new Set(existingBills.map(b => b.customerId));
+
+        // Get customers who have at least one ISSUE challan on or before the end of the billing month
+        const challans = await this.prisma.challan.findMany({
+            where: {
+                type: 'ISSUE',
+                date: { lte: toDate },
+            },
+            select: { customerId: true },
+        });
+
+        const customersWithStock = new Set(challans.map(c => c.customerId));
+
+        // Filter to only those without an existing bill
+        const unbilledAgreements = agreements.filter(a => !billedCustomerIds.has(a.customerId) && customersWithStock.has(a.customerId));
+
+        const billableCustomers: any[] = [];
+
+        // Run a lightweight preview calculation to ensure they actually have a bill > 0 this month
+        for (const a of unbilledAgreements) {
+            try {
+                const preview = await this.generateBill(a.customerId, month, year);
+                // Only include if there is actually an amount to bill (rent + transport + green tax)
+                const checkTotal = preview.totalAmount + (preview.transportationCost || 0) + (preview.greenTax || 0);
+                if (checkTotal > 0) {
+                    billableCustomers.push({
+                        customerId: a.customerId,
+                        customer: a.customer,
+                        agreementId: a.id,
+                        fromDate: preview.period.start,
+                        toDate: preview.period.end,
+                    });
+                }
+            } catch (error) {
+                // If generation errors out (e.g. no agreement items found), skip them
+                continue;
+            }
+        }
+
+        return billableCustomers;
+    }
+
+    /**
+     * List all bills for a given month.
+     */
+    async getBillsByMonth(month: number, year: number) {
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0);
+
+        const bills = await this.prisma.bill.findMany({
+            where: {
+                dateFrom: { gte: startDate },
+                dateTo: { lte: endDate },
+            },
+            include: {
+                customer: true,
+                items: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        // Manually fetch materials and map HSN/SAC
+        const materialIds = new Set<string>();
+        bills.forEach(b => b.items.forEach(i => i.materialId && materialIds.add(i.materialId)));
+
+        const materials = await this.prisma.material.findMany({
+            where: { id: { in: Array.from(materialIds) } },
+            select: { id: true, hsn: true, sac: true }
+        });
+
+        const matMap = new Map(materials.map(m => [m.id, m]));
+
+        bills.forEach(b => {
+            b.items = b.items.map(item => {
+                const mat = item.materialId ? matMap.get(item.materialId) : null;
+                return { ...item, hsn: mat?.hsn || mat?.sac || '' };
+            });
+        });
+
+        return bills;
+    }
+
+    /**
+     * Dynamically filter finalized bills based on optional parameters.
+     */
+    async getFilteredBills(filters: { year?: string; month?: string; customerId?: string; customerIds?: string; fromDate?: string; toDate?: string }) {
+        const whereClause: any = { status: { not: 'CANCELLED' } };
+
+        if (filters.fromDate && filters.toDate) {
+            whereClause.dateTo = {
+                gte: new Date(filters.fromDate),
+                lte: new Date(filters.toDate),
+            };
+        } else if (filters.year) {
+            const yearNum = parseInt(filters.year);
+            const startOfYear = new Date(yearNum, 0, 1);
+            const endOfYear = new Date(yearNum, 11, 31, 23, 59, 59);
+
+            if (filters.month) {
+                const monthNum = parseInt(filters.month);
+                const startOfMonth = new Date(yearNum, monthNum - 1, 1);
+                const endOfMonth = new Date(yearNum, monthNum, 0, 23, 59, 59);
+                whereClause.dateFrom = { gte: startOfMonth };
+                whereClause.dateTo = { lte: endOfMonth };
+            } else {
+                whereClause.dateFrom = { gte: startOfYear };
+                whereClause.dateTo = { lte: endOfYear };
+            }
+        }
+
+        if (filters.customerId) {
+            whereClause.customerId = filters.customerId;
+        }
+
+        if (filters.customerIds) {
+            const idsList = filters.customerIds.split(',').map(id => id.trim()).filter(id => id !== '');
+            if (idsList.length > 0) {
+                whereClause.customerId = { in: idsList };
+            }
+        }
+
+        const bills = await this.prisma.bill.findMany({
+            where: whereClause,
+            include: {
+                customer: true,
+                items: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        // Manually fetch materials and map HSN/SAC
+        const materialIds = new Set<string>();
+        bills.forEach(b => b.items.forEach(i => i.materialId && materialIds.add(i.materialId)));
+
+        if (materialIds.size > 0) {
+            const materials = await this.prisma.material.findMany({
+                where: { id: { in: Array.from(materialIds) } },
+                select: { id: true, hsn: true, sac: true }
+            });
+
+            const matMap = new Map(materials.map(m => [m.id, m]));
+
+            bills.forEach(b => {
+                b.items = b.items.map(item => {
+                    const mat = item.materialId ? matMap.get(item.materialId) : null;
+                    return { ...item, hsn: mat?.hsn || mat?.sac || '' };
+                });
+            });
+        }
+
+        return bills;
+    }
+
+    /**
+     * Get a single bill by ID with all details.
+     */
+    async getBillById(id: string) {
+        const bill = await this.prisma.bill.findUnique({
+            where: { id },
+            include: {
+                customer: true,
+                items: true,
+            },
+        });
+
+        if (!bill) {
+            throw new NotFoundException('Bill not found');
+        }
+
+        const materialIds = bill.items.filter(i => i.materialId).map(i => i.materialId as string);
+        if (materialIds.length > 0) {
+            const materials = await this.prisma.material.findMany({
+                where: { id: { in: materialIds } },
+                select: { id: true, hsn: true, sac: true }
+            });
+            const matMap = new Map(materials.map(m => [m.id, m]));
+            bill.items = bill.items.map(item => {
+                const mat = item.materialId ? matMap.get(item.materialId) : null;
+                return { ...item, hsn: mat?.hsn || mat?.sac || '' };
+            });
+        }
+
+        return bill;
+    }
+
+    /**
+     * Generate bill preview for a customer for a given month.
+     */
+    async generateBill(customerId: string, month: number, year: number) {
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0);
+        const today = new Date();
+        const toDate = isBefore(today, endDate) ? today : endDate;
+
+        // Fetch Customer & Agreement
+        const agreement = await this.prisma.agreement.findFirst({
+            where: { customerId, status: 'Active' },
+            include: { items: { include: { material: true } } },
+        });
+
+        if (!agreement) {
+            throw new NotFoundException('No active agreement found for this customer');
+        }
+
+        // Map Item Rates & Material Names
+        const rates = new Map<string, { rate: number, name: string, unit: string, hsn: string, sac: string }>();
+        agreement.items.forEach(item => {
+            rates.set(item.materialId, {
+                rate: item.hireRate,
+                name: item.material.name,
+                unit: item.rateAppliedAs || 'Nos/Days',
+                hsn: item.material.hsn || '',
+                sac: item.material.sac || '',
+            });
+        });
+
+        // Fetch Stock Movements (Challans) up to toDate
+        const challans = await this.prisma.challan.findMany({
+            where: {
+                customerId,
+                date: { lte: toDate },
+            },
+            include: { items: true },
+            orderBy: { date: 'asc' },
+        });
+
+        // Calculate Daily Balances & Rent
+        const periodData = this.calculateHandlingPeriods(startDate, toDate, challans, rates);
+
+        const transportationCost = challans.reduce((sum, c) => sum + (c.transportationCost || 0), 0);
+        const transportationCount = challans.filter(c => c.transportationCost && c.transportationCost > 0).length;
+
+        const greenTax = challans.reduce((sum, c) => sum + (c.greenTax || 0), 0);
+        const greenTaxCount = challans.filter(c => c.greenTax && c.greenTax > 0).length;
+
+        return {
+            customerId,
+            ...periodData,
+            transportationCost,
+            transportationCount,
+            greenTax,
+            greenTaxCount,
+            generatedAt: new Date(),
+        };
+    }
+
+    /**
+     * Generate bill for a customer with a custom date range.
+     */
+    async generateBillCustomRange(customerId: string, fromDate: Date, toDate: Date) {
+        const startDate = new Date(fromDate);
+        const endDate = new Date(toDate);
+
+        const agreement = await this.prisma.agreement.findFirst({
+            where: { customerId, status: 'Active' },
+            include: { items: { include: { material: true } } },
+        });
+
+        if (!agreement) {
+            throw new NotFoundException('No active agreement found for this customer');
+        }
+
+        const rates = new Map<string, { rate: number, name: string, unit: string, hsn: string, sac: string }>();
+        agreement.items.forEach(item => {
+            rates.set(item.materialId, {
+                rate: item.hireRate,
+                name: item.material.name,
+                unit: item.rateAppliedAs || 'Nos/Days',
+                hsn: item.material.hsn || '',
+                sac: item.material.sac || '',
+            });
+        });
+
+        const challans = await this.prisma.challan.findMany({
+            where: { customerId, date: { lte: endDate } },
+            include: { items: true },
+            orderBy: { date: 'asc' },
+        });
+
+        const periodData = this.calculateHandlingPeriods(startDate, endDate, challans, rates);
+
+        const transportationCost = challans.reduce((sum, c) => sum + (c.transportationCost || 0), 0);
+        const transportationCount = challans.filter(c => c.transportationCost && c.transportationCost > 0).length;
+
+        const greenTax = challans.reduce((sum, c) => sum + (c.greenTax || 0), 0);
+        const greenTaxCount = challans.filter(c => c.greenTax && c.greenTax > 0).length;
+
+        return {
+            customerId,
+            ...periodData,
+            transportationCost,
+            transportationCount,
+            greenTax,
+            greenTaxCount,
+            generatedAt: new Date(),
+        };
+    }
+
+    /**
+     * Finalize a custom date range bill (preview + create in one step).
+     */
+    async finalizeCustomBill(customerId: string, fromDate: Date, toDate: Date) {
+        const preview = await this.generateBillCustomRange(customerId, fromDate, toDate);
+        return this.createBill({
+            customerId,
+            dateFrom: preview.period.start,
+            dateTo: preview.period.end,
+            totalAmount: preview.totalAmount,
+            transportationCost: preview.transportationCost,
+            transportationCount: preview.transportationCount,
+            greenTax: preview.greenTax,
+            greenTaxCount: preview.greenTaxCount,
+            items: preview.items,
+        });
+    }
+
+    private calculateHandlingPeriods(
+        startDate: Date,
+        endDate: Date,
+        challans: any[],
+        rates: Map<string, { rate: number, name: string, unit: string, hsn: string, sac: string }>
+    ) {
+        const billItems: any[] = [];
+
+        // stockState tracks open issues per material.
+        const stockState = new Map<string, { challanNumber: string, date: Date, balance: number }[]>();
+
+        // Helper to apply challans to stockState
+        const applyChallanList = (challanList: any[]) => {
+            challanList.forEach(challan => {
+                if (challan.type === 'ISSUE') {
+                    challan.items.forEach((i: any) => {
+                        const issues = stockState.get(i.materialId) || [];
+                        const challanDate = startOfDay(new Date(challan.date));
+
+                        const existing = issues.find(iss => startOfDay(iss.date).getTime() === challanDate.getTime());
+
+                        if (existing) {
+                            existing.balance += i.quantity;
+                            if (challan.challanNumber && !existing.challanNumber.includes(challan.challanNumber)) {
+                                if (existing.challanNumber === 'Opening') {
+                                    existing.challanNumber = challan.challanNumber;
+                                } else {
+                                    existing.challanNumber += `, ${challan.challanNumber}`;
+                                }
+                            }
+                        } else {
+                            issues.push({
+                                challanNumber: challan.challanNumber || 'Opening',
+                                date: new Date(challan.date),
+                                balance: i.quantity
+                            });
+                        }
+                        stockState.set(i.materialId, issues);
+                    });
+                } else if (challan.type === 'RETURN') {
+                    challan.items.forEach((i: any) => {
+                        let returnQty = i.quantity;
+                        const issues = stockState.get(i.materialId) || [];
+                        // Deduct from oldest (index 0) - FIFO rule
+                        for (let j = 0; j < issues.length && returnQty > 0; j++) {
+                            if (issues[j].balance > 0) {
+                                const deduct = Math.min(issues[j].balance, returnQty);
+                                issues[j].balance -= deduct;
+                                returnQty -= deduct;
+                            }
+                        }
+                    });
+                }
+            });
+        };
+
+        // 1. Replay history before startDate to load opening balances
+        const historyChallans = challans.filter(c => isBefore(startOfDay(new Date(c.date)), startOfDay(startDate)));
+        applyChallanList(historyChallans);
+
+        const hasOpeningStock = Array.from(stockState.values()).some(issues => issues.some(iss => iss.balance > 0));
+        let actualStartDate = startDate;
+
+        if (!hasOpeningStock) {
+            const firstChallanInPeriod = challans.find(c => !isBefore(new Date(c.date), startDate) && new Date(c.date) <= endDate);
+            if (firstChallanInPeriod) {
+                actualStartDate = new Date(firstChallanInPeriod.date);
+            }
+        }
+
+        let currentDate = new Date(actualStartDate);
+
+        // Key: `${materialId}|${challanNumber}`
+        const activePeriods = new Map<string, { fromDate: Date, balance: number }>();
+
+        // Set initial active periods based on opening stock
+        stockState.forEach((issues, materialId) => {
+            issues.forEach(iss => {
+                if (iss.balance > 0) {
+                    const periodKey = `${materialId}|${iss.challanNumber}`;
+                    activePeriods.set(periodKey, { fromDate: new Date(actualStartDate), balance: iss.balance });
+                }
+            });
+        });
+
+        const closePeriod = (periodKey: string, toDate: Date) => {
+            const active = activePeriods.get(periodKey);
+            if (active && active.balance > 0) {
+                const isFullMonth = startOfDay(active.fromDate).getTime() <= startOfDay(actualStartDate).getTime()
+                    && startOfDay(toDate).getTime() >= startOfDay(endDate).getTime();
+
+                const baseDays = differenceInDays(startOfDay(toDate), startOfDay(active.fromDate));
+                const days = isFullMonth ? baseDays + 1 : baseDays;
+
+                if (days > 0) {
+                    const [materialId, challanNumber] = periodKey.split('|');
+                    const rateInfo = rates.get(materialId);
+                    const rate = rateInfo?.rate || 0;
+                    const no = active.balance * days;
+
+                    const matName = rateInfo?.name || 'Unknown';
+                    const description = matName;
+
+                    billItems.push({
+                        materialId,
+                        materialName: matName,
+                        challanNumber,
+                        description,
+                        hsn: rateInfo?.hsn || rateInfo?.sac || '',
+                        fromDate: active.fromDate,
+                        toDate: toDate,
+                        balance: active.balance,
+                        days,
+                        quantityDays: no,
+                        rate,
+                        amount: no * rate,
+                        unit: rateInfo?.unit || 'Nos/Days'
+                    });
+                }
+            }
+        };
+
+        while (currentDate <= endDate) {
+            const daysChallans = challans.filter(c =>
+                startOfDay(new Date(c.date)).getTime() === startOfDay(currentDate).getTime()
+            );
+
+            if (daysChallans.length > 0) {
+                applyChallanList(daysChallans);
+
+                stockState.forEach((issues, materialId) => {
+                    issues.forEach(iss => {
+                        const periodKey = `${materialId}|${iss.challanNumber}`;
+                        const currentActive = activePeriods.get(periodKey);
+
+                        if (currentActive) {
+                            if (currentActive.balance !== iss.balance) {
+                                if (currentDate > currentActive.fromDate) {
+                                    closePeriod(periodKey, addDays(currentDate, -1));
+                                }
+
+                                if (iss.balance > 0) {
+                                    activePeriods.set(periodKey, { fromDate: new Date(currentDate), balance: iss.balance });
+                                } else {
+                                    activePeriods.delete(periodKey);
+                                }
+                            }
+                        } else if (iss.balance > 0) {
+                            // New issue
+                            activePeriods.set(periodKey, { fromDate: new Date(currentDate), balance: iss.balance });
+                        }
+                    });
+                });
+            }
+
+            currentDate = addDays(currentDate, 1);
+        }
+
+        activePeriods.forEach((_val, periodKey) => {
+            closePeriod(periodKey, endDate);
+        });
+
+        billItems.sort((a, b) => {
+            if (a.materialName !== b.materialName) return a.materialName.localeCompare(b.materialName);
+            if (a.challanNumber !== b.challanNumber) return (a.challanNumber || '').localeCompare(b.challanNumber || '');
+            return a.fromDate.getTime() - b.fromDate.getTime();
+        });
+
+        const totalAmount = billItems.reduce((sum, item) => sum + item.amount, 0);
+
+        return {
+            period: { start: startDate, end: endDate },
+            items: billItems,
+            totalAmount
+        };
+    }
+
+    /**
+     * Finalize bills for multiple customers at once.
+     */
+    async finalizeBills(customerIds: string[], month: number, year: number) {
+        const results: any[] = [];
+
+        for (const customerId of customerIds) {
+            try {
+                const preview = await this.generateBill(customerId, month, year);
+                const bill = await this.createBill({
+                    customerId,
+                    dateFrom: preview.period.start,
+                    dateTo: preview.period.end,
+                    totalAmount: preview.totalAmount,
+                    transportationCost: preview.transportationCost,
+                    transportationCount: preview.transportationCount,
+                    greenTax: preview.greenTax,
+                    greenTaxCount: preview.greenTaxCount,
+                    items: preview.items,
+                });
+                results.push({ customerId, success: true, bill });
+            } catch (error: any) {
+                results.push({ customerId, success: false, error: error.message });
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * Save Bill to DB with GST calculation and post a ledger Transaction.
+     */
+    async createBill(data: any) {
+        return this.prisma.$transaction(async (tx) => {
+            const count = await tx.bill.count();
+            const billNumber = `BILL${String(count + 1).padStart(5, '0')}`;
+
+            // Fetch company and customer to compare states
+            const company = await tx.company.findFirst();
+            const customer = await tx.customer.findUnique({ where: { id: data.customerId } });
+
+            const companyState = (company?.state || '').trim().toLowerCase();
+            const customerState = (customer?.officeState || '').trim().toLowerCase();
+
+            const hasGst = Boolean(company?.gstin && company.gstin.trim() !== '');
+            const gstOnTransport = Boolean(hasGst && company?.gstOnTransportation);
+
+            const GST_RATE = hasGst ? 18 : 0;
+
+            const subTotal = data.totalAmount;
+            const transport = data.transportationCost || 0;
+            const greenTax = data.greenTax || 0;
+            const baseAmount = subTotal + transport + greenTax;
+
+            // Taxable amount includes transport and green tax only if gstOnTransportation is true
+            const taxableAmount = subTotal + (gstOnTransport ? (transport + greenTax) : 0);
+
+            const isIntraState = companyState && customerState && companyState === customerState;
+
+            let cgst = 0;
+            let sgst = 0;
+            let igst = 0;
+            let gstType: string | null = null;
+
+            if (hasGst) {
+                if (isIntraState) {
+                    gstType = 'CGST_SGST';
+                    cgst = Math.round((taxableAmount * (GST_RATE / 2) / 100) * 100) / 100;
+                    sgst = Math.round((taxableAmount * (GST_RATE / 2) / 100) * 100) / 100;
+                } else {
+                    gstType = 'IGST';
+                    igst = Math.round((taxableAmount * GST_RATE / 100) * 100) / 100;
+                }
+            }
+
+            const grandTotal = Math.round((baseAmount + cgst + sgst + igst) * 100) / 100;
+
+            const bill = await tx.bill.create({
+                data: {
+                    billNumber,
+                    customerId: data.customerId,
+                    dateFrom: new Date(data.dateFrom),
+                    dateTo: new Date(data.dateTo),
+                    totalAmount: subTotal,
+                    taxableAmount: taxableAmount,
+                    transportationCost: transport,
+                    transportationCount: data.transportationCount || 0,
+                    greenTax: greenTax,
+                    greenTaxCount: data.greenTaxCount || 0,
+                    gstType,
+                    gstRate: GST_RATE,
+                    cgst,
+                    sgst,
+                    igst,
+                    grandTotal,
+                    status: 'FINALIZED',
+                    items: {
+                        create: data.items.map((item: any) => ({
+                            description: item.description || item.materialName || `Rent for material`,
+                            quantity: item.quantityDays,
+                            rate: item.rate,
+                            amount: item.amount,
+                            materialId: item.materialId,
+                            fromDate: item.fromDate ? new Date(item.fromDate) : null,
+                            toDate: item.toDate ? new Date(item.toDate) : null,
+                            balance: item.balance || 0,
+                            days: item.days || 0,
+                        }))
+                    }
+                }
+            });
+
+            // Post transaction to financial ledger
+            await tx.transaction.create({
+                data: {
+                    ledgerAccountId: data.customerId,
+                    date: new Date(data.dateTo),
+                    type: 'BILL',
+                    amount: grandTotal,
+                    referenceId: bill.id,
+                    description: `Generated Bill #${billNumber} for period ${format(new Date(data.dateFrom), 'dd/MM/yyyy')} to ${format(new Date(data.dateTo), 'dd/MM/yyyy')}`
+                }
+            });
+
+            return bill;
+        });
+    }
+
+    /**
+     * Cancel a bill and delete associated transaction.
+     */
+    async cancelBill(id: string) {
+        const bill = await this.prisma.bill.findUnique({ where: { id } });
+
+        if (!bill) {
+            throw new NotFoundException('Bill not found');
+        }
+
+        if (bill.status === 'CANCELLED') {
+            throw new BadRequestException('Bill is already cancelled');
+        }
+
+        return this.prisma.$transaction(async (tx) => {
+            const updatedBill = await tx.bill.update({
+                where: { id },
+                data: { status: 'CANCELLED' },
+            });
+
+            // Remove associated ledger transaction
+            await tx.transaction.deleteMany({
+                where: { referenceId: id },
+            });
+
+            return updatedBill;
+        });
+    }
+}
+```
+
+--------------------------------------------------------------------------------
+4. FRONTEND CONTROLLERS & GENERATION BOARDS
+--------------------------------------------------------------------------------
+
+--- A. MONTHLY BILLINGS DASHBOARD BOARD ---
+* File Location: [billing/page.tsx](file:///c:/Users/lenovo/Desktop/stockDo/frontend/src/app/dashboard/accounting/billing/page.tsx)
+Displays preparation tabs: "Bills Not Prepared" and "Prepared Bills". Exposes bulk 
+finalization triggers, cancellers, and navigation calendars.
+
+*Detailed logic listed in full code above.*
+
+--- B. CUSTOMIZED BILLING PAGE ---
+* File Location: [customize-billing/page.tsx](file:///c:/Users/lenovo/Desktop/stockDo/frontend/src/app/dashboard/accounting/customize-billing/page.tsx)
+Exposes custom date range previews and specific contract finalization forms.
+
+*Detailed logic listed in full code above.*
+
+--------------------------------------------------------------------------------
+5. TAX INVOICE PDF DOCUMENT LAYOUT
+--------------------------------------------------------------------------------
+* File Location: [BillDocument.tsx](file:///c:/Users/lenovo/Desktop/stockDo/frontend/src/components/billing/BillDocument.tsx)
+
+Pixel-perfect rendering layout displaying comprehensive billing metadata and columns:
+- Sr (Item index).
+- From Date / To Date (Sub-period boundary limits).
+- Particulars (Material descriptive string).
+- HSN/SAC (Legal tax identifiers dynamically mapped).
+- Balance (Site quantity held during sub-period).
+- Days (Length of the sub-period).
+- No (Total accrued Unit-Days: `Balance * Days`).
+- Rate (Daily rental charge tier: ₹).
+- Amount (Sub-period cost: `Unit-Days * Rate`).
+
+Calculations breakdown summaries:
+- **Total Bill Amount:** Accrued rental hire charges.
+- **Transportation Cost:** Total logistic cost summed from challans.
+- **Green Tax:** Total green tax summed from challans.
+- **Before-Tax Base Total:** Sum of hire charges, transport, and green tax.
+- **Taxes (CGST + SGST or IGST):** Computed on the taxable base amount based on geographic rules.
+- **Grand Total:** Overall invoice liability in words and numbers (₹).
+
+*Detailed rendering code listed in full component above.*
+
+--------------------------------------------------------------------------------
+6. API CLIENT INTEGRATION WRAPPERS
+--------------------------------------------------------------------------------
+* API File Location: [api.ts](file:///c:/Users/lenovo/Desktop/stockDo/frontend/src/lib/api.ts)
+
+The client application accesses billing data via these asynchronous services:
+
+```typescript
+export const fetchUnbilledCustomers = async (month: number, year: number) => {
+    const response = await api.get('/billing/unbilled', { params: { month, year } });
+    return response.data;
+};
+
+export const fetchBillsByMonth = async (month: number, year: number) => {
+    const response = await api.get('/billing', { params: { month, year } });
+    return response.data;
+};
+
+export const fetchBill = async (id: string) => {
+    const response = await api.get(`/billing/${id}`);
+    return response.data;
+};
+
+export const previewBill = async (customerId: string, month: number, year: number) => {
+    const response = await api.get('/billing/preview', { params: { customerId, month, year } });
+    return response.data;
+};
+
+export const finalizeBills = async (customerIds: string[], month: number, year: number) => {
+    const response = await api.post('/billing/finalize', { customerIds, month, year });
+    return response.data;
+};
+
+export const cancelBill = async (id: string) => {
+    const response = await api.patch(`/billing/${id}/cancel`);
+    return response.data;
+};
+
+export const previewCustomBill = async (customerId: string, fromDate: string, toDate: string) => {
+    const response = await api.post('/billing/custom-preview', { customerId, fromDate, toDate });
+    return response.data;
+};
+
+export const finalizeCustomBill = async (customerId: string, fromDate: string, toDate: string) => {
+    const response = await api.post('/billing/finalize-custom', { customerId, fromDate, toDate });
+    return response.data;
+};
+```
+
+--------------------------------------------------------------------------------
+7. QUICK DIRECTORY & FILE REFERENCE
+--------------------------------------------------------------------------------
+- Monthly Dashboard:        `frontend/src/app/dashboard/accounting/billing/page.tsx`
+- Custom Range UI Selector: `frontend/src/app/dashboard/accounting/customize-billing/page.tsx`
+- Single Invoice PDF Viewer:`frontend/src/app/dashboard/accounting/billing/[id]/page.tsx`
+- Pixel A4 PDF Template:    `frontend/src/components/billing/BillDocument.tsx`
+- Backend API REST Router:  `backend/src/billing/billing.controller.ts`
+- Core DB Billing Service:  `backend/src/billing/billing.service.ts`
+- Database Schema Definition:`backend/prisma/schema.prisma`
+- Axios Network Client:     `frontend/src/lib/api.ts`
+================================================================================

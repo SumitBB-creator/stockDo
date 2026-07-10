@@ -317,7 +317,7 @@ export const SaleReportPage: React.FC<SaleReportDocumentProps> = ({ bills, compa
 
             {/* Footer */}
             <View style={styles.footer} fixed>
-                <Text style={styles.footerText}>Generated on {format(new Date(), 'dd MMM yyyy HH:mm')}</Text>
+                <Text style={styles.footerText}>Generated on {format(new Date(), 'dd/MM/yyyy HH:mm')}</Text>
             </View>
             <Text 
                 style={styles.pageNumber} 

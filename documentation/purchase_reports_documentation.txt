@@ -1,0 +1,102 @@
+================================================================================
+STOCKDO: PURCHASE REPORTS EXHAUSTIVE DOCUMENTATION 
+(ALL DETAILS, LOCAL PURCHASE, & CENTRAL PURCHASE)
+================================================================================
+
+This document covers the entire suite of Purchase tracking under the Purchase section, 
+specifically focusing on:
+1. Purchase Details (View ALL)
+2. Local Purchase (Intra-state CGST/SGST filtering)
+3. Central Purchase (Inter-state IGST filtering)
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW & SHARED COMPONENT
+--------------------------------------------------------------------------------
+Rather than building separate pages and API endpoints for Local vs Central purchases, 
+the Purchase section relies on a highly dynamic, generic React component: 
+`<PurchaseReport />`.
+
+This single component handles data fetching, geography-based filtering, inline data 
+entry ("Quick Add"), ledger reversals, and report aggregation.
+
+When a Purchase is created (either via Quick Add or Full Form), the backend:
+1. Creates the `Purchase` record (Input Tax Data).
+2. Creates nested `PurchaseItem` records.
+3. Most Importantly: Creates a `Transaction` (type: `PURCHASE`) tied to the 
+   Supplier's `ledgerAccountId`, instantly increasing the amount the company owes 
+   to the Supplier in the Dues List and Ledger.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACES
+--------------------------------------------------------------------------------
+* All Purchases Page: `frontend/src/app/dashboard/purchase/details/page.tsx`
+* Local Page: `frontend/src/app/dashboard/purchase/local/page.tsx`
+* Central Page: `frontend/src/app/dashboard/purchase/central/page.tsx`
+* Core Component: `frontend/src/components/accounting/purchase-report.tsx`
+
+--- COMPONENT INJECTION ---
+The specific pages are incredibly lightweight, simply passing props to the core component:
+
+```tsx
+// frontend/src/app/dashboard/purchase/local/page.tsx
+import { PurchaseReport } from '@/components/accounting/purchase-report';
+export default function LocalPurchasePage() {
+    return <PurchaseReport type="LOCAL" title="Local Purchase Report" />;
+}
+```
+
+--- CORE UI LIFE-CYCLE (`purchase-report.tsx`) ---
+1. Data Fetching & Geographic Filtering:
+   The component fetches Purchases, Suppliers, and the Company Profile concurrently.
+   It compares `p.supplier.state` against `company.state` to perform the Local 
+   vs Central filtering client-side.
+
+   ```typescript
+   // Geographic Filtering Logic Snippet inside purchase-report.tsx
+   if (type === 'LOCAL') {
+       data = data.filter((p: any) => p.supplier?.state?.toLowerCase() === companyState);
+   } else if (type === 'CENTRAL') {
+       data = data.filter((p: any) => p.supplier?.state?.toLowerCase() !== companyState);
+   }
+   ```
+
+2. The "Quick Add" Inline Form:
+   To accelerate data entry for simple purchases without itemized inventory tracking, 
+   users can click "Quick Add". This injects a form row directly into the table:
+   - Autocomplete Supplier selection.
+   - Date, Bill Number, and Taxable Amount inputs.
+   - Hitting Save triggers a direct `POST /purchases` payload containing a dummy 
+     "Purchase Order" item to satisfy database relations, auto-calculating GST based 
+     on whether it's a Local or Central context.
+
+3. Full Form Routing:
+   For detailed inventory purchases, clicking "Full Form" routes to `/dashboard/purchase/new`, 
+   which supports multi-item entry.
+
+4. Record Management (Edit / Delete):
+   Each row has an Edit button and a Delete button. The Delete action explicitly 
+   warns the user because deleting a purchase cascades to securely reverse the 
+   Supplier's Ledger transaction and wipe out all associated nested items.
+
+5. Mathematical Aggregation:
+   Dynamically reduces the filtered array to calculate Total Taxable, CGST, SGST, 
+   IGST, and Grand Total at the bottom of the table.
+
+--------------------------------------------------------------------------------
+3. PRINT & EXPORT LOGIC
+--------------------------------------------------------------------------------
+Clicking "Print / Export" constructs a query string containing the `type`, `fromDate`, 
+`toDate`, and `searchTerm`. It opens a new tab pointing to `/dashboard/purchase/print`, 
+which strips away all navigation and sidebars, rendering a clean, A4-optimized 
+report ready for physical printing or PDF export.
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- Entry Page UI:         `frontend/src/app/dashboard/purchase/details/page.tsx`
+- Core UI Component:     `frontend/src/components/accounting/purchase-report.tsx`
+- Full Form UI:          `frontend/src/app/dashboard/purchase/new/page.tsx`
+- Print Layout:          `frontend/src/app/dashboard/purchase/print/page.tsx`
+- Axios Network Wrapper: `frontend/src/lib/api.ts`
+- Backend API Router:    `backend/src/purchase/purchase.controller.ts`
+================================================================================

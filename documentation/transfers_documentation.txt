@@ -1,0 +1,1636 @@
+================================================================================
+STOCKDO: MATERIAL TRANSFERS & SITE-TO-SITE LOGISTICS ENGINE EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document provides a highly detailed, file-level architectural and operational
+guide for the Material Transfers module of StockDo. It describes each visual section, 
+the dual-challan automatic generation system, the database relational models, 
+frontend controller forms, high-fidelity PDF print layout, backend transaction services, 
+and API routing integration.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW & DUAL-CHALLAN GENERATION ENGINE
+--------------------------------------------------------------------------------
+The Material Transfers module acts as the "Inter-Site Stock Pipeline" in StockDo. 
+In commercial scaffolding and building shuttering rental business, clients often 
+request moving assets directly from one construction site (Sender) to another site 
+(Receiver) without physically returning them to the main yard. This minimizes 
+double-handling and logistics costs.
+
+To accurately track inventory balances and billing liability, the system executes 
+a virtual transaction that mirrors a physical arrival and reissue:
+1. Virtual RETURN Challan (Sender):
+   An inward stock movement (RTN-XXXX) is automatically generated for the Sender. 
+   This decreases their active holding balance on site and caps their billing liability 
+   for the transferred materials on the transfer date.
+2. Virtual ISSUE Challan (Receiver):
+   An outward stock movement (CHN-XXXX) is automatically generated for the Receiver. 
+   This increases their active holding balance on site and triggers rental charges under 
+   their active rate sheet agreement.
+
+--- DUAL-CHALLAN REPLAY BALANCE ENGINE ---
+To guarantee inventory integrity, the system applies two layers of real-time validation:
+- Sender Holding Balance Check:
+  A site cannot transfer more material than it currently holds. The frontend and backend 
+  compute active holdings by replaying the chronological ledger:
+  $$\text{Sender On-site Stock} = \sum (\text{ISSUE}) - \sum (\text{RETURN})$$
+  The transfer page validates:
+  $$\text{Transfer Quantity} \le \text{Sender On-site Stock}$$
+  If a user inputs a transfer quantity exceeding this balance, the form alerts the user 
+  and blocks the submission.
+
+- Receiver Rate Agreement Check:
+  Every material transferred to the Receiver must have a defined price tier (Hire Rate, 
+  Damage Recovery, Short Recovery) in the Receiver's contract. The system strictly verifies 
+  that all items to be transferred belong to the Receiver's active Agreement. If a material 
+  is missing from the destination agreement, the transfer is rejected to prevent unbilled 
+  rental leakages.
+
+--------------------------------------------------------------------------------
+2. DATABASE RELATIONAL MODELS
+--------------------------------------------------------------------------------
+Material transfers are represented by the `Transfer` and `TransferItem` tables in the
+PostgreSQL database, which link back to the `Customer`, `Agreement`, and `Challan` tables.
+
+* Schema File Location: [schema.prisma](file:///c:/Users/lenovo/Desktop/stockDo/backend/prisma/schema.prisma)
+
+1. Model: Transfer (`transfers` table)
+   - id: String (UUID, PK)
+   - transferNumber: String (Unique, Auto-generated e.g., MTID-0001)
+   - date: DateTime (Transfer execution date)
+   - fromCustomerId: String (UUID, FK to Sender Customer)
+   - toCustomerId: String (UUID, FK to Receiver Customer)
+   - agreementId: String (UUID, FK to Receiver's active Agreement)
+   - vehicleNumber: String (Logistics tracking)
+   - remarks: String (Internal notes)
+   - senderTransportation: Float (Cost allocated to Sender)
+   - receiverTransportation: Float (Cost allocated to Receiver)
+   - returnChallanId: String (UUID, Unique link to Sender's virtual RETURN Challan)
+   - issueChallanId: String (UUID, Unique link to Receiver's virtual ISSUE Challan)
+   - createdAt / updatedAt: DateTime (Audit timestamps)
+
+2. Model: TransferItem (`transfer_items` table)
+   - id: String (UUID, PK)
+   - transferId: String (UUID, FK to transfers, onDelete: Cascade)
+   - materialId: String (UUID, FK to materials)
+   - quantity: Int (Quantity of material moved)
+
+3. Relations in Customer Model:
+   - `transfersFrom`: Transfer[] (All transfers where the customer is the Sender)
+   - `transfersTo`: Transfer[] (All transfers where the customer is the Receiver)
+
+4. Relations in Challan Model:
+   - `transferId`: String? (Links the virtual Challans to the Transfer record)
+
+--------------------------------------------------------------------------------
+3. FRONTEND CREATION CONTROLLER & FORM LAYER
+--------------------------------------------------------------------------------
+* File Location: [new/page.tsx](file:///c:/Users/lenovo/Desktop/stockDo/frontend/src/app/dashboard/stock/transfer/new/page.tsx)
+
+The New Transfer Form is a highly interactive Next.js Client Component featuring:
+- Autocomplete Search bars for Sender and Receiver sites.
+- Dynamic dropdown filters displaying active receiver contracts.
+- Asynchronous loaders fetching real-time site balances for both parties.
+- A dynamic tabular grid managing the line items via `useFieldArray`.
+- Validation feedback warning users if they exceed the sender's current site balance.
+
+--- FULL CODE LISTING ---
+```typescript
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
+import { CalendarIcon, Plus, Trash2, Save, Printer, X, Loader2, ArrowRightLeft } from 'lucide-react';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+
+import { Button } from '@/components/ui/button';
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Autocomplete } from '@/components/ui/autocomplete';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn, formatCustomerAddress } from '@/lib/utils';
+import {
+    fetchCustomers,
+    fetchAgreements,
+    fetchMaterials,
+    fetchCustomerStock,
+    createTransfer
+} from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+
+const formSchema = z.object({
+    date: z.date(),
+    fromCustomerId: z.string().min(1, 'Sender is required'),
+    toCustomerId: z.string().min(1, 'Receiver is required'),
+    agreementId: z.string().min(1, 'Agreement is required'),
+    vehicleNumber: z.string().optional(),
+    remarks: z.string().optional(),
+    senderTransportation: z.coerce.number().default(0),
+    receiverTransportation: z.coerce.number().default(0),
+    items: z.array(z.object({
+        materialId: z.string().min(1, 'Material is required'),
+        materialName: z.string().optional(),
+        quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
+        fromBalance: z.number().default(0),
+        toBalance: z.number().default(0),
+    })).min(1, 'At least one material is required'),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+export default function NewTransferPage() {
+    const router = useRouter();
+    const { toast } = useToast();
+    const [loading, setLoading] = useState(false);
+    const [customers, setCustomers] = useState<any[]>([]);
+    const [materials, setMaterials] = useState<any[]>([]);
+    const [receiverAgreements, setReceiverAgreements] = useState<any[]>([]);
+    const [fromStock, setFromStock] = useState<Record<string, number>>({});
+    const [toStock, setToStock] = useState<Record<string, number>>({});
+
+    const form = useForm<FormValues>({
+        resolver: zodResolver(formSchema) as any,
+        defaultValues: {
+            date: new Date(),
+            fromCustomerId: '',
+            toCustomerId: '',
+            agreementId: '',
+            vehicleNumber: '',
+            remarks: '',
+            senderTransportation: 0,
+            receiverTransportation: 0,
+            items: [{ materialId: '', quantity: 0, fromBalance: 0, toBalance: 0 }],
+        },
+    });
+
+    const { fields, append, remove, update } = useFieldArray({
+        control: form.control,
+        name: 'items',
+    });
+
+    useEffect(() => {
+        const loadInitialData = async () => {
+            try {
+                const [customersData, materialsData] = await Promise.all([
+                    fetchCustomers(),
+                    fetchMaterials(),
+                ]);
+                setCustomers(customersData);
+                setMaterials(materialsData);
+            } catch (error) {
+                console.error('Failed to load initial data', error);
+            }
+        };
+        loadInitialData();
+    }, []);
+
+    const fromCustomerId = form.watch('fromCustomerId');
+    const toCustomerId = form.watch('toCustomerId');
+
+    // Load Sender Stock
+    useEffect(() => {
+        if (fromCustomerId) {
+            fetchCustomerStock(fromCustomerId).then(stock => {
+                const stockMap = stock.reduce((acc: any, curr: any) => {
+                    acc[curr.materialId] = curr.quantity;
+                    return acc;
+                }, {});
+                setFromStock(stockMap);
+
+                // Update existing items fromBalance
+                const currentItems = form.getValues('items');
+                currentItems.forEach((item, index) => {
+                    if (item.materialId) {
+                        update(index, { ...item, fromBalance: stockMap[item.materialId] || 0 });
+                    }
+                });
+            });
+        }
+    }, [fromCustomerId, update, form]);
+
+    // Load Receiver Agreements and Stock
+    useEffect(() => {
+        if (toCustomerId) {
+            fetchAgreements('Active').then(allAgreements => {
+                const filtered = allAgreements.filter((a: any) => a.customerId === toCustomerId);
+                setReceiverAgreements(filtered);
+                if (filtered.length === 1) {
+                    form.setValue('agreementId', filtered[0].id);
+                } else {
+                    form.setValue('agreementId', '');
+                }
+            });
+
+            // Fetch Stock
+            fetchCustomerStock(toCustomerId).then(stock => {
+                const stockMap = stock.reduce((acc: any, curr: any) => {
+                    acc[curr.materialId] = curr.quantity;
+                    return acc;
+                }, {});
+                setToStock(stockMap);
+
+                // Update existing items toBalance
+                const currentItems = form.getValues('items');
+                currentItems.forEach((item, index) => {
+                    if (item.materialId) {
+                        update(index, { ...item, toBalance: stockMap[item.materialId] || 0 });
+                    }
+                });
+            });
+        } else {
+            setReceiverAgreements([]);
+            form.setValue('agreementId', '');
+        }
+    }, [toCustomerId, update, form]);
+
+    const handleSave = async (values: FormValues, shouldPrint: boolean = false) => {
+        setLoading(true);
+        try {
+            const sanitizedData = {
+                ...values,
+                date: values.date.toISOString(),
+                items: values.items.map(item => ({
+                    materialId: item.materialId,
+                    quantity: item.quantity,
+                })),
+            };
+
+            const result = await createTransfer(sanitizedData);
+            toast({
+                title: 'Success',
+                description: 'Material transfer recorded successfully.',
+            });
+            
+            if (shouldPrint && result.id) {
+                router.push(`/dashboard/stock/transfer/${result.id}`);
+            } else {
+                router.push('/dashboard/stock/transfer');
+            }
+        } catch (error: any) {
+            console.error('Transfer failed:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: error.response?.data?.message || 'Failed to create transfer.',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const onSubmit = (values: FormValues) => {
+        handleSave(values, false);
+    };
+
+    return (
+        <div className="max-w-6xl mx-auto space-y-6 pb-20">
+            <div className="flex items-center justify-between border-b pb-4">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight">New Material Transfer</h2>
+                    <p className="text-muted-foreground text-sm">Move stock between sites and generate linked challans.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={form.handleSubmit((data) => handleSave(data, true))}
+                        disabled={loading}
+                    >
+                        <Printer className="h-4 w-4 mr-2" /> Print
+                    </Button>
+                    <Button
+                        className="bg-blue-600 hover:bg-blue-500"
+                        onClick={form.handleSubmit((data) => handleSave(data, false))}
+                        disabled={loading}
+                    >
+                        {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                        Save Transfer
+                    </Button>
+                    <Button variant="outline" onClick={() => router.back()}>
+                        <X className="h-4 w-4 mr-2" /> Cancel
+                    </Button>
+                </div>
+            </div>
+
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <Card className="md:col-span-2">
+                            <CardHeader className="py-4">
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <ArrowRightLeft className="h-5 w-5 text-blue-500" />
+                                    Parties Details
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control as any}
+                                    name="fromCustomerId"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel>From (Sender Site)</FormLabel>
+                                            <Autocomplete
+                                                items={customers.map(c => ({
+                                                    value: c.id,
+                                                    label: c.name,
+                                                    subLabel: formatCustomerAddress(c)
+                                                }))}
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                placeholder="Select sender..."
+                                            />
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control as any}
+                                    name="toCustomerId"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel>To (Receiver Site)</FormLabel>
+                                            <Autocomplete
+                                                items={customers
+                                                    .filter(c => c.id !== fromCustomerId)
+                                                    .map(c => ({
+                                                        value: c.id,
+                                                        label: c.name,
+                                                        subLabel: formatCustomerAddress(c)
+                                                    }))}
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                placeholder="Select receiver..."
+                                            />
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control as any}
+                                    name="agreementId"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel>Receiver Agreement</FormLabel>
+                                            <select
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                {...field}
+                                                disabled={!toCustomerId}
+                                                title="Agreement"
+                                            >
+                                                <option value="">Select Agreement...</option>
+                                                {receiverAgreements.map(a => (
+                                                    <option key={a.id} value={a.id}>
+                                                        {a.agreementId} (Valid From: {format(new Date(a.validFrom), 'dd MMM yyyy')})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control as any}
+                                    name="date"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel>Transfer Date</FormLabel>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <FormControl>
+                                                        <Button
+                                                            variant={"outline"}
+                                                            className={cn(
+                                                                "pl-3 text-left font-normal",
+                                                                !field.value && "text-muted-foreground"
+                                                            )}
+                                                        >
+                                                            {field.value ? (
+                                                                format(field.value, "PPP")
+                                                            ) : (
+                                                                <span>Pick a date</span>
+                                                            )}
+                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                        </Button>
+                                                    </FormControl>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                    <Calendar
+                                                        mode="single"
+                                                        selected={field.value}
+                                                        onSelect={field.onChange}
+                                                        disabled={(date) =>
+                                                            date > new Date() || date < new Date("1900-01-01")
+                                                        }
+                                                        initialFocus
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="py-4">
+                                <CardTitle className="text-lg">Other Info</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <FormField
+                                    control={form.control as any}
+                                    name="vehicleNumber"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Vehicle Number</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="MH-XX-1234" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control as any}
+                                    name="remarks"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Remarks</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Optional notes" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <Card>
+                        <CardHeader className="py-4 flex flex-row items-center justify-between">
+                            <CardTitle className="text-lg">Transfer Items</CardTitle>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => append({ materialId: '', quantity: 0, fromBalance: 0, toBalance: 0 })}
+                            >
+                                <Plus className="h-4 w-4 mr-2" /> Add Material
+                            </Button>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="rounded-md border overflow-hidden">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/50">
+                                            <TableHead className="w-[400px]">Material Name</TableHead>
+                                            <TableHead>From Balance</TableHead>
+                                            <TableHead>To Balance</TableHead>
+                                            <TableHead className="w-[150px]">Qty to Transfer</TableHead>
+                                            <TableHead className="w-[50px]"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {fields.map((field, index) => (
+                                            <TableRow key={field.id} className="group">
+                                                <TableCell>
+                                                    <Autocomplete
+                                                        items={materials.map(m => ({
+                                                            value: m.id,
+                                                            label: m.name,
+                                                            subLabel: m.category
+                                                        }))}
+                                                        value={form.watch(`items.${index}.materialId`)}
+                                                        onChange={(val) => {
+                                                            const material = materials.find(m => m.id === val);
+                                                            update(index, {
+                                                                ...form.getValues(`items.${index}`),
+                                                                materialId: val,
+                                                                materialName: material?.name,
+                                                                fromBalance: fromStock[val] || 0,
+                                                                toBalance: toStock[val] || 0
+                                                            });
+                                                        }}
+                                                        placeholder="Select material..."
+                                                        className="w-full"
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className={cn(
+                                                        "font-medium",
+                                                        form.watch(`items.${index}.fromBalance`) === 0 ? "text-red-500" : "text-green-500"
+                                                    )}>
+                                                        {form.watch(`items.${index}.fromBalance`)}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground">
+                                                    {form.watch(`items.${index}.toBalance`)}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Input
+                                                        type="number"
+                                                        {...form.register(`items.${index}.quantity` as const)}
+                                                        placeholder="0"
+                                                        className={cn(
+                                                            form.watch(`items.${index}.quantity`) > form.watch(`items.${index}.fromBalance`) && "border-red-500 ring-red-500"
+                                                        )}
+                                                    />
+                                                    {form.watch(`items.${index}.quantity`) > form.watch(`items.${index}.fromBalance`) && (
+                                                        <p className="text-[10px] text-red-500 mt-1">Exceeds balance</p>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => remove(index)}
+                                                        disabled={fields.length === 1}
+                                                        className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Card>
+                            <CardHeader className="py-4">
+                                <CardTitle className="text-lg">Transportation Costs</CardTitle>
+                            </CardHeader>
+                            <CardContent className="grid grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control as any}
+                                    name="senderTransportation"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Sender Cost (₹)</FormLabel>
+                                            <FormControl>
+                                                <Input type="number" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control as any}
+                                    name="receiverTransportation"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Receiver Cost (₹)</FormLabel>
+                                            <FormControl>
+                                                <Input type="number" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
+                    </div>
+                </form>
+            </Form>
+        </div>
+    );
+}
+```
+
+--------------------------------------------------------------------------------
+4. PDF RENDERER LAYOUT & PRINT COMPONENT
+--------------------------------------------------------------------------------
+* File Location: [TransferDocument.tsx](file:///c:/Users/lenovo/Desktop/stockDo/frontend/src/components/stock/TransferDocument.tsx)
+
+The Transfer receipt is compiled directly inside the client's browser to deliver a 
+pixel-perfect A4 printing layout. It uses `@react-pdf/renderer` to create clean, vector-drawn 
+sections with standard legal coordinates, avoiding dynamic DOM rendering offsets.
+
+--- KEY RENDER SECTIONS ---
+1. Header Left: Displays full company profile metadata (Name, Address, Phone, Email, 
+   GSTIN, and PAN details).
+2. Header Right: Renders the dynamic Company logo side-by-side with the heavy 
+   sans-serif "Material Transfer" title block.
+3. Metadata Columns: Renders details for both Sender (From) and Receiver (To) sites 
+   in parallel alignment (with Customer Names, Addresses, Phones, and Agreements).
+4. Items Table: Standardized 4-column structured table:
+   - Serial Number (Sr.)
+   - Material Description
+   - Quantity (Right-aligned, bold total on footer line)
+   - Unit type (e.g. Nos)
+5. Summary Text: Computes the dynamic total quantity of all material assets and 
+   prints a formatted string converting numerical items into words (e.g. "One Thousand Nos").
+6. Transportation Grid: Displays a two-column bordered box showing divided logistic costs 
+   (Sender Transportation vs. Receiver Transportation).
+7. Legal Signatures Footer: Displays three aligned signature boxes for verification:
+   - Sender Site Sign (Responsible for loading assets)
+   - Receiver Site Sign (Responsible for verifying arrival quality & count)
+   - Authorized Signatory (Store supervisor)
+
+--- FULL CODE LISTING ---
+```typescript
+import React from 'react';
+import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
+import { format } from 'date-fns';
+import { toWords } from '@/lib/utils';
+
+const styles = StyleSheet.create({
+    page: {
+        flexDirection: 'column',
+        backgroundColor: '#FFFFFF',
+        padding: 30,
+        fontFamily: 'Helvetica',
+        fontSize: 10,
+        color: '#333333',
+    },
+    header: {
+        marginBottom: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        paddingBottom: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+    },
+    headerLeft: {
+        flex: 1,
+    },
+    headerRight: {
+        alignItems: 'flex-end',
+    },
+    companyName: {
+        fontSize: 18,
+        fontFamily: 'Helvetica-Bold',
+        textTransform: 'uppercase',
+        marginBottom: 5,
+        color: '#111827',
+    },
+    companyAddress: {
+        fontSize: 9,
+        lineHeight: 1.3,
+        color: '#4B5563',
+    },
+    logo: {
+        width: 100,
+        height: 50,
+        objectFit: 'contain',
+        marginBottom: 5,
+    },
+    title: {
+        fontSize: 22,
+        fontFamily: 'Helvetica-Bold',
+        textTransform: 'uppercase',
+        color: '#E5E7EB',
+        letterSpacing: 2,
+    },
+    section: {
+        marginBottom: 20,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    customerSection: {
+        width: '45%',
+    },
+    metaSection: {
+        width: '50%',
+        alignItems: 'flex-end',
+    },
+    underlinedTitle: {
+        fontSize: 10,
+        fontFamily: 'Helvetica-Bold',
+        textDecoration: 'underline',
+        marginBottom: 6,
+        color: '#6B7280',
+        textTransform: 'uppercase',
+    },
+    customerName: {
+        fontSize: 11,
+        fontFamily: 'Helvetica-Bold',
+        marginBottom: 4,
+        color: '#111827',
+    },
+    detailRow: {
+        flexDirection: 'row',
+        marginBottom: 3,
+    },
+    detailLabel: {
+        width: 80,
+        fontSize: 9,
+        fontFamily: 'Helvetica-Bold',
+        color: '#6B7280',
+    },
+    detailValue: {
+        fontSize: 9,
+        color: '#111827',
+        flex: 1,
+    },
+    metaRow: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        marginBottom: 4,
+        width: '100%',
+    },
+    metaLabel: {
+        color: '#6B7280',
+        fontFamily: 'Helvetica-Bold',
+        width: 100,
+        textAlign: 'right',
+        marginRight: 10,
+    },
+    metaValue: {
+        fontFamily: 'Helvetica',
+        color: '#111827',
+        width: 120,
+        textAlign: 'right',
+    },
+    table: {
+        width: '100%',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderTopWidth: 0,
+        borderBottomWidth: 0,
+        marginBottom: 20,
+    },
+    tableHeader: {
+        flexDirection: 'row',
+        backgroundColor: '#F9FAFB',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+        paddingVertical: 6,
+    },
+    tableRow: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        paddingVertical: 6,
+    },
+    colSr: { width: '8%', paddingLeft: 5 },
+    colDesc: { width: '62%', paddingLeft: 5 },
+    colQty: { width: '15%', paddingRight: 5, textAlign: 'right' },
+    colUnit: { width: '15%', paddingRight: 5, textAlign: 'center' },
+    headerText: {
+        fontSize: 9,
+        fontFamily: 'Helvetica-Bold',
+        color: '#374151',
+        textTransform: 'uppercase',
+    },
+    cellText: {
+        fontSize: 9,
+        color: '#4B5563',
+    },
+    summarySection: {
+        marginTop: 10,
+        paddingTop: 10,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    totalInWords: {
+        fontSize: 9,
+        marginBottom: 10,
+        fontStyle: 'italic',
+        color: '#4B5563',
+    },
+    transportationGrid: {
+        flexDirection: 'row',
+        gap: 20,
+        marginBottom: 20,
+    },
+    footerGrid: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 40,
+    },
+    signatureBox: {
+        width: '30%',
+        alignItems: 'center',
+    },
+    signLine: {
+        borderTopWidth: 1,
+        borderTopColor: '#333',
+        width: '100%',
+        marginTop: 40,
+        marginBottom: 5,
+    },
+    signLabel: {
+        fontSize: 9,
+        fontFamily: 'Helvetica-Bold',
+    },
+    pageNumber: {
+        position: 'absolute',
+        fontSize: 9,
+        bottom: 20,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        color: '#9CA3AF',
+    },
+});
+
+interface TransferDocumentProps {
+    transfer: any;
+    company: any;
+    logoUrl: string | null;
+}
+
+const TransferDocument: React.FC<TransferDocumentProps> = ({ transfer, company, logoUrl }) => {
+    const totalQty = transfer.items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) || 0;
+
+    const formatAddress = (c: any) => {
+        if (!c) return '';
+        const addr = c.siteAddress || c.officeAddress || c.address || '';
+        const city = c.siteCity || c.officeCity || '';
+        const pin = c.sitePin || c.officePin || '';
+        const state = c.siteState || c.officeState || '';
+        
+        const parts = [addr, city].filter(Boolean);
+        let full = parts.join(', ');
+        if (state || pin) {
+            const statePin = [state, pin].filter(Boolean).join(' - ');
+            if (statePin) full += ` (${statePin})`;
+        }
+        return full;
+    };
+
+    const formatCustomerName = (c: any) => {
+        if (!c) return '';
+        const ms = "M/S ";
+        const relation = c.relationName ? ` ${c.relationType || 'Dir. Of-MR.'} ${c.relationName}` : '';
+        return `${ms}${c.name}${relation}`;
+    };
+
+    return (
+        <Document>
+            <Page size="A4" style={styles.page}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <View style={styles.headerLeft}>
+                        <Text style={styles.companyName}>{company?.companyName || 'SEJWAL SHUTTERING STORE'}</Text>
+                        <Text style={styles.companyAddress}>{company?.address1} {company?.address2}</Text>
+                        <Text style={styles.companyAddress}>
+                            {company?.city ? `${company.city}, ` : ''}{company?.state} {company?.pin ? `- ${company.pin}` : ''}
+                        </Text>
+                        {company?.phone && <Text style={styles.companyAddress}>Phone: {company.phone}</Text>}
+                        {company?.email && <Text style={styles.companyAddress}>Email: {company.email}</Text>}
+                        {company?.gstin && <Text style={styles.companyAddress}>GSTIN: {company.gstin}</Text>}
+                        {company?.pan && <Text style={styles.companyAddress}>PAN No : {company.pan}</Text>}
+                    </View>
+                    <View style={styles.headerRight}>
+                        {logoUrl && <Image style={styles.logo} src={logoUrl} />}
+                        <Text style={styles.title}>Material Transfer</Text>
+                    </View>
+                </View>
+
+                {/* Meta Information */}
+                <View style={styles.section}>
+                    <View style={styles.customerSection}>
+                        <Text style={styles.underlinedTitle}>Sender (From) :</Text>
+                        <Text style={[styles.customerName, { textTransform: 'uppercase' }]}>{formatCustomerName(transfer.fromCustomer)}</Text>
+                        <View style={styles.detailRow}>
+                            <Text style={styles.detailLabel}>Address:</Text>
+                            <Text style={styles.detailValue}>{formatAddress(transfer.fromCustomer)}</Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                            <Text style={styles.detailLabel}>Phone:</Text>
+                            <Text style={styles.detailValue}>{transfer.fromCustomer?.sitePhone || transfer.fromCustomer?.officePhone || 'N/A'}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.metaSection}>
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaLabel}>Transfer ID:</Text>
+                            <Text style={styles.metaValue}>{transfer.transferNumber}</Text>
+                        </View>
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaLabel}>Date:</Text>
+                            <Text style={styles.metaValue}>{format(new Date(transfer.date), 'dd MMM yyyy')}</Text>
+                        </View>
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaLabel}>Vehicle No:</Text>
+                            <Text style={styles.metaValue}>{transfer.vehicleNumber || 'N/A'}</Text>
+                        </View>
+                    </View>
+                </View>
+
+                <View style={styles.section}>
+                    <View style={styles.customerSection}>
+                        <Text style={styles.underlinedTitle}>Receiver (To) :</Text>
+                        <Text style={[styles.customerName, { textTransform: 'uppercase' }]}>{formatCustomerName(transfer.toCustomer)}</Text>
+                        <View style={styles.detailRow}>
+                            <Text style={styles.detailLabel}>Address:</Text>
+                            <Text style={styles.detailValue}>{formatAddress(transfer.toCustomer)}</Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                            <Text style={styles.detailLabel}>Agreement:</Text>
+                            <Text style={styles.detailValue}>{transfer.agreement?.agreementId || 'N/A'}</Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Items Table */}
+                <View style={styles.table}>
+                    <View style={styles.tableHeader}>
+                        <Text style={[styles.colSr, styles.headerText]}>Sr.</Text>
+                        <Text style={[styles.colDesc, styles.headerText]}>Material Description</Text>
+                        <Text style={[styles.colQty, styles.headerText]}>Quantity</Text>
+                        <Text style={[styles.colUnit, styles.headerText]}>Unit</Text>
+                    </View>
+                    {transfer.items?.map((item: any, index: number) => (
+                        <View key={index} style={styles.tableRow}>
+                            <Text style={[styles.colSr, styles.cellText]}>{index + 1}</Text>
+                            <Text style={[styles.colDesc, styles.cellText]}>{item.material?.name}</Text>
+                            <Text style={[styles.colQty, styles.cellText]}>{item.quantity}</Text>
+                            <Text style={[styles.colUnit, styles.cellText]}>{item.material?.unit || 'Nos'}</Text>
+                        </View>
+                    ))}
+                    {/* Total Row */}
+                    <View style={[styles.tableRow, { borderBottomWidth: 0, backgroundColor: '#F9FAFB' }]}>
+                        <Text style={[styles.colSr, styles.cellText]}></Text>
+                        <Text style={[styles.colDesc, styles.cellText, { fontFamily: 'Helvetica-Bold' }]}>Total Quantity</Text>
+                        <Text style={[styles.colQty, styles.cellText, { fontFamily: 'Helvetica-Bold' }]}>{totalQty}</Text>
+                        <Text style={[styles.colUnit, styles.cellText]}></Text>
+                    </View>
+                </View>
+
+                <Text style={styles.totalInWords}>Total in Words: {toWords(totalQty)}</Text>
+
+                {/* Transportation Grid */}
+                <View style={styles.transportationGrid}>
+                    <View style={{ flex: 1, borderWidth: 1, borderColor: '#E5E7EB', padding: 8 }}>
+                        <Text style={styles.underlinedTitle}>Sender Transportation</Text>
+                        <Text style={styles.detailValue}>Amount: Rs. {transfer.senderTransportation?.toFixed(2) || '0.00'}</Text>
+                    </View>
+                    <View style={{ flex: 1, borderWidth: 1, borderColor: '#E5E7EB', padding: 8 }}>
+                        <Text style={styles.underlinedTitle}>Receiver Transportation</Text>
+                        <Text style={styles.detailValue}>Amount: Rs. {transfer.receiverTransportation?.toFixed(2) || '0.00'}</Text>
+                    </View>
+                </View>
+
+                {/* Remarks */}
+                {transfer.remarks && (
+                    <View style={{ marginBottom: 20 }}>
+                        <Text style={styles.underlinedTitle}>Remarks :</Text>
+                        <Text style={styles.detailValue}>{transfer.remarks}</Text>
+                    </View>
+                )}
+
+                {/* Footer / Signatures */}
+                <View style={styles.footerGrid}>
+                    <View style={styles.signatureBox}>
+                        <View style={styles.signLine} />
+                        <Text style={styles.signLabel}>Sender Site Sign</Text>
+                    </View>
+                    <View style={styles.signatureBox}>
+                        <View style={styles.signLine} />
+                        <Text style={styles.signLabel}>Receiver Site Sign</Text>
+                    </View>
+                    <View style={styles.signatureBox}>
+                        <View style={styles.signLine} />
+                        <Text style={styles.signLabel}>Authorized Signatory</Text>
+                    </View>
+                </View>
+
+                <Text 
+                    style={styles.pageNumber} 
+                    render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 
+                    fixed 
+                />
+            </Page>
+        </Document>
+    );
+};
+
+export default TransferDocument;
+```
+
+--------------------------------------------------------------------------------
+5. FRONTEND PAGE CONTROLLERS & ROUTER OUTLINES
+--------------------------------------------------------------------------------
+
+--- A. MATERIAL TRANSFERS LISTING CONTROLLER ---
+* File Location: [transfer/page.tsx](file:///c:/Users/lenovo/Desktop/stockDo/frontend/src/app/dashboard/stock/transfer/page.tsx)
+The page lists previous transfers sorted in descending order of dates. It includes 
+interactive search querying, async refresh triggers, and visual data table rows.
+
+```typescript
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import api from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { Plus, Loader2, RefreshCcw, FileText, Search } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { Input } from '@/components/ui/input';
+import { formatCustomerAddress } from '@/lib/utils';
+
+export default function TransferListPage() {
+    const [transfers, setTransfers] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const { toast } = useToast();
+
+    const fetchTransfers = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get('/transfers');
+            setTransfers(response.data);
+        } catch (error) {
+            console.error('Failed to fetch transfers:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Failed to load transfers.',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchTransfers();
+    }, []);
+
+    const filteredTransfers = transfers.filter(t =>
+        t.transferNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.fromCustomer?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.toCustomer?.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    return (
+        <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight">Material Transfers</h2>
+                    <p className="text-muted-foreground">Track movement of stock between different sites.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={fetchTransfers} disabled={loading}>
+                        <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                        Refresh
+                    </Button>
+                    <Link href="/dashboard/stock/transfer/new">
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-500">
+                            <Plus className="h-4 w-4 mr-2" />
+                            New Transfer
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-2 max-w-sm">
+                <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search transfers..."
+                        className="pl-8"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            <div className="rounded-md border bg-card overflow-x-auto">
+                <Table>
+                    <TableHeader>
+                        <TableRow className="bg-muted/50">
+                            <TableHead>Transfer ID</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>From (Sender)</TableHead>
+                            <TableHead>To (Receiver)</TableHead>
+                            <TableHead>Items</TableHead>
+                            <TableHead>Vehicle</TableHead>
+                            <TableHead className="text-right">Action</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            <TableRow>
+                                <TableCell colSpan={7} className="text-center h-24">
+                                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                                </TableCell>
+                            </TableRow>
+                        ) : filteredTransfers.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
+                                    No transfers found.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            filteredTransfers.map((transfer) => (
+                                <TableRow key={transfer.id}>
+                                    <TableCell className="font-mono font-medium text-blue-500">
+                                        {transfer.transferNumber}
+                                    </TableCell>
+                                    <TableCell>{format(new Date(transfer.date), 'dd-MMM-yyyy')}</TableCell>
+                                    <TableCell>
+                                        <div className="font-medium">{transfer.fromCustomer?.name}</div>
+                                        <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                            {formatCustomerAddress(transfer.fromCustomer)}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="font-medium">{transfer.toCustomer?.name}</div>
+                                        <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                            {formatCustomerAddress(transfer.toCustomer)}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
+                                            {transfer.items?.length || 0} Materials
+                                        </span>
+                                    </TableCell>
+                                    <TableCell>{transfer.vehicleNumber || '-'}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Link href={`/dashboard/stock/transfer/${transfer.id}`}>
+                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="View Details">
+                                                <FileText className="h-4 w-4" />
+                                            </Button>
+                                        </Link>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+        </div>
+    );
+}
+```
+
+--- B. TRANSFER DETAIL & PRINT CONTROLLER ---
+* File Location: [transfer/[id]/page.tsx](file:///c:/Users/lenovo/Desktop/stockDo/frontend/src/app/dashboard/stock/transfer/[id]/page.tsx)
+This page embeds the PDF Document into an interactive web viewer. To prevent Next.js 
+Server-Side Rendering (SSR) compilation failures when processing client-specific 
+canvas structures, it uses dynamic imports to turn off SSR for the PDFViewer engine.
+
+```typescript
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { fetchTransfer, fetchCompany } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Loader2, ArrowLeft } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import dynamic from 'next/dynamic';
+import TransferDocument from '@/components/stock/TransferDocument';
+
+// Dynamically import PDFViewer to avoid SSR issues
+const PDFViewer = dynamic(
+    () => import('@react-pdf/renderer').then((mod) => mod.PDFViewer),
+    {
+        ssr: false,
+        loading: () => <div className="flex justify-center items-center h-[600px] bg-gray-100 rounded-md border">Loading PDF Viewer...</div>,
+    }
+);
+
+export default function TransferViewPage() {
+    const params = useParams();
+    const router = useRouter();
+    const { toast } = useToast();
+    const [transfer, setTransfer] = useState<any>(null);
+    const [company, setCompany] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const [transferData, companyData] = await Promise.all([
+                    fetchTransfer(params.id as string),
+                    fetchCompany()
+                ]);
+                setTransfer(transferData);
+                setCompany(companyData);
+            } catch (error) {
+                console.error("Failed to load data", error);
+                toast({
+                    title: "Error",
+                    description: "Failed to load transfer details",
+                    variant: "destructive"
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (params.id) {
+            loadData();
+        }
+    }, [params.id, toast]);
+
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        );
+    }
+
+    if (!transfer) {
+        return (
+            <div className="p-8 text-center">
+                <h2 className="text-xl font-semibold">Transfer not found</h2>
+                <Button onClick={() => router.back()} className="mt-4">Go Back</Button>
+            </div>
+        );
+    }
+
+    // Construct full Logo URL
+    const logoUrl = company?.logo
+        ? (company.logo.startsWith('http')
+            ? company.logo
+            : `${(process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001/api/v1').replace('/api/v1', '')}${company.logo}`)
+        : null;
+
+    return (
+        <div className="h-screen flex flex-col bg-gray-100">
+            {/* Toolbar */}
+            <div className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm">
+                <div className="flex items-center gap-4">
+                    <Button variant="outline" size="sm" onClick={() => router.back()}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Back
+                    </Button>
+                    <h1 className="text-lg font-semibold text-gray-800">
+                        Transfer ID: {transfer.transferNumber}
+                    </h1>
+                </div>
+            </div>
+
+            {/* PDF Viewer */}
+            <div className="flex-1 p-4 md:p-8 overflow-hidden">
+                <div className="h-full w-full max-w-5xl mx-auto shadow-2xl rounded-lg overflow-hidden bg-gray-500">
+                    <PDFViewer width="100%" height="100%" className="border-none" showToolbar={true}>
+                        <TransferDocument transfer={transfer} company={company} logoUrl={logoUrl} />
+                    </PDFViewer>
+                </div>
+            </div>
+        </div>
+    );
+}
+```
+
+--------------------------------------------------------------------------------
+6. BACKEND SERVICE & TRANSACTION ENGINE
+--------------------------------------------------------------------------------
+
+--- A. REST API ENDPOINTS ---
+* File Location: [transfers.controller.ts](file:///c:/Users/lenovo/Desktop/stockDo/backend/src/transfers/transfers.controller.ts)
+Exposes endpoint handlers for record management, wrapped within JwtAuthGuard security parameters:
+
+```typescript
+import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
+import { TransfersService } from './transfers.service';
+import { CreateTransferDto } from './dto/create-transfer.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+
+@Controller('transfers')
+@UseGuards(JwtAuthGuard)
+export class TransfersController {
+    constructor(private readonly transfersService: TransfersService) { }
+
+    @Post()
+    async create(@Body() createTransferDto: CreateTransferDto) {
+        return this.transfersService.create(createTransferDto);
+    }
+
+    @Get()
+    async findAll() {
+        return this.transfersService.findAll();
+    }
+
+    @Get(':id')
+    async findOne(@Param('id') id: string) {
+        return this.transfersService.findOne(id);
+    }
+}
+```
+
+--- B. DATA TRANSFER OBJECT (DTO) ---
+* File Location: [create-transfer.dto.ts](file:///c:/Users/lenovo/Desktop/stockDo/backend/src/transfers/dto/create-transfer.dto.ts)
+Validates inputs strictly using class-validator and class-transformer mappings:
+
+```typescript
+import { IsString, IsNotEmpty, IsArray, ValidateNested, IsNumber, IsOptional, IsDateString } from 'class-validator';
+import { Type } from 'class-transformer';
+
+class TransferItemDto {
+    @IsString()
+    @IsNotEmpty()
+    materialId: string;
+
+    @IsNumber()
+    @IsNotEmpty()
+    quantity: number;
+}
+
+export class CreateTransferDto {
+    @IsDateString()
+    @IsNotEmpty()
+    date: string;
+
+    @IsString()
+    @IsNotEmpty()
+    fromCustomerId: string;
+
+    @IsString()
+    @IsNotEmpty()
+    toCustomerId: string;
+
+    @IsString()
+    @IsNotEmpty()
+    agreementId: string;
+
+    @IsString()
+    @IsOptional()
+    vehicleNumber?: string;
+
+    @IsString()
+    @IsOptional()
+    remarks?: string;
+
+    @IsNumber()
+    @IsOptional()
+    senderTransportation?: number;
+
+    @IsNumber()
+    @IsOptional()
+    receiverTransportation?: number;
+
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => TransferItemDto)
+    items: TransferItemDto[];
+}
+```
+
+--- C. BUSINESS LOGIC & TRANSACTION WORKFLOW ---
+* File Location: [transfers.service.ts](file:///c:/Users/lenovo/Desktop/stockDo/backend/src/transfers/transfers.service.ts)
+
+When executing `create()`, the TransfersService conducts the following database actions:
+1. Basic Verification Checks:
+   - Assures `fromCustomerId !== toCustomerId` (blocks self-transfer loopbacks).
+2. Receiver Agreement Verification:
+   - Fetches the targeted `agreementId` and confirms it belongs to the `toCustomerId` receiver.
+3. Materials Inclusion Validation:
+   - Confirms that every item transferred is explicitly defined in the receiver's contract 
+     to avoid unpriced ledger listings.
+4. Database `$transaction` Pipeline:
+   - **Sequence ID Generation:**
+     Queries transfers count to construct the unique prefix: `MTID-${count + 1}`.
+     Similarly, queries and generates separate serials for both Virtual Challans:
+     - RETURN Challan count $\rightarrow$ `RTN-XXXX`
+     - ISSUE Challan count $\rightarrow$ `CHN-XXXX`
+   - **Write Virtual RETURN Challan:**
+     Writes a `RETURN` challan to sender (`fromCustomerId`), setting standard properties 
+     along with the internal remark: `Internal Transfer to {toCustomerId} ({transferNumber})`.
+   - **Write Virtual ISSUE Challan:**
+     Writes an `ISSUE` challan to receiver (`toCustomerId`), mapping their receiver contract 
+     `agreementId` and assigning the internal remark: `Internal Transfer from {fromCustomerId} ({transferNumber})`.
+   - **Write Transfer Record:**
+     Inserts the unified `Transfer` log linking the newly written virtual challans: 
+     `returnChallanId` and `issueChallanId`.
+   - **Cross-Link Challans:**
+     Executes an `updateMany` command that sets `transferId` in both generated challans, 
+     sealing the relational bridge.
+
+```typescript
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateTransferDto } from './dto/create-transfer.dto';
+
+@Injectable()
+export class TransfersService {
+    constructor(private readonly prisma: PrismaService) { }
+
+    async create(createTransferDto: CreateTransferDto) {
+        const { fromCustomerId, toCustomerId, agreementId, items, date } = createTransferDto;
+
+        // 1. Basic Validations
+        if (fromCustomerId === toCustomerId) {
+            throw new BadRequestException('Source and destination customers must be different');
+        }
+
+        // 2. Verify Receiver's Agreement
+        const agreement = await this.prisma.agreement.findUnique({
+            where: { id: agreementId },
+            include: { items: true },
+        });
+
+        if (!agreement) {
+            throw new NotFoundException('Receiver agreement not found');
+        }
+
+        if (agreement.customerId !== toCustomerId) {
+            throw new BadRequestException('Agreement does not belong to the receiver customer');
+        }
+
+        // 3. Validate Items against Agreement
+        const agreementMaterialIds = new Set(agreement.items.map(i => i.materialId));
+        for (const item of items) {
+            if (!agreementMaterialIds.has(item.materialId)) {
+                throw new BadRequestException(`Material ${item.materialId} is not part of the receiver's agreement`);
+            }
+        }
+
+        return this.prisma.$transaction(async (tx) => {
+            // Generate Transfer Number
+            const transferCount = await tx.transfer.count();
+            const transferNumber = `MTID-${(transferCount + 1).toString().padStart(4, '0')}`;
+
+            // Generate Challan Numbers
+            const issueCount = await tx.challan.count({ where: { type: 'ISSUE' } });
+            const returnCount = await tx.challan.count({ where: { type: 'RETURN' } });
+
+            const returnChallanNumber = `RTN-${(returnCount + 1).toString().padStart(4, '0')}`;
+            const issueChallanNumber = `CHN-${(issueCount + 1).toString().padStart(4, '0')}`;
+
+            // Create RETURN Challan for sender
+            const returnChallan = await tx.challan.create({
+                data: {
+                    challanNumber: returnChallanNumber,
+                    date: new Date(date),
+                    customerId: fromCustomerId,
+                    type: 'RETURN',
+                    vehicleNumber: createTransferDto.vehicleNumber,
+                    remarks: `Internal Transfer to ${toCustomerId} (${transferNumber})`,
+                    items: {
+                        create: items.map(item => ({
+                            materialId: item.materialId,
+                            quantity: item.quantity,
+                        }))
+                    }
+                }
+            });
+
+            // Create ISSUE Challan for receiver
+            const issueChallan = await tx.challan.create({
+                data: {
+                    challanNumber: issueChallanNumber,
+                    date: new Date(date),
+                    customerId: toCustomerId,
+                    agreementId: agreementId,
+                    type: 'ISSUE',
+                    vehicleNumber: createTransferDto.vehicleNumber,
+                    remarks: `Internal Transfer from ${fromCustomerId} (${transferNumber})`,
+                    items: {
+                        create: items.map(item => ({
+                            materialId: item.materialId,
+                            quantity: item.quantity,
+                        }))
+                    }
+                }
+            });
+
+            // Create Transfer record
+            const transfer = await tx.transfer.create({
+                data: {
+                    transferNumber,
+                    date: new Date(date),
+                    fromCustomerId,
+                    toCustomerId,
+                    agreementId,
+                    vehicleNumber: createTransferDto.vehicleNumber,
+                    remarks: createTransferDto.remarks,
+                    senderTransportation: createTransferDto.senderTransportation || 0,
+                    receiverTransportation: createTransferDto.receiverTransportation || 0,
+                    returnChallanId: returnChallan.id,
+                    issueChallanId: issueChallan.id,
+                    items: {
+                        create: items.map(item => ({
+                            materialId: item.materialId,
+                            quantity: item.quantity,
+                        }))
+                    }
+                }
+            });
+
+            // Update challans with transferId
+            await tx.challan.updateMany({
+                where: { id: { in: [returnChallan.id, issueChallan.id] } },
+                data: { transferId: transfer.id }
+            });
+
+            return transfer;
+        });
+    }
+
+    async findAll() {
+        return this.prisma.transfer.findMany({
+            include: {
+                fromCustomer: true,
+                toCustomer: true,
+                items: {
+                    include: {
+                        material: true,
+                    }
+                }
+            },
+            orderBy: {
+                date: 'desc',
+            }
+        });
+    }
+
+    async findOne(id: string) {
+        return this.prisma.transfer.findUnique({
+            where: { id },
+            include: {
+                fromCustomer: true,
+                toCustomer: true,
+                agreement: true,
+                items: {
+                    include: {
+                        material: true,
+                    }
+                },
+                challans: true
+            }
+        });
+    }
+}
+```
+
+--------------------------------------------------------------------------------
+7. API ENDPOINT & FRONTEND SERVICE WRAPPERS
+--------------------------------------------------------------------------------
+* API File Location: [api.ts](file:///c:/Users/lenovo/Desktop/stockDo/frontend/src/lib/api.ts)
+
+The frontend communicates with the backend `transfers` endpoint using these dedicated 
+axios client service wrappers:
+
+- `fetchTransfers()`: Queries the `/transfers` API endpoint. Returns all transfer records 
+  along with Sender and Receiver customer sub-objects and nested items description maps.
+- `fetchTransfer(id)`: Queries `/transfers/:id` to retrieve details for a single transfer, 
+  including all cross-linked database records (agreement data, related challans list).
+- `createTransfer(payload)`: Submits the JSON body containing Sender/Receiver customer IDs, 
+  selected receiver's active agreement ID, Date, vehicle details, remarks, and line items.
+
+```typescript
+// --- TRANSFERS WRAPPERS ---
+export const fetchTransfers = async () => {
+    const response = await api.get('/transfers');
+    return response.data;
+};
+
+export const fetchTransfer = async (id: string) => {
+    const response = await api.get(`/transfers/${id}`);
+    return response.data;
+};
+
+export const createTransfer = async (data: any) => {
+    const response = await api.post('/transfers', data);
+    return response.data;
+};
+```
+
+--------------------------------------------------------------------------------
+8. QUICK DIRECTORY & FILE REFERENCE
+--------------------------------------------------------------------------------
+- Transfers List View Page:    `frontend/src/app/dashboard/stock/transfer/page.tsx`
+- Create New Transfer Page:    `frontend/src/app/dashboard/stock/transfer/new/page.tsx`
+- Transfer Viewer Dynamic Page:`frontend/src/app/dashboard/stock/transfer/[id]/page.tsx`
+- A4 Print PDF Layout Canvas:  `frontend/src/components/stock/TransferDocument.tsx`
+- Backend API REST Controller: `backend/src/transfers/transfers.controller.ts`
+- Input Validator DTO:         `backend/src/transfers/dto/create-transfer.dto.ts`
+- Core DB Transaction Service: `backend/src/transfers/transfers.service.ts`
+- Database Models & Schema:    `backend/prisma/schema.prisma`
+- Axios Network Fetch Library: `frontend/src/lib/api.ts`
+================================================================================

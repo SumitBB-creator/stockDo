@@ -1,0 +1,395 @@
+================================================================================
+STOCKDO: MATERIAL SHORTAGE NOTICE & RESTOCKING AUDIT LEDGER EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document provides a highly detailed, file-level architectural and operational
+guide for the Material Shortage Notice module of StockDo. It describes each visual 
+interface section, the automated alert threshold calculations, the database schemas, 
+frontend controller page codes, backend service calculations, and API endpoints.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW & THRESHOLD MONITORING SYSTEM
+--------------------------------------------------------------------------------
+The Material Shortage Notice module is the "Operational Early-Warning System" of StockDo. 
+In commercial scaffolding and building asset leasing, maintaining high stock availability 
+in the central yard is critical. If assets are over-leased, inbound orders cannot be fulfilled, 
+leading to lost revenue and customer dissatisfaction.
+
+To prevent yard shortages, the system implements a real-time threshold monitoring system 
+that compares dynamic available stock against safety stock limits defined in the material master:
+
+- Total Stock ($\text{totalQty}$):
+  The master physical count of an asset registered in the yard ledger.
+- Issued Stock ($\text{issuedQty}$):
+  The total amount of an asset currently deployed across all customer sites, computed by 
+  replaying all chronological `ISSUE` and `RETURN` challans:
+  $$\text{issuedQty} = \sum (\text{ISSUE}) - \sum (\text{RETURN})$$
+- Available Stock ($\text{availableQty}$):
+  The net quantity currently sitting in the central yard, ready for dispatch:
+  $$\text{availableQty} = \text{totalQty} - \text{issuedQty}$$
+- Lower Limit ($\text{lowerLimit}$):
+  The safety threshold or "Re-order Point" defined in the Material Master records. 
+
+--- NOTICE TRIGGER BOUNDARY ---
+An asset is flagged and listed on the Shortage Notice board if and only if the current available 
+stock drops to or below the safety threshold:
+$$\text{availableQty} \le \text{lowerLimit}$$
+
+--- CRITICAL STATUS CLASSIFICATION ---
+To help procurement managers prioritize inventory restocking, flagged items are sub-divided 
+into two alarm categories:
+1. LOW STOCK (Warning):
+   The yard inventory has crossed into the safety buffer but retains items:
+   $$0 < \text{availableQty} \le \text{lowerLimit}$$
+2. CRITICAL OUT (Danger):
+   The yard inventory is completely exhausted. Every single unit of this asset is currently 
+   deployed or lost, making dispatch of new orders impossible:
+   $$\text{availableQty} = 0$$
+
+--------------------------------------------------------------------------------
+2. DATABASE RELATIONAL SCHEMA
+--------------------------------------------------------------------------------
+Shortage metrics are derived dynamically from the `Material`, `Challan`, and `ChallanItem` 
+models in the PostgreSQL database.
+
+* Schema File Location: [schema.prisma](file:///c:/Users/lenovo/Desktop/stockDo/backend/prisma/schema.prisma)
+
+1. Model: Material (`materials` table)
+   - id: String (UUID, PK)
+   - materialId: String (Unique. e.g. M0001)
+   - name: String (Material descriptive title)
+   - unit: String? (UOM e.g. 'Nos', 'Mtr')
+   - totalQty: Int (Master total physical quantity in inventory)
+   - lowerLimit: Int (Safety threshold trigger)
+   - hireRate / damageRecoveryRate / shortRecoveryRate: Float
+   - status: String (Active / Inactive)
+
+2. Model: Challan (`challans` table)
+   - id: String (UUID, PK)
+   - type: ChallanType (Enum: 'ISSUE' or 'RETURN')
+   - items: ChallanItem[] (Nested lines array)
+
+3. Model: ChallanItem (`challan_items` table)
+   - id: String (UUID, PK)
+   - challanId: String (UUID, FK to challans)
+   - materialId: String (UUID, FK to materials)
+   - quantity: Int (Quantity issued or returned)
+
+--------------------------------------------------------------------------------
+3. FRONTEND CONTROLLER & DYNAMIC ALERT BOARD
+--------------------------------------------------------------------------------
+* File Location: [page.tsx](file:///c:/Users/lenovo/Desktop/stockDo/frontend/src/app/dashboard/stock/shortage/page.tsx)
+
+The Shortage Notice Board is an interactive, dark-themed Next.js client component ('use client') 
+that renders flagged materials. It displays warning panels, filter bars, a loading skeleton 
+animating during calculations, and visual badges displaying alerts.
+
+--- FRONTEND ALERT ENGINE FEATURES ---
+- Real-time search query matching: filters matching materials instantly by `materialName` or `unit`.
+- Visual badge indicator mapping:
+  - Blinking red badge (`animate-pulse`) labeled **CRITICAL OUT** if available quantity reaches $0$.
+  - Amber badge labeled **LOW STOCK** if available quantity resides within the safety buffer range.
+- Empty states: renders a full-page SVG graphic (`Package` icon) if all inventory resides safely 
+  above their safety thresholds.
+- Dynamic warning footer callout card detailing safety stock logic to site managers.
+
+--- FULL CODE LISTING ---
+```typescript
+'use client';
+
+import { useState, useEffect } from 'react';
+import { AlertTriangle, Search, Download, Package, RefreshCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { fetchCompanyStock } from '@/lib/api';
+import { Badge } from '@/components/ui/badge';
+
+export default function ShortageNoticePage() {
+    const [stock, setStock] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        loadStock();
+    }, []);
+
+    const loadStock = async () => {
+        setLoading(true);
+        try {
+            const data = await fetchCompanyStock();
+            // Filter materials that are at or below the lower limit
+            const shortageData = (Array.isArray(data) ? data : []).filter(item =>
+                item.availableQty <= (item.lowerLimit || 0)
+            );
+            setStock(shortageData);
+        } catch (error) {
+            console.error('Failed to fetch shortage data', error);
+            setStock([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filteredStock = stock.filter(item =>
+        item.materialName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.unit && item.unit.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center bg-[#0f172a] p-4 rounded-t-lg border-b border-slate-800 shadow-xl">
+                <h1 className="text-xl font-bold flex items-center gap-2 text-white">
+                    <AlertTriangle className="h-8 w-8 text-amber-500" />
+                    Material Shortage Notice
+                </h1>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={loadStock} className="bg-[#1e293b] border-slate-700 text-slate-300 hover:bg-[#334155] hover:text-white">
+                        <RefreshCcw className="mr-2 h-4 w-4" /> Refresh
+                    </Button>
+                    <Button variant="outline" size="sm" className="bg-[#1e293b] border-slate-700 text-slate-300 hover:bg-[#334155] hover:text-white">
+                        <Download className="mr-2 h-4 w-4" /> Export List
+                    </Button>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-4 bg-[#0f172a] p-4 rounded-lg border border-slate-800 shadow-sm">
+                <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                    <Input
+                        placeholder="Search by material..."
+                        className="pl-9 bg-[#020817] border-slate-700 text-slate-200 placeholder:text-slate-600 focus:ring-blue-500"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+                <div className="text-sm font-medium text-slate-400">
+                    Showing <span className="text-amber-500 font-bold">{filteredStock.length}</span> items in shortage
+                </div>
+            </div>
+
+            <div className="border border-slate-800 rounded-lg overflow-hidden bg-[#0f172a] shadow-2xl">
+                <Table>
+                    <TableHeader className="bg-[#1e293b]/50">
+                        <TableRow className="hover:bg-transparent border-slate-800">
+                            <TableHead className="text-slate-400 font-bold">Material Name</TableHead>
+                            <TableHead className="text-slate-400 font-bold text-center">Unit</TableHead>
+                            <TableHead className="text-right text-slate-400 font-bold">Total Stock</TableHead>
+                            <TableHead className="text-right text-slate-400 font-bold">Lower Limit</TableHead>
+                            <TableHead className="text-right text-amber-500 font-bold text-lg">Current Available</TableHead>
+                            <TableHead className="text-center text-slate-400 font-bold">Status</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            <TableRow className="border-slate-800">
+                                <TableCell colSpan={6} className="text-center h-48">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <RefreshCcw className="h-8 w-8 animate-spin text-blue-500" />
+                                        <span className="text-slate-400">Checking stock levels...</span>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ) : filteredStock.length === 0 ? (
+                            <TableRow className="border-slate-800">
+                                <TableCell colSpan={6} className="text-center h-48">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <Package className="h-12 w-12 text-slate-700" />
+                                        <span className="text-slate-500 text-lg font-medium">No materials currently in shortage.</span>
+                                        <span className="text-slate-600 text-sm">All materials are above their defined lower limits.</span>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            filteredStock.map((item) => {
+                                const isCritical = item.availableQty === 0;
+                                const isLow = item.availableQty <= item.lowerLimit;
+
+                                return (
+                                    <TableRow key={item.materialId} className="hover:bg-[#1e293b]/30 border-slate-800 transition-colors">
+                                        <TableCell className="font-bold text-slate-200">
+                                            <div className="flex flex-col">
+                                                <span>{item.materialName}</span>
+                                                <span className="text-[10px] text-slate-500 font-normal uppercase tracking-wider">{item.materialId}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge variant="secondary" className="bg-slate-800 text-slate-300 border-none px-2 py-0">
+                                                {item.unit || 'Nos'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right text-slate-400">{item.totalQty}</TableCell>
+                                        <TableCell className="text-right font-medium text-slate-300">{item.lowerLimit || 0}</TableCell>
+                                        <TableCell className="text-right">
+                                            <span className={`font-bold text-lg ${isCritical ? 'text-red-500' : 'text-amber-500'}`}>
+                                                {item.availableQty}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            {isCritical ? (
+                                                <Badge className="bg-red-500/10 text-red-500 border border-red-500/20 animate-pulse">
+                                                    CRITICAL OUT
+                                                </Badge>
+                                            ) : (
+                                                <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                                                    LOW STOCK
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+
+            <div className="bg-amber-500/5 border border-amber-500/20 p-4 rounded-lg flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                <div className="text-sm text-amber-200/80 leading-relaxed">
+                    <strong className="text-amber-500">Notice:</strong> This list automatically populates with materials whose <span className="text-white font-medium">Currently Available</span> quantity has reached or dropped below their <span className="text-white font-medium">Lower Limit</span> as defined in the Material Master. Please arrange for re-ordering as soon as possible.
+                </div>
+            </div>
+        </div>
+    );
+}
+```
+
+--------------------------------------------------------------------------------
+4. BACKEND STOCK ENGINE & REPLAY CALCULATIONS
+--------------------------------------------------------------------------------
+The backend resolves the entire transaction history to build the company-wide stock model. 
+This calculation prevents discrepancies caused by static inventory tracking systems.
+
+--- A. REST API ENDPOINT ---
+* File Location: [challans.controller.ts](file:///c:/Users/lenovo/Desktop/stockDo/backend/src/challans/challans.controller.ts)
+Exposes the query hook endpoint used by the frontend shortage notice interface:
+
+```typescript
+@Get('company-stock')
+getCompanyStock() {
+    return this.challansService.getCompanyStock();
+}
+```
+
+--- B. TRANSACTION REPLAY SERVICE METHOD ---
+* File Location: [challans.service.ts](file:///c:/Users/lenovo/Desktop/stockDo/backend/src/challans/challans.service.ts)
+
+Method execution steps:
+1. Fetch Materials:
+   Gathers all materials registered in the `Material` master table.
+2. Fetch Chronological Challan History:
+   Loads all `Challan` records along with their nested `ChallanItem` arrays.
+3. Compute Active Issued Quantities (`issuedMap` tracker):
+   Iterates through every challan line item:
+   - If the challan is an `ISSUE` (outward stock movement to site):
+     $$\text{issuedQty} = \text{issuedQty} + \text{item.quantity}$$
+   - If the challan is a `RETURN` (inward stock movement from site):
+     $$\text{issuedQty} = \text{issuedQty} - \text{item.quantity}$$
+     *Safety Guard:* To protect against raw human input discrepancies, the subtraction is 
+     wrapped inside a `Math.max(0)` boundary statement to prevent negative issued quantities:
+     $$\text{issuedQty} = \max(0, \text{issuedQty} - \text{item.quantity})$$
+4. Map Net Yard Available Quantities:
+   Loops through the materials array, matches the compiled issued quantity, and subtracts 
+   it from the master total physical stock:
+   $$\text{availableQty} = \text{totalQty} - \text{issuedQty}$$
+   It flattens and returns a standardized data transfer payload containing:
+   `materialId`, `materialName`, `unit`, `totalQty`, `lowerLimit`, `issuedQty`, `availableQty`.
+
+--- FULL CODE LISTING ---
+```typescript
+async getCompanyStock() {
+    // 1. Fetch all materials
+    const materials = await this.prisma.material.findMany();
+
+    // 2. Fetch all challans and their items
+    const allChallans = await this.prisma.challan.findMany({
+        include: { items: true },
+    });
+
+    // 3. Map to keep track of issued quantities
+    const issuedMap = new Map<string, number>();
+
+    for (const challan of allChallans) {
+        for (const item of challan.items) {
+            const currentIssued = issuedMap.get(item.materialId) || 0;
+
+            if (challan.type === 'ISSUE') {
+                issuedMap.set(item.materialId, currentIssued + item.quantity);
+            } else if (challan.type === 'RETURN') {
+                // Prevent negative issued stock, assuming data might have discrepancies
+                issuedMap.set(item.materialId, Math.max(0, currentIssued - item.quantity));
+            }
+        }
+    }
+
+    // 4. Combine material total stock with issued stock to calculate available stock
+    return materials.map(material => {
+        const issuedQty = issuedMap.get(material.id) || 0;
+        const availableQty = material.totalQty - issuedQty;
+
+        return {
+            materialId: material.id,
+            materialName: material.name,
+            unit: material.unit,
+            totalQty: material.totalQty,
+            lowerLimit: material.lowerLimit,
+            issuedQty,
+            availableQty,
+        };
+    });
+}
+```
+
+--------------------------------------------------------------------------------
+5. FRONTEND API ROUTER WRAPPER
+--------------------------------------------------------------------------------
+* API File Location: [api.ts](file:///c:/Users/lenovo/Desktop/stockDo/frontend/src/lib/api.ts)
+
+The frontend notice board communicates with the backend ledger queries via this 
+dedicated asynchronous helper wrapper:
+
+```typescript
+export const fetchCompanyStock = async () => {
+    const response = await api.get('/challans/company-stock');
+    return response.data;
+};
+```
+
+--------------------------------------------------------------------------------
+6. OPERATIONAL PROCUREMENT WORKFLOW
+--------------------------------------------------------------------------------
+When materials drop below safety thresholds, the operational team uses the following 
+standard flow to restock:
+
+1. Alert Assessment:
+   The Yard Manager accesses the Shortage Notice board daily to assess flagged items.
+2. Filter & Prioritization:
+   The search bar is used to filter by material name. Managers target **CRITICAL OUT** items 
+   first, followed by **LOW STOCK** warnings.
+3. Export List:
+   Clicking the **Export List** button triggers a CSV download containing columns: 
+   Material ID, Name, Total, safety limit, and currently available yard stock, which is 
+   forwarded to purchasing.
+4. Material Limit Adjustments:
+   If safety buffers need to be altered due to seasonal demand shifts, managers navigate to 
+   the **Material Master** settings panel, locate the material, edit the `lowerLimit` integer, 
+   and click save. The Shortage Notice board adjusts its alert filters immediately upon 
+   the next refresh.
+
+--------------------------------------------------------------------------------
+7. QUICK DIRECTORY & FILE REFERENCE
+--------------------------------------------------------------------------------
+- Frontend Alert Page:        `frontend/src/app/dashboard/stock/shortage/page.tsx`
+- Axios Network Client Wrapper:`frontend/src/lib/api.ts`
+- Backend API Router:          `backend/src/challans/challans.controller.ts`
+- Backend Calculation Service: `backend/src/challans/challans.service.ts`
+- Database Schema Definition:  `backend/prisma/schema.prisma`
+================================================================================

@@ -25,7 +25,7 @@ interface AutocompleteProps {
     isOptionDisabled?: (value: string) => boolean;
 }
 
-export function Autocomplete({
+export const Autocomplete = React.forwardRef<HTMLInputElement, AutocompleteProps>(({
     items,
     value,
     onChange,
@@ -34,7 +34,7 @@ export function Autocomplete({
     disabled = false,
     emptyMessage = "No results found.",
     isOptionDisabled
-}: AutocompleteProps) {
+}, ref) => {
     const [open, setOpen] = React.useState(false)
     const [searchQuery, setSearchQuery] = React.useState("")
     const [isFocused, setIsFocused] = React.useState(false)
@@ -68,11 +68,12 @@ export function Autocomplete({
     const filteredItems = React.useMemo(() => {
         if (!searchQuery) return items;
         const lowerQuery = searchQuery.toLowerCase();
+        
         return items.filter(item =>
-            item.label.toLowerCase().includes(lowerQuery) ||
-            (item.subLabel && item.subLabel.toLowerCase().includes(lowerQuery)) ||
-            (item.tertiaryLabel && item.tertiaryLabel.toLowerCase().includes(lowerQuery))
-        )
+            item.label.toLowerCase().startsWith(lowerQuery) ||
+            (item.subLabel && item.subLabel.toLowerCase().startsWith(lowerQuery)) ||
+            (item.tertiaryLabel && item.tertiaryLabel.toLowerCase().startsWith(lowerQuery))
+        );
     }, [items, searchQuery])
 
     // "Show the dropdown only when the input is focused and has at least one character typed."
@@ -116,6 +117,7 @@ export function Autocomplete({
             <PopoverAnchor asChild>
                 <div ref={anchorRef} className={cn("relative w-full", className)}>
                     <Input
+                        ref={ref}
                         type="text"
                         placeholder={placeholder}
                         value={searchQuery}
@@ -183,4 +185,5 @@ export function Autocomplete({
             </PopoverContent>
         </Popover>
     )
-}
+})
+Autocomplete.displayName = "Autocomplete"

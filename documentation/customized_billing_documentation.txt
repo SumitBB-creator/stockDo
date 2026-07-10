@@ -1,0 +1,539 @@
+================================================================================
+STOCKDO: CUSTOMIZED DATE-RANGE BILLING & TRANSACTION PREVIEW EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document provides a highly detailed, file-level architectural and operational
+guide for the Customized Date-Range Billing module of StockDo. It describes the 
+flexible date-range accounting concepts, non-persisted live preview generation, 
+database relational mappings, complete frontend and backend code blocks, and API wrappers.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW & FLEX-BILLING CONCEPT
+--------------------------------------------------------------------------------
+While standard monthly billing is run on calendar boundaries (e.g. May 1 to May 31), 
+real-world construction sites operate on variable timelines. Projects are initiated, 
+paused, or completed on arbitrary dates. Generating invoices only at the end of the 
+calendar month creates collection delays when agreements close mid-month.
+
+The Customized Billing system addresses this by decoupling the billing cycle from 
+calendar borders:
+
+- Custom Date Boundaries:
+  Users select any active customer site and input a custom date range (e.g., 12-May 
+  to 26-May). The engine automatically processes the inventory holdings within this window.
+
+- Live Non-Persisted Previews:
+  Before writing records to the database, accountants can audit the accrued costs. 
+  The system queries the stock history, calculates the daily balances, applies the 
+  agreement rates, aggregates logistic charges, and computes the GST splits. It returns 
+  this complete, un-saved preview directly to the interface.
+
+--- CORE TRANSACTION PIPELINE ---
+The customized billing lifecycle follows a three-step path to invoice generation:
+1. Criteria Selection:
+   The user specifies the `customerId`, `fromDate` and `toDate`. The interface ensures:
+   $$\text{fromDate} \le \text{toDate}$$
+2. preview Calculation (Read-Only):
+   The backend retrieves the customer's rate sheet and stock movements, then replays 
+   the FIFO ledger. It returns the preview payload:
+   $$\text{Preview Sub-total} = \sum (\text{Accrued Item Rent}) + \text{Transportation} + \text{Green Tax}$$
+   $$\text{Estimated CGST / SGST / IGST} = \text{Taxable Amount} \times \text{GST Rate}$$
+3. Finalization Write (Write-Transaction):
+   Upon validation of the preview, the user triggers "Finalize". The backend executes 
+   an atomic transaction that calculates the final figures, registers the legal invoice, 
+   sets its status to `FINALIZED`, and creates a ledger debit transaction.
+
+--------------------------------------------------------------------------------
+2. DATABASE RELATIONAL SCHEMA
+--------------------------------------------------------------------------------
+Customized bills use the standard `Bill`, `BillItem`, and `Transaction` tables.
+
+* Schema File Location: [schema.prisma](file:///c:/Users/lenovo/Desktop/stockDo/backend/prisma/schema.prisma)
+
+1. Model: Bill (`bills` table)
+   - id: String (UUID, PK)
+   - billNumber: String (Unique invoice serial: e.g. BILL00001)
+   - customerId: String (UUID, FK to customers)
+   - dateFrom / dateTo: DateTime (Custom date boundaries)
+   - totalAmount: Float (accrued rental subtotal)
+   - taxableAmount: Float (taxable base amount)
+   - transportationCost / greenTax: Float (Logistic charges aggregated from challans)
+   - gstType: String? (Intra-state: 'CGST_SGST', Inter-state: 'IGST')
+   - cgst / sgst / igst / grandTotal: Float (GST splits and total invoice liability)
+   - status: BillStatus (Standardized as 'FINALIZED')
+
+2. Model: BillItem (`bill_items` table)
+   - id: String (UUID, PK)
+   - billId: String (UUID, FK reference, onDelete: Cascade)
+   - description: String (Material description)
+   - quantity: Float (Accrued quantity-days: `balance * days`)
+   - rate: Float (Accredited hire rate)
+   - amount: Float (Accrued rent: `quantity * rate`)
+   - fromDate / toDate: DateTime (Accrual period duration)
+   - balance: Float (Site balance held during this sub-period)
+   - days: Int (Day span of this sub-period)
+
+3. Model: Transaction (`transactions` table)
+   - id: String (UUID, PK)
+   - ledgerAccountId: String (UUID, FK to customer's ledger account)
+   - date: DateTime (Transaction post date: mapped to `dateTo`)
+   - type: TransactionType (Logged as 'BILL')
+   - amount: Float (Debit amount matching the bill's grandTotal)
+   - referenceId: String? (UUID, FK reference link to the bill)
+   - description: String (Descriptive invoice summary)
+
+--------------------------------------------------------------------------------
+3. FRONTEND CONTROLLER & INTERACTIVE PREVIEW LAYER
+--------------------------------------------------------------------------------
+* File Location: [customize-billing/page.tsx](file:///c:/Users/lenovo/Desktop/stockDo/frontend/src/app/dashboard/accounting/customize-billing/page.tsx)
+
+The Customized Billing UI is an interactive dashboard where users select customer 
+and date ranges, view the dynamic preview, and finalize the invoice.
+
+--- INTERFACE LIFE-CYCLE ---
+1. Customer Directory Loading:
+   Upon mounting, the component fetches all customer records via `fetchCustomers()` 
+   to populate the autocomplete search dropdown.
+2. Parameter Inputs:
+   The user selects a customer and enters `fromDate` and `toDate` inputs. The component 
+   validates that the start date precedes the end date.
+3. Preview Computation:
+   Clicking "Generate Preview" calls `previewCustomBill(customerId, fromDate, toDate)`. 
+   The page enters a loading state (`previewing = true`) and displays a loader icon.
+4. Preview Render Grid:
+   The backend returns the calculated items array. The component renders a detailed table 
+   displaying the itemized accrual rows. It dynamically computes and displays CGST, SGST, 
+   or IGST splits and the grand total based on the $18\%$ tax rate rule.
+5. Invoicing & Redirect:
+   Clicking "Finalize Bill" prompts a confirmation dialog. Upon approval, it calls 
+   `finalizeCustomBill(...)`, creates the database entries, and redirects the user to 
+   the generated invoice page (`/dashboard/accounting/billing/${bill.id}`).
+
+--- FULL CODE LISTING ---
+```typescript
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
+import { Loader2, Search, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { fetchCustomers, previewCustomBill, finalizeCustomBill } from '@/lib/api';
+import { useToast } from '@/components/ui/use-toast';
+import { formatCustomerAddress } from '@/lib/utils';
+
+export default function CustomizeBillingPage() {
+    const router = useRouter();
+    const { toast } = useToast();
+    const [customers, setCustomers] = useState<any[]>([]);
+    const [selectedCustomerId, setSelectedCustomerId] = useState('');
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
+    const [preview, setPreview] = useState<any>(null);
+    const [previewing, setPreviewing] = useState(false);
+    const [finalizing, setFinalizing] = useState(false);
+
+    useEffect(() => {
+        loadCustomers();
+    }, []);
+
+    const loadCustomers = async () => {
+        try {
+            const data = await fetchCustomers();
+            setCustomers(data);
+        } catch (error) {
+            console.error('Failed to load customers:', error);
+        }
+    };
+
+    const handlePreview = async () => {
+        if (!selectedCustomerId || !fromDate || !toDate) {
+            toast({ title: "Error", description: "Please select a customer and date range", variant: "destructive" });
+            return;
+        }
+        if (new Date(fromDate) > new Date(toDate)) {
+            toast({ title: "Error", description: "From Date must be before To Date", variant: "destructive" });
+            return;
+        }
+
+        setPreviewing(true);
+        setPreview(null);
+        try {
+            const data = await previewCustomBill(selectedCustomerId, fromDate, toDate);
+            setPreview(data);
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.response?.data?.message || "Failed to generate preview",
+                variant: "destructive"
+            });
+        } finally {
+            setPreviewing(false);
+        }
+    };
+
+    const handleFinalize = async () => {
+        if (!selectedCustomerId || !fromDate || !toDate) return;
+        if (!window.confirm("Are you sure you want to finalize this bill? This action cannot be undone.")) return;
+
+        setFinalizing(true);
+        try {
+            const bill = await finalizeCustomBill(selectedCustomerId, fromDate, toDate);
+            toast({ title: "Bill Finalized", description: `Bill ${bill.billNumber} created successfully.` });
+            router.push(`/dashboard/accounting/billing/${bill.id}`);
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.response?.data?.message || "Failed to finalize bill",
+                variant: "destructive"
+            });
+        } finally {
+            setFinalizing(false);
+        }
+    };
+
+    const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
+
+    // Calculate GST for preview display
+    const gstRate = 18;
+    const subTotal = preview?.totalAmount || 0;
+    const gstAmount = Math.round((subTotal * gstRate / 100) * 100) / 100;
+    const grandTotal = Math.round((subTotal + gstAmount) * 100) / 100;
+
+    return (
+        <div className="space-y-6">
+            <h2 className="text-xl font-bold tracking-tight">
+                Customize Billing
+            </h2>
+            <p className="text-muted-foreground">
+                Generate a bill for a specific customer with a custom date range.
+            </p>
+
+            {/* Form */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 rounded-lg border">
+                <div className="space-y-2">
+                    <Label htmlFor="customer">Customer</Label>
+                    <Select value={selectedCustomerId} onValueChange={(v) => { setSelectedCustomerId(v); setPreview(null); }}>
+                        <SelectTrigger id="customer">
+                            <SelectValue placeholder="Select a customer" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {customers.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="fromDate">From Date</Label>
+                    <Input
+                        id="fromDate"
+                        type="date"
+                        value={fromDate}
+                        onChange={(e) => { setFromDate(e.target.value); setPreview(null); }}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="toDate">To Date</Label>
+                    <Input
+                        id="toDate"
+                        type="date"
+                        value={toDate}
+                        onChange={(e) => { setToDate(e.target.value); setPreview(null); }}
+                    />
+                </div>
+            </div>
+
+            {/* Preview Button */}
+            <div className="flex gap-3">
+                <Button
+                    onClick={handlePreview}
+                    disabled={!selectedCustomerId || !fromDate || !toDate || previewing}
+                >
+                    {previewing ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating Preview...</>
+                    ) : (
+                        <><Search className="mr-2 h-4 w-4" />Generate Preview</>
+                    )}
+                </Button>
+            </div>
+
+            {/* Preview Results */}
+            {preview && (
+                <div className="space-y-4">
+                    {/* Customer Info Card */}
+                    <div className="p-4 rounded-lg border">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h3 className="font-semibold text-lg">{selectedCustomer?.name}</h3>
+                                {selectedCustomer?.relationType && selectedCustomer?.relationName && (
+                                    <p className="text-sm text-muted-foreground">
+                                        {selectedCustomer.relationType} {selectedCustomer.relationName}
+                                    </p>
+                                )}
+                                <p className="text-sm text-muted-foreground">{formatCustomerAddress(selectedCustomer)}</p>
+                            </div>
+                            <div className="text-right text-sm">
+                                <p><span className="text-muted-foreground">Period:</span> {format(new Date(fromDate), 'dd MMM yyyy')} — {format(new Date(toDate), 'dd MMM yyyy')}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Items Table */}
+                    <div className="rounded-md border">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="bg-muted/50">
+                                    <TableHead>From Date</TableHead>
+                                    <TableHead>To Date</TableHead>
+                                    <TableHead>Particulars</TableHead>
+                                    <TableHead>HSN/SAC</TableHead>
+                                    <TableHead className="text-right">Balance</TableHead>
+                                    <TableHead className="text-right">Days</TableHead>
+                                    <TableHead className="text-right">No</TableHead>
+                                    <TableHead className="text-right">Rate (₹)</TableHead>
+                                    <TableHead className="text-right">Amount (₹)</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {preview.items?.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={9} className="h-20 text-center text-muted-foreground">
+                                            No stock found for this customer in the selected period.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    <>
+                                        {preview.items?.map((item: any, index: number) => (
+                                            <TableRow key={`${item.materialId}-${index}`} className="hover:bg-muted/50">
+                                                <TableCell>{item.fromDate ? format(new Date(item.fromDate), 'dd/MM/yy') : ''}</TableCell>
+                                                <TableCell>{item.toDate ? format(new Date(item.toDate), 'dd/MM/yy') : ''}</TableCell>
+                                                <TableCell>{item.materialName}</TableCell>
+                                                <TableCell>{item.hsn || item.sac || ''}</TableCell>
+                                                <TableCell className="text-right tabular-nums">{item.balance || ''}</TableCell>
+                                                <TableCell className="text-right tabular-nums">{item.days || ''}</TableCell>
+                                                <TableCell className="text-right tabular-nums">{item.quantityDays?.toLocaleString() || item.quantity?.toLocaleString()}</TableCell>
+                                                <TableCell className="text-right tabular-nums">{item.rate?.toFixed(2)}</TableCell>
+                                                <TableCell className="text-right tabular-nums font-medium">
+                                                    ₹{item.amount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {/* Sub Total */}
+                                        <TableRow className="border-t-2 border-primary/20">
+                                            <TableCell colSpan={8} className="text-right font-semibold">Sub Total:</TableCell>
+                                            <TableCell className="text-right font-semibold tabular-nums">
+                                                ₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                            </TableCell>
+                                        </TableRow>
+                                        {/* GST */}
+                                        <TableRow>
+                                            <TableCell colSpan={8} className="text-right text-muted-foreground">GST @ {gstRate}%:</TableCell>
+                                            <TableCell className="text-right tabular-nums text-muted-foreground">
+                                                ₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                            </TableCell>
+                                        </TableRow>
+                                        {/* Grand Total */}
+                                        <TableRow className="bg-primary/5">
+                                            <TableCell colSpan={8} className="text-right font-bold text-lg">Grand Total:</TableCell>
+                                            <TableCell className="text-right font-bold text-lg tabular-nums">
+                                                ₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                            </TableCell>
+                                        </TableRow>
+                                    </>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    {/* Finalize Button */}
+                    {preview.items?.length > 0 && (
+                        <div className="flex gap-3">
+                            <Button
+                                onClick={handleFinalize}
+                                disabled={finalizing}
+                            >
+                                {finalizing ? (
+                                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Finalizing...</>
+                                ) : (
+                                    <><FileText className="mr-2 h-4 w-4" />Finalize Bill</>
+                                ) }
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+```
+
+--------------------------------------------------------------------------------
+4. BACKEND CUSTOM RANGE LOGIC & API ENDPOINTS
+--------------------------------------------------------------------------------
+
+--- A. REST API ENDPOINTS ---
+* File Location: [billing.controller.ts](file:///c:/Users/lenovo/Desktop/stockDo/backend/src/billing/billing.controller.ts)
+Exposes the POST endpoints to request previews and finalize custom date-range bills:
+
+```typescript
+// Custom date range preview
+@Post('custom-preview')
+async customPreview(@Body() data: { customerId: string, fromDate: string, toDate: string }) {
+    return this.billingService.generateBillCustomRange(data.customerId, new Date(data.fromDate), new Date(data.toDate));
+}
+
+// Finalize a custom date range bill
+@Post('finalize-custom')
+async finalizeCustomBill(@Body() data: { customerId: string, fromDate: string, toDate: string }) {
+    return this.billingService.finalizeCustomBill(data.customerId, new Date(data.fromDate), new Date(data.toDate));
+}
+```
+
+--- B. CUSTOM GENERATOR SERVICES ---
+* File Location: [billing.service.ts](file:///c:/Users/lenovo/Desktop/stockDo/backend/src/billing/billing.service.ts)
+
+The custom billing logic is driven by two service handlers:
+
+1. `generateBillCustomRange(customerId, fromDate, toDate)`:
+   - Sets the chronological window: `startDate = fromDate`, `endDate = toDate`.
+   - Queries the active `Agreement` for the customer.
+   - Reconstructs a map of material rates and names.
+   - Fetches all related `Challan` and `ChallanItem` records dated on or before `endDate`.
+   - Calls `calculateHandlingPeriods(startDate, endDate, challans, rates)` to run the 
+     day-by-day FIFO rental ledger simulator.
+   - Calculates logistical expenses:
+     - `transportationCost` is calculated by summing `transportationCost` from challans.
+     - `greenTax` is calculated by summing `greenTax` from challans.
+   - Returns the consolidated preview details.
+
+2. `finalizeCustomBill(customerId, fromDate, toDate)`:
+   - Triggers `generateBillCustomRange(...)` to acquire the verified billing metrics.
+   - Passes the preview parameters directly to `createBill(...)`, which calculates the 
+     CGST/SGST/IGST tax splits, saves the `Bill` and `BillItem` records, generates a 
+     padded invoice number, and registers the ledger debit `Transaction`.
+
+```typescript
+/**
+ * Generate bill for a customer with a custom date range.
+ */
+async generateBillCustomRange(customerId: string, fromDate: Date, toDate: Date) {
+    const startDate = new Date(fromDate);
+    const endDate = new Date(toDate);
+
+    const agreement = await this.prisma.agreement.findFirst({
+        where: { customerId, status: 'Active' },
+        include: { items: { include: { material: true } } },
+    });
+
+    if (!agreement) {
+        throw new NotFoundException('No active agreement found for this customer');
+    }
+
+    const rates = new Map<string, { rate: number, name: string, unit: string, hsn: string, sac: string }>();
+    agreement.items.forEach(item => {
+        rates.set(item.materialId, {
+            rate: item.hireRate,
+            name: item.material.name,
+            unit: item.rateAppliedAs || 'Nos/Days',
+            hsn: item.material.hsn || '',
+            sac: item.material.sac || '',
+        });
+    });
+
+    const challans = await this.prisma.challan.findMany({
+        where: { customerId, date: { lte: endDate } },
+        include: { items: true },
+        orderBy: { date: 'asc' },
+    });
+
+    const periodData = this.calculateHandlingPeriods(startDate, endDate, challans, rates);
+
+    const transportationCost = challans.reduce((sum, c) => sum + (c.transportationCost || 0), 0);
+    const transportationCount = challans.filter(c => c.transportationCost && c.transportationCost > 0).length;
+
+    const greenTax = challans.reduce((sum, c) => sum + (c.greenTax || 0), 0);
+    const greenTaxCount = challans.filter(c => c.greenTax && c.greenTax > 0).length;
+
+    return {
+        customerId,
+        ...periodData,
+        transportationCost,
+        transportationCount,
+        greenTax,
+        greenTaxCount,
+        generatedAt: new Date(),
+    };
+}
+
+/**
+ * Finalize a custom date range bill (preview + create in one step).
+ */
+async finalizeCustomBill(customerId: string, fromDate: Date, toDate: Date) {
+    const preview = await this.generateBillCustomRange(customerId, fromDate, toDate);
+    return this.createBill({
+        customerId,
+        dateFrom: preview.period.start,
+        dateTo: preview.period.end,
+        totalAmount: preview.totalAmount,
+        transportationCost: preview.transportationCost,
+        transportationCount: preview.transportationCount,
+        greenTax: preview.greenTax,
+        greenTaxCount: preview.greenTaxCount,
+        items: preview.items,
+    });
+}
+```
+
+--------------------------------------------------------------------------------
+5. FRONTEND API ROUTER WRAPPERS
+--------------------------------------------------------------------------------
+* API File Location: [api.ts](file:///c:/Users/lenovo/Desktop/stockDo/frontend/src/lib/api.ts)
+
+The client application accesses custom billing features via these asynchronous service wrappers:
+
+- `previewCustomBill(customerId, fromDate, toDate)`:
+  Triggers a POST request to `/billing/custom-preview` passing customer, from date, and to 
+  date parameters.
+- `finalizeCustomBill(customerId, fromDate, toDate)`:
+  Triggers a POST request to `/billing/finalize-custom` to finalize the custom date-range bill 
+  in a single atomic database operation.
+
+```typescript
+export const previewCustomBill = async (customerId: string, fromDate: string, toDate: string) => {
+    const response = await api.post('/billing/custom-preview', { customerId, fromDate, toDate });
+    return response.data;
+};
+
+export const finalizeCustomBill = async (customerId: string, fromDate: string, toDate: string) => {
+    const response = await api.post('/billing/finalize-custom', { customerId, fromDate, toDate });
+    return response.data;
+};
+```
+
+--------------------------------------------------------------------------------
+6. QUICK DIRECTORY & FILE REFERENCE
+--------------------------------------------------------------------------------
+- Customize Billing UI Page: `frontend/src/app/dashboard/accounting/customize-billing/page.tsx`
+- Axios Network Wrapper Hooks:`frontend/src/lib/api.ts`
+- Backend API REST Router:    `backend/src/billing/billing.controller.ts`
+- Core DB Billing Service:    `backend/src/billing/billing.service.ts`
+- Database Relational Models: `backend/prisma/schema.prisma`
+================================================================================

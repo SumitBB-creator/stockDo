@@ -238,8 +238,8 @@ export default function MonthlyBillingPage() {
                                             {customerAddress(item.customer)}
                                         </div>
                                     </TableCell>
-                                    <TableCell>{format(new Date(item.fromDate), 'MMM dd, yyyy')}</TableCell>
-                                    <TableCell>{format(new Date(item.toDate), 'MMM dd, yyyy')}</TableCell>
+                                    <TableCell>{format(new Date(item.fromDate), 'dd/MM/yyyy')}</TableCell>
+                                    <TableCell>{format(new Date(item.toDate), 'dd/MM/yyyy')}</TableCell>
                                 </TableRow>
                             ))
                         ) : (
@@ -261,8 +261,8 @@ export default function MonthlyBillingPage() {
                                     <TableCell className="text-right font-semibold tabular-nums">
                                         ₹{(bill.grandTotal || bill.totalAmount)?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                     </TableCell>
-                                    <TableCell>{format(new Date(bill.dateFrom), 'MMM dd, yyyy')}</TableCell>
-                                    <TableCell>{format(new Date(bill.dateTo), 'MMM dd, yyyy')}</TableCell>
+                                    <TableCell>{format(new Date(bill.dateFrom), 'dd/MM/yyyy')}</TableCell>
+                                    <TableCell>{format(new Date(bill.dateTo), 'dd/MM/yyyy')}</TableCell>
                                     <TableCell>
                                         <span className="font-mono text-sm">{bill.billNumber}</span>
                                     </TableCell>

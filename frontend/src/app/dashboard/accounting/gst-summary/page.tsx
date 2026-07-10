@@ -19,6 +19,7 @@ import { fetchGstSummary, fetchCompany } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { cn, formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
+import { DatePicker } from '@/components/ui/date-picker';
 
 export default function GstSummaryPage() {
     const { toast } = useToast();
@@ -89,9 +90,9 @@ export default function GstSummaryPage() {
                     <div className="flex flex-wrap items-end gap-6">
                         <div className="space-y-2">
                             <Label htmlFor="fromDate" className="text-xs font-bold text-slate-300 tracking-wider uppercase ml-1">From Date</Label>
-                            <Input
+                            <DatePicker
                                 id="fromDate"
-                                type="date"
+                                
                                 value={fromDate}
                                 onChange={(e) => setFromDate(e.target.value)}
                                 className="w-[220px] bg-[#1e293b] border-slate-700 text-white h-10 text-base shadow-inner focus:ring-primary focus:border-primary transition-all"
@@ -100,9 +101,9 @@ export default function GstSummaryPage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="toDate" className="text-xs font-bold text-slate-300 tracking-wider uppercase ml-1">To Date</Label>
-                            <Input
+                            <DatePicker
                                 id="toDate"
-                                type="date"
+                                
                                 value={toDate}
                                 onChange={(e) => setToDate(e.target.value)}
                                 className="w-[220px] bg-[#1e293b] border-slate-700 text-white h-10 text-base shadow-inner focus:ring-primary focus:border-primary transition-all"

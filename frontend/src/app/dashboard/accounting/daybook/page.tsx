@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { fetchDaybook } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { DatePicker } from '@/components/ui/date-picker';
 
 export default function DaybookPage() {
     const router = useRouter();
@@ -94,8 +95,8 @@ export default function DaybookPage() {
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <label className="text-sm font-medium">Select Date:</label>
-                        <Input
-                            type="date"
+                        <DatePicker
+                            
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
                             className="w-[180px]"

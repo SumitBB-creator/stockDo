@@ -1,0 +1,140 @@
+================================================================================
+STOCKDO: TRANSACTIONS & FINANCIAL LEDGERS EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document provides a highly detailed, file-level architectural and operational
+guide for the Transactions and Financial Ledgers module in StockDo. It covers the
+core double-entry accounting mechanics, API controllers, database schema, and frontend
+interfaces like Ledger Statements, Daybooks, Dueslists, and Balance Sheets.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW & ACCOUNTING CONCEPT
+--------------------------------------------------------------------------------
+The accounting system in StockDo operates on a simplified double-entry model where
+every financial event is recorded as a `Transaction` tied to a specific `ledgerAccountId`.
+The system dynamically resolves the `ledgerAccountId` to a Customer, Supplier, 
+Employee, or the Internal Company account.
+
+--- CORE COMPONENTS ---
+- Ledgers: A chronological statement of account for a specific entity. Calculates 
+  opening and closing balances accurately based on entity type (e.g., bills are debits 
+  for customers but credits for suppliers).
+- Daybook: A global chronologic log of all transactions across all entities on a 
+  given date.
+- Dueslist: Aggregates net outstanding balances (Debtors/Creditors) globally.
+- Balance Sheet: A macroscopic view aggregating Fixed Assets, Stock Value, Cash, 
+  Debtors, Creditors, and Capital.
+- GST Summary: Aggregates taxable amounts, CGST, SGST, and IGST for Sales and Purchases.
+
+--- ACCOUNTING POLICIES ---
+- Customers/Employees: 
+  - Increase Type ('BILL', 'DEBIT_NOTE') -> Adds to Debit (+), increases running balance.
+  - Decrease Type ('RECEIPT', 'PAYMENT', 'CREDIT_NOTE') -> Adds to Credit (-), decreases balance.
+- Suppliers/Company (Mirrored Logic): 
+  - Increase Type ('BILL', 'DEBIT_NOTE') -> Adds to Credit (-).
+  - Decrease Type ('RECEIPT', 'PAYMENT', 'CREDIT_NOTE') -> Adds to Debit (+).
+
+--------------------------------------------------------------------------------
+2. DATABASE RELATIONAL SCHEMA
+--------------------------------------------------------------------------------
+* Schema File Location: `backend/prisma/schema.prisma`
+
+Model: Transaction (`transactions` table)
+- id: String (UUID, PK)
+- ledgerAccountId: String (UUID referencing Customer, Supplier, Employee, or Company)
+- date: DateTime (Transaction post date)
+- type: TransactionType (Enum: 'RECEIPT', 'PAYMENT', 'BILL', 'PURCHASE', 'CREDIT_NOTE', 'DEBIT_NOTE', 'EXPENSE')
+- amount: Float (Absolute monetary value)
+- referenceId: String? (Optional link to Bill or Purchase ID)
+- transactionNumber: String? (Auto-generated serial, e.g., 'R-0001', 'P-0002')
+- description: String? (Narration or particulars)
+- taxableAmount / gstRate / cgst / sgst / igst / gstType: Optional fields for GST tracking on notes/expenses.
+
+--------------------------------------------------------------------------------
+3. BACKEND SERVICES & LOGIC
+--------------------------------------------------------------------------------
+* File Location: `backend/src/transactions/transactions.service.ts`
+
+The Transaction service consolidates all critical financial computations. Key methods:
+
+1. `create(data)`:
+   Generates a manual transaction. Auto-prefixes transaction numbers based on type 
+   (e.g., 'RECEIPT' -> 'R-', 'PAYMENT' -> 'P-').
+
+2. `getLedger(customerId, fromDate, toDate)`:
+   - Resolves the `ledgerAccountId` to determine the party type.
+   - Calculates the Opening Balance by iterating all transactions before `fromDate`.
+   - Iterates transactions within the period, maintaining a running balance.
+   - Resolves references like `billNumber` if the transaction is linked to a bill.
+   - Returns Opening Balance, Closing Balance, and itemized Transactions with Debit/Credit columns.
+
+3. `getDueslist(asOfDate)`:
+   - Groups all transactions by `ledgerAccountId` and `type` up to `asOfDate`.
+   - Calculates total billed, total paid, and net due.
+   - Returns a sorted list of all active debtors/creditors.
+
+4. `getBalanceSheet(asOfDate)`:
+   - Assets: Company Fixed Assets + Closing Stock Valuation (Latest Purchase Rate * Qty) + Debtors + Liquid Cash.
+   - Liabilities: Creditors + Advances.
+   - Capital: Derived from `Assets - Liabilities`.
+
+5. `getGstSummary(fromDate, toDate)`:
+   - Iterates Bills and Purchases within a date range to aggregate Taxable, CGST, SGST, IGST totals.
+
+--------------------------------------------------------------------------------
+4. BACKEND API ROUTES
+--------------------------------------------------------------------------------
+* File Location: `backend/src/transactions/transactions.controller.ts`
+
+```typescript
+@Controller('transactions')
+export class TransactionsController {
+    @Post() create(@Body() data: any) { ... }
+    @Get('dashboard-summary') getDashboardSummary() { ... }
+    @Get('dues') getDueslist(@Query('asOfDate') asOfDate?: string) { ... }
+    @Get('daybook') getDaybook(@Query('date') date: string) { ... }
+    @Get('ledger') getLedger(@Query('customerId'), @Query('fromDate'), @Query('toDate')) { ... }
+    @Get('balance-sheet') getBalanceSheet(@Query('asOfDate') asOfDate?: string) { ... }
+    @Get('gst-summary') getGstSummary(@Query('fromDate'), @Query('toDate')) { ... }
+}
+```
+
+--------------------------------------------------------------------------------
+5. FRONTEND CONTROLLERS & INTERFACES
+--------------------------------------------------------------------------------
+
+--- A. LEDGER STATEMENT UI ---
+* File Location: `frontend/src/app/dashboard/accounting/ledger/page.tsx`
+- Loads all available parties (Customers, Suppliers, Employees, Company) into a unified autocomplete.
+- Fetches ledger statement using `fetchLedger`.
+- Renders standard Accounting T-format with an Opening Balance row, Transaction rows (with Debit/Credit), and triple-footer (Sub-Totals, Closing Balance, Grand Balanced Total).
+
+--- B. DAYBOOK UI ---
+* File Location: `frontend/src/app/dashboard/accounting/daybook/page.tsx` (Assumed based on routing)
+- Date picker interface to select a specific day.
+- Displays chronological list of global cash inflow/outflow.
+
+--- C. DUES LIST UI ---
+* File Location: `frontend/src/app/dashboard/accounting/dueslist/page.tsx`
+- Displays top-level debtor list.
+- Calculates `netDue`, allowing users to drill down into specific accounts.
+
+--- D. BALANCE SHEET UI ---
+* File Location: `frontend/src/app/dashboard/accounting/balance-sheet/page.tsx`
+- Traditional Two-column Balance Sheet layout (Liabilities on Left, Assets on Right).
+- Dynamic as-of-date filtering.
+
+--- E. GST SUMMARY UI ---
+* File Location: `frontend/src/app/dashboard/accounting/gst-summary/page.tsx`
+- Tabular breakout of Inward/Outward supplies categorized by CGST, SGST, and IGST for tax filing.
+
+--------------------------------------------------------------------------------
+6. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- Backend Service:   `backend/src/transactions/transactions.service.ts`
+- Backend API:       `backend/src/transactions/transactions.controller.ts`
+- Prisma Schema:     `backend/prisma/schema.prisma`
+- Ledger UI:         `frontend/src/app/dashboard/accounting/ledger/page.tsx`
+- Network Wrapper:   `frontend/src/lib/api.ts`
+
+================================================================================

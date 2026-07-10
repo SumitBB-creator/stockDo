@@ -1,0 +1,122 @@
+================================================================================
+STOCKDO: LEDGER (ACCOUNT STATEMENT) EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document covers the Ledger (Account Statement) section under the Accounting module.
+The Ledger is a fundamental accounting component that provides a chronological, 
+itemized statement of all financial transactions (Bills, Receipts, Payments, Notes) 
+for a specific entity over a designated time period.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+The Ledger system is built on a double-entry accounting principle. However, to support
+a multi-entity ERP, the `ledgerAccountId` acts as a universal foreign key that can 
+resolve to a Customer, Supplier, Employee, or the Internal Company.
+
+Key Accounting Logic:
+- Customer / Employee Accounts: 
+  - Debits (+): Increase what they owe us (e.g. Sales Bills, Debit Notes).
+  - Credits (-): Decrease what they owe us (e.g. Payments Received, Credit Notes).
+- Supplier / Company Accounts (Mirror Logic):
+  - Credits (-): Increase what we owe them (e.g. Purchase Bills).
+  - Debits (+): Decrease what we owe them (e.g. Payments Sent to them).
+
+The Ledger calculates an `openingBalance` representing all historical transactions 
+prior to the selected `fromDate`. It then iterates through the period's transactions 
+to calculate a running balance, concluding with a `closingBalance`.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* File Location: `frontend/src/app/dashboard/accounting/ledger/page.tsx`
+
+--- UI LIFE-CYCLE ---
+1. Base Data Loading: 
+   On mount, the component concurrently fetches Customers, Suppliers, Employees, 
+   and the Company profile. It merges them into a single `parties` array for an 
+   Autocomplete dropdown, mapping their `ledgerAccountId` or fallback `id` to the `value`.
+2. Filter Configuration:
+   - Date Range: Defaults from April 1st of the current financial year to Today.
+   - Account Selection: An Autocomplete component to search across all entity types.
+3. Statement Generation:
+   Selecting an account triggers `loadLedgerStatement()`, which calls the 
+   `fetchLedger` API.
+4. Table Rendering (The T-Format):
+   - Opening Row: Displays the Opening Balance calculated by the backend in either 
+     the Debit or Credit column.
+   - Transaction Rows: Iterates over the `ledgerData.transactions`. 
+     - Columns: Date, Cr/Dr Indicator, Particulars (Entity Name/Description), 
+       Voucher Type, Voucher Number, Debit Amount, Credit Amount.
+   - Sub-Totals Row: Sums up the Debit and Credit columns for the period.
+   - Closing Balance Row: Mathematically balances the two sides.
+   - Grand Total Row: Displays the balanced total matching both sides.
+
+--- FRONTEND ACCOUNTING MATH ---
+```typescript
+const sideDebitTotal = (ledgerData?.transactions?.reduce((sum, t) => sum + (t.debit || 0), 0) || 0) +
+    (ledgerData?.openingBalance < 0 ? Math.abs(ledgerData.openingBalance) : 0);
+
+const sideCreditTotal = (ledgerData?.transactions?.reduce((sum, t) => sum + (t.credit || 0), 0) || 0) +
+    (ledgerData?.openingBalance > 0 ? Math.abs(ledgerData.openingBalance) : 0);
+
+const balancedTotal = Math.max(sideDebitTotal, sideCreditTotal);
+const closingBalanceValue = Math.abs(sideDebitTotal - sideCreditTotal);
+const isCreditBalance = sideCreditTotal > sideDebitTotal;
+const isDebitBalance = sideDebitTotal > sideCreditTotal;
+```
+
+--------------------------------------------------------------------------------
+3. BACKEND SERVICE & LOGIC
+--------------------------------------------------------------------------------
+* API Location: `backend/src/transactions/transactions.controller.ts` -> `@Get('ledger')`
+* Service Location: `backend/src/transactions/transactions.service.ts` -> `getLedger()`
+
+The `getLedger(customerId, fromDate, toDate)` method executes a 6-step pipeline:
+
+1. Resolve Party Detail: 
+   Searches the Customer, Supplier, Employee, and Company tables using the provided 
+   ID to determine the entity's `type` (which dictates the Debit/Credit logic).
+2. Calculate Opening Balance: 
+   Fetches all `Transaction` records where `date < fromDate`. Accumulates these into 
+   `openingBalance` based on the entity's standard or mirror logic.
+3. Fetch Period Transactions: 
+   Fetches `Transaction` records where `date >= fromDate` and `date <= toDate`, 
+   ordered chronologically.
+4. Resolve Bill Numbers: 
+   If a transaction has type 'BILL' and a `referenceId`, it joins the `Bill` table 
+   to extract the human-readable `billNumber`.
+5. Resolve Entity Names: 
+   For each transaction, it looks up the counter-party name based on the transaction's 
+   own `ledgerAccountId` (useful when viewing the internal Company ledger to see 
+   who paid what).
+6. Compute Running Balances: 
+   Iterates the period transactions, computing the `debit`, `credit`, and `balance` 
+   for each row, applying the correct arithmetic sign based on the entity type.
+
+```typescript
+// backend/src/transactions/transactions.service.ts (Logic Snippet)
+let openingBalance = 0;
+for (const t of priorTransactions) {
+    const isIncreaseType = t.type === 'BILL' || t.type === 'DEBIT_NOTE';
+    const isDecreaseType = t.type === 'RECEIPT' || t.type === 'CREDIT_NOTE' || t.type === 'PAYMENT';
+
+    if (isCompany || isSupplier) { // Mirror Logic
+        if (isDecreaseType) openingBalance += t.amount;
+        else if (isIncreaseType) openingBalance -= t.amount;
+    } else { // Standard Logic
+        if (isIncreaseType) openingBalance += t.amount;
+        else if (isDecreaseType) openingBalance -= t.amount;
+    }
+}
+```
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- Ledger UI Page:        `frontend/src/app/dashboard/accounting/ledger/page.tsx`
+- Axios Network Wrapper: `frontend/src/lib/api.ts` -> `fetchLedger`
+- Backend API Router:    `backend/src/transactions/transactions.controller.ts` -> `@Get('ledger')`
+- Backend Service:       `backend/src/transactions/transactions.service.ts` -> `getLedger()`
+- Database Schema:       `backend/prisma/schema.prisma` -> `Transaction` Model
+================================================================================

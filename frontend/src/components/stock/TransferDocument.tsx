@@ -272,7 +272,7 @@ const TransferDocument: React.FC<TransferDocumentProps> = ({ transfer, company, 
                         </View>
                         <View style={styles.metaRow}>
                             <Text style={styles.metaLabel}>Date:</Text>
-                            <Text style={styles.metaValue}>{format(new Date(transfer.date), 'dd MMM yyyy')}</Text>
+                            <Text style={styles.metaValue}>{format(new Date(transfer.date), 'dd/MM/yyyy')}</Text>
                         </View>
                         <View style={styles.metaRow}>
                             <Text style={styles.metaLabel}>Vehicle No:</Text>

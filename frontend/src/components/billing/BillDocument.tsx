@@ -293,11 +293,11 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                 </View>
                 <View style={styles.metaRow}>
                     <Text style={[styles.metaLabel, { textAlign: 'left', width: 90 }]}>Invoice Date</Text>
-                    <Text style={[styles.metaValue, { textAlign: 'left', width: 120 }]}>: {format(new Date(bill.generationDate || bill.createdAt), 'dd MMM yyyy')}</Text>
+                    <Text style={[styles.metaValue, { textAlign: 'left', width: 120 }]}>: {format(new Date(bill.generationDate || bill.createdAt), 'dd/MM/yyyy')}</Text>
                 </View>
                 <View style={styles.metaRow}>
                     <Text style={[styles.metaLabel, { textAlign: 'left', width: 90 }]}>Invoice Period</Text>
-                    <Text style={[styles.metaValue, { textAlign: 'left', width: 120 }]}>: {format(new Date(bill.dateFrom), 'dd/MM/yy')} to {format(new Date(bill.dateTo), 'dd/MM/yy')}</Text>
+                    <Text style={[styles.metaValue, { textAlign: 'left', width: 120 }]}>: {format(new Date(bill.dateFrom), 'dd/MM/yyyy')} to {format(new Date(bill.dateTo), 'dd/MM/yyyy')}</Text>
                 </View>
 
                 <View style={{ marginTop: 10, width: '100%', alignItems: 'flex-start' }}>
@@ -336,10 +336,10 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                 <View key={index} style={styles.tableRow}>
                     <Text style={[styles.colSr, styles.cellText]}>{index + 1}</Text>
                     <Text style={[styles.colFromDate, styles.cellText]}>
-                        {item.fromDate ? format(new Date(item.fromDate), 'dd/MM/yy') : ''}
+                        {item.fromDate ? format(new Date(item.fromDate), 'dd/MM/yyyy') : ''}
                     </Text>
                     <Text style={[styles.colToDate, styles.cellText]}>
-                        {item.toDate ? format(new Date(item.toDate), 'dd/MM/yy') : ''}
+                        {item.toDate ? format(new Date(item.toDate), 'dd/MM/yyyy') : ''}
                     </Text>
                     <Text style={[styles.colParticulars, styles.cellText]}>{item.description}</Text>
                     <Text style={[styles.colHsn, styles.cellText]}>{item.hsn || ''}</Text>

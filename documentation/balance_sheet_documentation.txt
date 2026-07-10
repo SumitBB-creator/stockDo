@@ -1,0 +1,86 @@
+================================================================================
+STOCKDO: YEARLY BALANCE SHEET EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document covers the Yearly Balance Sheet module under the Accounting section.
+In StockDo, the "Balance Sheet" acts as a high-level Profit & Loss (P&L) and 
+Taxation summary for a selected Financial Year. It provides the business owner 
+with an immediate snapshot of their net financial position (Earnings vs Spendings) 
+and their net GST position (Collected vs Paid).
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+Unlike Ledgers and Dues Lists, which aggregate the `Transaction` table, the 
+Yearly Balance Sheet aggregates the root commercial documents:
+- `Bill`: Represents Output Revenue (Earnings) and Output Tax (GST Collected).
+- `Purchase`: Represents Input Costs (Spendings) and Input Tax (GST Paid).
+- `Transaction` (type: 'EXPENSE'): Represents direct business operating expenses 
+  and associated Input Tax (GST Paid).
+
+The module queries these three tables, sums their `grandTotal` and GST components, 
+and calculates the Net Business Position.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* File Location: `frontend/src/app/dashboard/accounting/balance-sheet/page.tsx`
+
+--- UI LIFE-CYCLE ---
+1. Financial Year Selection:
+   - The UI defaults to the current calendar year.
+   - A dropdown allows the user to look back up to 5 historical years.
+   - Changing the year triggers `fetchYearlyBalanceSheet(year)`.
+2. Dashboard Rendering:
+   The UI renders a highly visual, color-coded "Statement of Accounts" table 
+   containing four primary metrics:
+   - Total Earnings: Sky Blue row. Summarizes revenue from sales/services.
+   - Total Spendings: Rose Red row. Summarizes purchases and operating expenses.
+   - GST Collected: Emerald Green row. Summarizes total output tax.
+   - GST Paid: Amber Yellow row. Summarizes total input tax.
+3. Net Position Summary:
+   The final row computes `Earnings - Spendings`. 
+   - If positive, it styles itself in Green (Profit).
+   - If negative, it styles itself in Red (Loss).
+4. Print Functionality:
+   Includes a native `window.print()` trigger with a custom `@media print` 
+   stylesheet that hides navigation sidebars, dropdowns, and formatting, 
+   producing a clean PDF report.
+
+--------------------------------------------------------------------------------
+3. BACKEND AGGREGATION LOGIC
+--------------------------------------------------------------------------------
+* API Location: `backend/src/transactions/transactions.controller.ts` -> `@Get('yearly-balance-sheet')`
+* Service Location: `backend/src/transactions/transactions.service.ts` -> `getYearlyBalanceSheet()`
+
+--- QUERY PIPELINE ---
+1. Date Bounding:
+   Creates precise JavaScript Date boundaries for `January 1, 00:00:00` to 
+   `December 31, 23:59:59` of the requested year.
+2. Concurrent Data Fetching:
+   - Fetches all active `bills` within the year (Revenue).
+   - Fetches all active `purchases` within the year (Cost of Goods).
+   - Fetches all `transactions` with `type: 'EXPENSE'` (Operating Costs).
+3. Mathematical Aggregation:
+   - `earnings` = Sum of all Bill `grandTotal`s.
+   - `spendings` = Sum of all Purchase `grandTotal`s + Sum of all Expense `amount`s.
+   - `gstCollected` = Sum of (CGST + SGST + IGST) across all Bills.
+   - `gstPaid` = Sum of (CGST + SGST + IGST) across all Purchases + Sum of 
+     (CGST + SGST + IGST) across all Expenses.
+
+```typescript
+// backend/src/transactions/transactions.service.ts
+const earnings = bills.reduce((sum, b) => sum + (b.grandTotal || 0), 0);
+const purchaseAmount = purchases.reduce((sum, p) => sum + (p.grandTotal || 0), 0);
+const expenseAmount = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+const spendings = purchaseAmount + expenseAmount;
+```
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- Dashboard UI Page:     `frontend/src/app/dashboard/accounting/balance-sheet/page.tsx`
+- Axios Network Wrapper: `frontend/src/lib/api.ts` -> `fetchYearlyBalanceSheet`
+- Backend API Router:    `backend/src/transactions/transactions.controller.ts` -> `@Get('yearly-balance-sheet')`
+- Backend Service:       `backend/src/transactions/transactions.service.ts` -> `getYearlyBalanceSheet()`
+================================================================================

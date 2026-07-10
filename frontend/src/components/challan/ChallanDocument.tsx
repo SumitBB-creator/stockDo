@@ -332,7 +332,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                     <View style={styles.metaSection}>
                         <View style={styles.metaRow}>
                             <Text style={styles.metaLabel}>Date:</Text>
-                            <Text style={styles.metaValue}>{format(new Date(challan.date), 'dd MMM yyyy')}</Text>
+                            <Text style={styles.metaValue}>{format(new Date(challan.date), 'dd/MM/yyyy')}</Text>
                         </View>
                         <View style={styles.metaRow}>
                             <Text style={styles.metaLabel}>Challan No:</Text>
@@ -485,7 +485,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                         <View style={styles.detailsCol}>
                             <View style={styles.detailRow}>
                                 <Text style={styles.detailLabel}>Weight (Approx.)</Text>
-                                <Text style={styles.detailValue}>: {challan.weight ? `${challan.weight.toFixed(2)} Kg.` : ''}</Text>
+                                <Text style={styles.detailValue}>: {challan.weight !== null && challan.weight !== undefined ? `${Number(challan.weight).toFixed(2)} Kg.` : ''}</Text>
                             </View>
                             <View style={styles.detailRow}>
                                 <Text style={styles.detailLabel}>Green Tax</Text>
@@ -507,66 +507,72 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                     </View>
                 </View>
 
-                {/* Notes Section */}
-                <View style={styles.notesSection}>
-                    <Text style={styles.notesTitle}>Notes :</Text>
-                    <View style={styles.noteItem}>
-                        <Text style={styles.noteNumber}>1.</Text>
-                        <Text style={styles.noteText}>Responsibility of goods once removed from our godown shall rest with customer.</Text>
-                    </View>
-                    <View style={styles.noteItem}>
-                        <Text style={styles.noteNumber}>2.</Text>
-                        <Text style={styles.noteText}>Customer will be responsible for transportation of goods both ways.</Text>
-                    </View>
-                    <View style={styles.noteItem}>
-                        <Text style={styles.noteNumber}>3.</Text>
-                        <Text style={styles.noteText}>Customer will be Responsible for all cuts/breakage/damage/shortage of goods at the cost at that time.</Text>
-                    </View>
-                    <View style={styles.noteItem}>
-                        <Text style={styles.noteNumber}>4.</Text>
-                        <Text style={styles.noteText}>
-                            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Timing of Business is 09:00 AM to 05:00 PM, TUESDAY Closed.</Text>
-                        </Text>
-                    </View>
-                    <View style={styles.noteItem}>
-                        <Text style={styles.noteNumber}>5.</Text>
-                        <Text style={styles.noteText}>Minimum rent will be charged for one month.</Text>
-                    </View>
-                    <View style={styles.noteItem}>
-                        <Text style={styles.noteNumber}>6.</Text>
-                        <Text style={styles.noteText}>In case of shortage cost will be charged as per Shuttering Materials Items Commitment under Agreement.</Text>
-                    </View>
-                    <View style={styles.noteItem}>
-                        <Text style={styles.noteNumber}>7.</Text>
-                        <Text style={styles.noteText}>All disputes are subject to South Delhi Jurisdiction only.</Text>
-                    </View>
-                    <View style={styles.noteItem}>
-                        <Text style={styles.noteNumber}>8.</Text>
-                        <Text style={styles.noteText}>At any point of time {company?.companyName || 'Company Name'} is entitled to remove their goods from the site.</Text>
-                    </View>
-                    <View style={styles.noteItem}>
-                        <Text style={styles.noteNumber}>9.</Text>
-                        <Text style={styles.noteText}>The goods at all times remain the sole property of the firm.</Text>
-                    </View>
-                </View>
-
-
-
-                {/* Footer Acknowledgement */}
-                <View style={[styles.footer, { borderTopWidth: 0, marginTop: 15 }]}>
-                    <View style={styles.receiverBox}>
-                        <Text style={styles.boldText}>Receiver's Sign & Mobile No</Text>
-                        <View style={{ marginTop: 15 }}>
-                            <Text style={styles.boldText}>
-                                Receiver Name : ...................................
+                {/* Notes and Footer Wrapped Together so they don't split across pages */}
+                <View wrap={false}>
+                    {/* Notes Section */}
+                    <View style={styles.notesSection}>
+                        <Text style={styles.notesTitle}>Notes :</Text>
+                        <View style={styles.noteItem}>
+                            <Text style={styles.noteNumber}>1.</Text>
+                            <Text style={styles.noteText}>Responsibility of goods once removed from our godown shall rest with customer.</Text>
+                        </View>
+                        <View style={styles.noteItem}>
+                            <Text style={styles.noteNumber}>2.</Text>
+                            <Text style={styles.noteText}>Customer will be responsible for transportation of goods both ways.</Text>
+                        </View>
+                        <View style={styles.noteItem}>
+                            <Text style={styles.noteNumber}>3.</Text>
+                            <Text style={styles.noteText}>Customer will be Responsible for all cuts/breakage/damage/shortage of goods at the cost at that time.</Text>
+                        </View>
+                        <View style={styles.noteItem}>
+                            <Text style={styles.noteNumber}>4.</Text>
+                            <Text style={styles.noteText}>
+                                <Text style={{ fontFamily: 'Helvetica-Bold' }}>Timing of Business is 09:00 AM to 05:00 PM, TUESDAY Closed.</Text>
                             </Text>
                         </View>
+                        <View style={styles.noteItem}>
+                            <Text style={styles.noteNumber}>5.</Text>
+                            <Text style={styles.noteText}>Minimum rent will be charged for one month.</Text>
+                        </View>
+                        <View style={styles.noteItem}>
+                            <Text style={styles.noteNumber}>6.</Text>
+                            <Text style={styles.noteText}>In case of shortage cost will be charged as per Shuttering Materials Items Commitment under Agreement.</Text>
+                        </View>
+                        <View style={styles.noteItem}>
+                            <Text style={styles.noteNumber}>7.</Text>
+                            <Text style={styles.noteText}>All disputes are subject to South Delhi Jurisdiction only.</Text>
+                        </View>
+                        <View style={styles.noteItem}>
+                            <Text style={styles.noteNumber}>8.</Text>
+                            <Text style={styles.noteText}>At any point of time {company?.companyName || 'Company Name'} is entitled to remove their goods from the site.</Text>
+                        </View>
+                        <View style={styles.noteItem}>
+                            <Text style={styles.noteNumber}>9.</Text>
+                            <Text style={styles.noteText}>The goods at all times remain the sole property of the firm.</Text>
+                        </View>
                     </View>
-                    <View style={styles.signature}>
-                        <Text style={styles.boldText}>Authorized Signatory</Text>
-                        <View style={{ marginTop: 15, flexDirection: 'row', alignItems: 'center' }}>
-                            <Text style={styles.boldText}>For : </Text>
-                            <Text style={[styles.boldText, { fontSize: 11 }]}>{company?.companyName || 'Company Name'}</Text>
+
+                    {/* Footer Acknowledgement */}
+                    <View style={[styles.footer, { borderTopWidth: 0, marginTop: 15 }]}>
+                        <View style={styles.receiverBox}>
+                            <Text style={styles.boldText}>Receiver's Sign & Mobile No</Text>
+                            <View style={{ marginTop: 15 }}>
+                                <Text style={styles.boldText}>
+                                    Receiver Name : {challan.receiverName || '...................................'}
+                                </Text>
+                                {challan.receiverMobile && (
+                                    <Text style={[styles.boldText, { marginTop: 4 }]}>
+                                        Mobile No : {challan.receiverMobile}
+                                    </Text>
+                                )}
+                            </View>
+                        </View>
+                        <View style={styles.signature}>
+                            <Text style={styles.boldText}>Authorized Signatory</Text>
+                            <View style={{ marginTop: 15, flexDirection: 'row', alignItems: 'center' }}>
+                                <Text style={styles.boldText}>For : </Text>
+                                <Text style={[styles.boldText, { fontSize: 11 }]}>{company?.companyName || 'Company Name'}</Text>
+                            </View>
                         </View>
                     </View>
                 </View>

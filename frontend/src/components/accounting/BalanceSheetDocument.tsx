@@ -186,7 +186,7 @@ const BalanceSheetDocument: React.FC<BalanceSheetDocumentProps> = ({ data, compa
 
                 {/* Sub-Header */}
                 <Text style={styles.dateText}>
-                    Statement as of {format(new Date(asOfDate), 'dd MMMM yyyy')}
+                    Statement as of {format(new Date(asOfDate), 'dd/MM/yyyy')}
                 </Text>
 
                 {/* Main Content - Traditional T Format */}

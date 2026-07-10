@@ -302,7 +302,7 @@ export default function NewTransferPage() {
                                                 <option value="">Select Agreement...</option>
                                                 {receiverAgreements.map(a => (
                                                     <option key={a.id} value={a.id}>
-                                                        {a.agreementId} (Valid From: {format(new Date(a.validFrom), 'dd MMM yyyy')})
+                                                        {a.agreementId} (Valid From: {format(new Date(a.validFrom), 'dd/MM/yyyy')})
                                                     </option>
                                                 ))}
                                             </select>

@@ -1,0 +1,75 @@
+================================================================================
+STOCKDO: SUPPLIERS EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document covers the Suppliers CRM module. Suppliers are the entities that 
+provide scaffolding materials, consumables, and raw assets to the company. Like 
+Customers and Employees, Supplier profiles are deeply integrated into the core 
+accounting and ledger architecture of the ERP.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+The Suppliers module acts as a foundational registry. Every `Purchase` and 
+`Credit/Debit Note` explicitly requires a valid `Supplier` reference.
+
+Just like Customers and Employees, when a Supplier is created, the system mathematically 
+auto-generates a globally unique `ledgerAccountId` (e.g., `LAID000045`). 
+Because StockDo processes Ledger reports polymorphically based on `ledgerAccountId`, 
+ensuring this ID is absolutely unique across ALL CRM categories prevents catastrophic 
+cross-pollination of financial data (e.g., a Customer's payment mistakenly offsetting 
+a Supplier's debt).
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* Page Location: `frontend/src/app/dashboard/suppliers/page.tsx`
+
+The frontend utilizes a Single Page Application (SPA) architecture for all CRUD 
+operations, ensuring rapid data manipulation without page loads.
+
+--- UI LIFE-CYCLE ---
+1. Data Fetching (List View):
+   `fetchSuppliers()` runs on mount, populating the main data table. 
+2. Form Validation:
+   The UI uses `react-hook-form` paired with `zod` for rigid schema validation. 
+   Empty string values are deliberately sanitized into `undefined` before transmission 
+   to maintain clean database records.
+3. The Dialog Modal (Create & Edit):
+   Clicking "Add Supplier" or "Edit" (Pencil icon) opens a floating `Dialog`.
+   - Personal Info: Name, Relation Type (Prop of, Dirc of, C/o, etc.), Reference Name, PAN.
+   - Address Block: Full physical address, City, PIN, State, Country, Phone, Email, GSTIN.
+   If editing, `useEffect` intercepts the active `editingSupplier` object and 
+   hydrates the `react-hook-form` inputs with existing data.
+4. Deletion:
+   Clicking the Trash icon prompts a browser confirmation. Deleting a supplier 
+   here removes them from the system, which is strictly monitored by the database's 
+   relational constraints. (A supplier cannot be deleted if active Purchases exist).
+
+--------------------------------------------------------------------------------
+3. BACKEND SERVICE & ID GENERATION LOGIC
+--------------------------------------------------------------------------------
+* API Router: `backend/src/suppliers/suppliers.controller.ts`
+* Service logic: `backend/src/suppliers/suppliers.service.ts`
+
+--- THE `create()` METHOD PIPELINE ---
+When a POST request hits `/suppliers`:
+1. The service queries the `Customer`, `Employee`, and `Supplier` tables, 
+   looking for the absolute highest `ledgerAccountId` currently in use across 
+   the entire application.
+2. It mathematically increments this sequence (e.g., pulling `45` from `LAID000045` 
+   and calculating `46`).
+3. It maps the incoming payload and injects the new `LAIDXXXXXX` string 
+   into the Prisma `create` call.
+4. This ensures that the new Supplier is instantly ready to be used in the Purchase 
+   and Ledger modules.
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- SPA UI & Dialogs:      `frontend/src/app/dashboard/suppliers/page.tsx`
+- Zod Schema & Form:     `frontend/src/app/dashboard/suppliers/page.tsx` (Inline)
+- Types Interface:       `frontend/src/types/index.ts` -> `Supplier`
+- Backend API Router:    `backend/src/suppliers/suppliers.controller.ts`
+- Backend Logic & Gen:   `backend/src/suppliers/suppliers.service.ts`
+================================================================================

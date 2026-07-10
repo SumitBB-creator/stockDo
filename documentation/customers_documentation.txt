@@ -1,0 +1,82 @@
+================================================================================
+STOCKDO: CUSTOMERS EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document covers the Customers module. The Customer CRM is a central pillar 
+of the StockDo ERP. It handles the creation, editing, viewing, and deletion of 
+customer profiles. These profiles dictate Billing rules, geographic GST constraints 
+(Local vs Central sales), and are inextricably linked to the Ledger system.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW & THE TRI-ADDRESS SYSTEM
+--------------------------------------------------------------------------------
+Unlike standard CRMs, StockDo specifically caters to the scaffolding, construction, 
+and materials rental industry. Therefore, a Customer profile is structured into 
+three distinct geographic contexts:
+1. Personal / Reference Information: Name, Relation (Prop of, Dirc of, C/o), 
+   Aadhar, PAN, and Residence Address.
+2. Office Address: The formal corporate address used for billing and correspondence.
+3. Site Address: The actual physical location where materials/scaffolding are 
+   deployed. This is critical for generating Delivery Challans and dispatch tracking.
+
+Similar to Employees and Suppliers, when a Customer is created, the system auto-generates 
+a globally unique `ledgerAccountId` (e.g., `LAID000045`), anchoring the customer 
+into the financial ecosystem for Dues, Billing, Receipts, and Notes tracking.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* Page Location: `frontend/src/app/dashboard/customers/page.tsx`
+
+The frontend utilizes a Single Page Application (SPA) architecture for all CRUD 
+operations, ensuring rapid data manipulation without page loads.
+
+--- UI LIFE-CYCLE ---
+1. Data Fetching (List View):
+   `fetchCustomers()` runs on mount, populating the main data table. 
+2. Form Validation:
+   The UI uses `react-hook-form` paired with `zod` for rigid schema validation. 
+   Empty string values are deliberately sanitized into `undefined` before transmission 
+   to maintain clean database records.
+3. The Dialog Modal (Create & Edit):
+   Clicking "Add Customer" or "Edit" (Pencil icon) opens an expansive `Dialog` 
+   split into three vertical sections (Personal, Office, Site).
+   - If editing, `useEffect` intercepts the active `editingCustomer` object and 
+     hydrates the `react-hook-form` inputs with existing data.
+4. Presentation & Formatting:
+   Because the address objects are complex, the List view table utilizes a specialized 
+   utility `formatCustomerAddress()` (`lib/utils.ts`) to intelligently concatenate 
+   the most relevant address data (prioritizing Site or Office) for quick scanning.
+5. Deletion:
+   Clicking the Trash icon prompts a browser confirmation. Deleting a customer 
+   here removes them from the system, which is strictly monitored by the database's 
+   relational constraints (a customer cannot be deleted if active bills exist).
+
+--------------------------------------------------------------------------------
+3. BACKEND SERVICE & ID GENERATION LOGIC
+--------------------------------------------------------------------------------
+* API Router: `backend/src/customers/customers.controller.ts`
+* Service logic: `backend/src/customers/customers.service.ts`
+
+--- THE `create()` METHOD PIPELINE ---
+When a POST request hits `/customers`:
+1. The service queries the `Customer`, `Employee`, and `Supplier` tables, 
+   looking for the absolute highest `ledgerAccountId` currently in use across 
+   the entire application.
+2. It mathematically increments this sequence (e.g., pulling `45` from `LAID000045` 
+   and calculating `46`).
+3. It maps the incoming tri-address payload and injects the new `LAIDXXXXXX` string 
+   into the Prisma `create` call.
+4. This ensures that the new Customer is instantly recognized by the Ledger, 
+   Daybook, and Transaction systems.
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- SPA UI & Dialogs:      `frontend/src/app/dashboard/customers/page.tsx`
+- Zod Schema & Form:     `frontend/src/app/dashboard/customers/page.tsx` (Inline)
+- Formatting Utils:      `frontend/src/lib/utils.ts` -> `formatCustomerAddress()`
+- Types Interface:       `frontend/src/types/index.ts` -> `Customer`
+- Backend API Router:    `backend/src/customers/customers.controller.ts`
+- Backend Logic & Gen:   `backend/src/customers/customers.service.ts`
+================================================================================

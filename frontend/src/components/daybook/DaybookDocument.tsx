@@ -219,7 +219,7 @@ const DaybookDocument: React.FC<DaybookDocumentProps> = ({ transactions, company
 
                 {/* Sub-Header */}
                 <View style={styles.metaRow}>
-                    <Text style={styles.metaText}>Date: {format(new Date(date), 'dd MMM yyyy')}</Text>
+                    <Text style={styles.metaText}>Date: {format(new Date(date), 'dd/MM/yyyy')}</Text>
                     <Text style={styles.metaText}>Total Trx: {transactions.length}</Text>
                 </View>
 
@@ -266,7 +266,7 @@ const DaybookDocument: React.FC<DaybookDocumentProps> = ({ transactions, company
                     )}
                 </View>
 
-                <Text style={styles.footerLabel}>End of Daybook for {format(new Date(date), 'dd MMMM yyyy')}</Text>
+                <Text style={styles.footerLabel}>End of Daybook for {format(new Date(date), 'dd/MM/yyyy')}</Text>
                 <Text 
                     style={styles.pageNumber} 
                     render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 

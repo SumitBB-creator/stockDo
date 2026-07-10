@@ -1,0 +1,243 @@
+================================================================================
+STOCKDO: CHALLANS MANAGEMENT LIFECYCLE EXHAUSTIVE SPECIFICATION
+================================================================================
+
+This document provides a highly detailed, file-level architectural and operational
+guide for the Challans (Inventory Movements - Issue & Return) module of StockDo. 
+It describes the entire lifecycle including creation pipelines, listing structures, 
+logistics integrations, backend transactional guards, and cascading database deletes.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW & BUSINESS ROLES
+--------------------------------------------------------------------------------
+The Challans module manages the physical movement of shuttering and scaffolding 
+assets in StockDo. Since renting out items incurs day-by-day charges, every physical 
+departure or arrival must be documented by a transaction voucher (Challan).
+
+The system implements two distinct Challan Types:
+1. ISSUE (Outward movement - CHN):
+   Represents materials leaving company yards to be deployed on customer sites.
+   - Requires an Active Agreement to be in place.
+   - Mapped under: frontend/src/app/dashboard/stock/challan
+2. RETURN (Inward movement - RTN):
+   Represents materials arriving back to the company warehouse from customer sites.
+   - Clears customer holdings.
+   - Mapped under: frontend/src/app/dashboard/stock/return
+
+```mermaid
+flowchart TD
+    subgraph ISSUE Challan (Outward)
+        A[Select Customer] -->|Check Active Agreement| B{Active Contract?}
+        B -- No --> C[Block Creation]
+        B -- Yes --> D[Show Checkbox Rate Sheet]
+        D --> E[Input Quantities]
+        E --> F[Generate CHN-XXXX serial]
+    end
+
+    subgraph RETURN Challan (Inward)
+        G[Select Customer] -->|Query Active Holdings| H[Load Customer Stock Map]
+        H --> I[Add Returned/Damaged/Short Qty]
+        I -->|Validate Total <= holding| J{Exceeds Stock?}
+        J -- Yes --> K[Block with Validation Toast]
+        J -- No --> L[Generate RTN-XXXX serial]
+    end
+```
+
+--------------------------------------------------------------------------------
+2. DATABASE RELATIONAL MODELS & TABLES
+--------------------------------------------------------------------------------
+Mapped in backend/prisma/schema.prisma:
+
+A. Challan Header Table: challans (Model: Challan)
+Stores logistical metadata, vehicle tracking, and customer mapping.
+* Fields:
+  - id: String (UUID, PK)
+  - challanNumber: String (Unique. e.g., CHN-0001, RTN-0001)
+  - date: DateTime (Transaction timestamp)
+  - customerId: String (UUID, FK to customers)
+  - agreementId: String (UUID, FK to agreements, nullable)
+  - type: ChallanType (Enum: 'ISSUE', 'RETURN')
+  - vehicleNumber: String (Logistics plate number)
+  - driverName / driverMobile: String
+  - manualChallanNumber: String (For matching physical paper booklets)
+  - goodsValue / weight / transportationCost / greenTax: Float (Nullable)
+  - transporterName / biltyNumber / eWayBillNo: String (Logistics tokens)
+  - receiverName / receiverMobile / licenseNumber / timeOut / timeIn: String
+  - remarks: String (TEXT)
+  - transferId: String (Nullable, links to site transfers)
+
+B. Challan Items Line Table: challan_items (Model: ChallanItem)
+Details the quantities of materials being moved.
+* Fields:
+  - id: String (UUID, PK)
+  - challanId: String (UUID, FK to challans, onDelete: Cascade)
+  - materialId: String (UUID, FK to materials)
+  - quantity: Int (Standard good quantity returned or issued)
+  - damageQuantity: Int (Default 0. Return-specific physical damage count)
+  - shortQuantity: Int (Default 0. Return-specific missing count)
+
+--------------------------------------------------------------------------------
+3. THE FRONTEND ISSUE LIFE-CYCLE
+--------------------------------------------------------------------------------
+
+=== A. LISTING ISSUES (`stock/challan/page.tsx`) ===
+- Displays outward issues. 
+- Filters: Defaulted to `isSameDay(challanDate, selectedDate)` (allows calendar stepping)
+  and filterable by Customer.
+- Action: "View" redirects to the printable PDF proposal, and "Delete" calls
+  the deletion handler.
+
+=== B. CREATING ISSUES (`stock/challan/new/page.tsx`) ===
+1. Validation Schema:
+   Enforces customer selection, valid date string, and at least one checkbox item.
+2. Active Agreement Check:
+   - When customer changes, calls useEffect to locate an active agreement:
+     `agreements.find(a => a.customerId === customerId && a.status === 'Active')`
+   - If no active agreement exists, it locks the items selection and warns:
+     "Select a customer with an active agreement to view materials."
+3. Checking & Issuing:
+   - Displays a checklist of materials defined in the agreement items rate sheet.
+   - Checking a material appends the item to the react-hook-form state array:
+     `form.setValue('items', [...currentItems, { materialId, quantity: 0 }])`
+   - Displays a quantity input.
+4. Logistics Footer:
+   Captures transporterName, receiverName, driverMobile, goodsValue, weight, etc.
+
+--------------------------------------------------------------------------------
+4. THE FRONTEND RETURN LIFE-CYCLE
+--------------------------------------------------------------------------------
+
+=== A. LISTING RETURNS (`stock/return/page.tsx`) ===
+- Displays inward return vouchers (`type: 'RETURN'`).
+- Renders search filters matching return serial numbers, customer names, or vehicle plates.
+
+=== B. CREATING RETURNS (`stock/return/new/page.tsx`) ===
+This represents one of the most advanced forms in StockDo. It manages physical returns, 
+damages, and shortages under strict inventory boundaries:
+
+1. Active Stock Querying:
+   - Selecting a customer triggers `loadCustomerStock(customerId)`.
+   - Fetches the client's current stock balances via fetchCustomerStock(customerId) 
+     and maps them into a select dropdown:
+     `label: [MaterialName] (Qty: [Holding]), maxQty: [Holding]`
+   - If stock is empty, it warns: "This customer has no items to return."
+2. Dynamic Validation & Balance Computations:
+   - Replays inputs in real-time as the user types quantities.
+   - Calculations:
+     $$\text{Total Deducted} = \text{returnedQty} + \text{damageQty} + \text{shortQty}$$
+     $$\text{BalanceQty} = \text{maxQty} - \text{TotalDeducted}$$
+   - Shows the remaining outstanding balance of the customer dynamically.
+3. Strict Stock Limits Enforcement:
+   Before submitting, the form iterates through items and blocks creation if returns 
+   exceed active holdings:
+   ```typescript
+   const totalReturned = item.quantity + (item.damageQuantity || 0) + (item.shortQuantity || 0);
+   if (totalReturned > stockItem.quantity) {
+       toast({ title: "Stock Validation Error", description: "Cannot return more than holding" });
+       return;
+   }
+   ```
+4. Form Layout Grid:
+   Renders custom split input grids mapping logistics metadata (Goods Value, Time In, 
+   Driver License, Bilty No, etc.).
+
+--------------------------------------------------------------------------------
+5. BACKEND CONTROLLER & REPLAY TRANSACTION SERVICES
+--------------------------------------------------------------------------------
+* Location: backend/src/challans/challans.service.ts
+
+--- A. Creating Challans (Method: `create`) ---
+1. Agreement Guard (ISSUE-only):
+   If `type === 'ISSUE'`, the service verifies the `agreementId` belongs to the customer
+   and throws BadRequest if any material in the challan is not in the contract rate sheet.
+2. Sequence Serial Generation:
+   Inside the database `$transaction`, it counts previous entries of that type to
+   build formatted sequential IDs:
+   - ISSUE: `CHN-[count+1]` padded to 4 digits (e.g. `CHN-0005`).
+   - RETURN: `RTN-[count+1]` padded to 4 digits (e.g. `RTN-0005`).
+3. Database Insertion:
+   Creates the Challan and nested ChallanItems containing good, damaged, and short amounts.
+
+--- B. Deleting Challans (Method: `remove` - Critical Guard) ---
+Deleting historic movements affects running balances, which invalidates all subsequent 
+invoices. To prevent data corruption, the service executes a cascading transaction:
+1. Scans Bills: Locates all non-cancelled `Bill` records for that customer dated 
+   *after* the challan:
+   `where: { customerId: challan.customerId, dateTo: { gte: challan.date } }`
+2. Ledger Cleanups: Deletes all manual ledger `Transaction` records associated with 
+   those bills.
+3. Bills Deletion: Deletes the `Bill` records completely (which cascades to nested 
+   `BillItem` rows).
+4. Voucher Cleanups: Deletes nested `ChallanItem` rows, and deletes the `Challan`.
+
+```typescript
+return this.prisma.$transaction(async (tx) => {
+    // 1. Find all finalized bills after this challan date
+    const affectedBills = await tx.bill.findMany({
+        where: {
+            customerId: challan.customerId,
+            dateTo: { gte: challan.date },
+            status: { not: 'CANCELLED' }
+        }
+    });
+
+    if (affectedBills.length > 0) {
+        const billIds = affectedBills.map(b => b.id);
+
+        // 2. Delete transactions for these bills
+        await tx.transaction.deleteMany({
+            where: { referenceId: { in: billIds } }
+        });
+
+        // 3. Delete the bills
+        await tx.bill.deleteMany({
+            where: { id: { in: billIds } }
+        });
+    }
+
+    // 4. Cascade delete items then the Challan
+    await tx.challanItem.deleteMany({ where: { challanId: id } });
+    return tx.challan.delete({ where: { id } });
+});
+```
+
+--------------------------------------------------------------------------------
+6. API ENDPOINT & CONTROLLER MAPPING
+--------------------------------------------------------------------------------
+Protected under passport JWT authentication guards:
+
+- Fetch All Vouchers:
+  * Route: GET /challans
+  * Controller: findAll()
+  * Wrapper: fetchChallans()
+- Fetch Single Details:
+  * Route: GET /challans/:id
+  * Controller: findOne(@Param('id'))
+  * Wrapper: fetchChallan(id)
+- Create Voucher:
+  * Route: POST /challans
+  * Controller: create(@Body() payload)
+  * Wrapper: createChallan(payload)
+- Delete Voucher:
+  * Route: DELETE /challans/:id
+  * Controller: remove(@Param('id'))
+  * Wrapper: deleteChallan(id)
+- Fetch Logistics Vouchers:
+  * Route: GET /challans/transportation
+  * Controller: getTransportationChallans(@Query())
+  * Wrapper: fetchTransportationChallans(filters)
+
+--------------------------------------------------------------------------------
+7. DIRECTORY AND FILE QUICK REFERENCE
+--------------------------------------------------------------------------------
+* Issue List Page:          frontend/src/app/dashboard/stock/challan/page.tsx
+* Create Issue Page:        frontend/src/app/dashboard/stock/challan/new/page.tsx
+* Detail Print Page:        frontend/src/app/dashboard/stock/challan/[id]/print/page.tsx
+* Return List Page:         frontend/src/app/dashboard/stock/return/page.tsx
+* Create Return Page:       frontend/src/app/dashboard/stock/return/new/page.tsx
+* Frontend API Client:      frontend/src/lib/api.ts
+* Backend Controller:       backend/src/challans/challans.controller.ts
+* Backend Service:          backend/src/challans/challans.service.ts
+* Create Validation DTO:    backend/src/challans/dto/create-challan.dto.ts
+* Database Schema Models:   backend/prisma/schema.prisma
+================================================================================

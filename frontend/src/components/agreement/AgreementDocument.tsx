@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     colRecS: { width: '20%' },
 
     footer: {
-        marginTop: 40,
+        marginTop: 20,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-end',
@@ -153,7 +153,6 @@ const styles = StyleSheet.create({
     },
     signatureText: {
         fontSize: 10,
-        marginTop: 40, // Space for signature
     },
     companyNameFooter: {
         fontSize: 10,
@@ -328,7 +327,7 @@ const AgreementDocument: React.FC<AgreementDocumentProps> = ({ agreement, compan
                 </View>
 
                 {/* Footer Signatures */}
-                <View style={styles.footer}>
+                <View style={styles.footer} wrap={false}>
                     <View style={styles.signatureBlock}>
                         <Text style={styles.companyNameFooter}>{companyName}</Text>
                         <Text style={styles.signatureText}>Authorized Signatory</Text>

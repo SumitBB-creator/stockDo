@@ -1,0 +1,81 @@
+================================================================================
+STOCKDO: EMPLOYEES EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document covers the Employees module, which is an independent entity 
+management system within StockDo. This module allows administrators to create, 
+edit, view, and delete employee profiles. Crucially, each employee is tied to the 
+financial ecosystem via an auto-generated Ledger Account ID.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW & LEDGER SYNC
+--------------------------------------------------------------------------------
+Unlike standard web apps where an Employee is just a profile, StockDo integrates 
+employees directly into its accounting engine. 
+
+When an Employee is created, the system generates a unique `ledgerAccountId` (e.g., 
+`LAID000045`). This ID is mathematically derived by scanning the highest existing 
+ledger ID across THREE different tables (`Customer`, `Employee`, and `Supplier`) 
+to ensure absolute uniqueness across the entire ERP platform. This allows salaries, 
+advances, and expenses to be tracked in the same Ledger system used for trading.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* Page Location: `frontend/src/app/dashboard/employees/page.tsx`
+
+The frontend utilizes a Single Page Application (SPA) architecture for CRUD operations, 
+meaning page reloads are never required.
+
+--- UI LIFE-CYCLE ---
+1. Data Fetching (List View):
+   On mount, `fetchEmployees()` is called, populating the main data table. 
+   If no employees exist, a fallback placeholder is shown.
+2. Form Validation:
+   The UI uses `react-hook-form` combined with `zod` schema validation to ensure 
+   required fields (like the Employee's Name) are filled out. Empty strings are 
+   automatically sanitized into `undefined` before hitting the backend.
+3. The Dialog Modal (Create & Edit):
+   Clicking "Add Employee" or the "Pencil" (Edit) icon opens a floating `Dialog`. 
+   - Personal Info: Name, Relation Type (S/o, D/o, W/o, etc.), Reference Name, PAN.
+   - Address Block: Full physical address, City, PIN, State, Country, Phone, Email, GSTIN.
+   If editing, the form's `useEffect` hook populates the modal with the selected 
+   employee's existing data.
+4. Deletion:
+   Clicking the Trash icon prompts a standard browser confirmation. Upon approval, 
+   the record is deleted via the API and the table is refreshed instantly.
+
+--------------------------------------------------------------------------------
+3. BACKEND SERVICE & ID GENERATION LOGIC
+--------------------------------------------------------------------------------
+* API Router: `backend/src/employees/employees.controller.ts`
+* Service logic: `backend/src/employees/employees.service.ts`
+
+--- THE `create()` METHOD PIPELINE ---
+When a POST request hits `/employees`:
+1. The service queries `findFirst` on the `Customer`, `Employee`, and `Supplier` 
+   tables, ordering by `createdAt` descending.
+2. It extracts the numerical sequence from their `ledgerAccountId` string 
+   (e.g., pulling `45` from `LAID000045`).
+3. It runs `Math.max()` against all three extracted IDs to find the absolute 
+   highest sequence number currently in use across the entire ERP.
+4. It increments this max ID by 1, pads it with zeros to length 6, and prefixes 
+   it with `LAID`.
+5. It injects this newly minted ID into the Prisma `create` payload, ensuring the 
+   employee is immediately ready for financial transactions.
+
+```typescript
+// ID Generation Snippet (employees.service.ts)
+maxId = Math.max(lastCustId, lastEmpId, lastSupId);
+const newLedgerId = `LAID${(maxId + 1).toString().padStart(6, '0')}`;
+```
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- SPA UI & Dialogs:      `frontend/src/app/dashboard/employees/page.tsx`
+- Zod Schema & Form:     `frontend/src/app/dashboard/employees/page.tsx` (Inline)
+- Types Interface:       `frontend/src/types/index.ts` -> `Employee`
+- Backend API Router:    `backend/src/employees/employees.controller.ts`
+- Backend Logic & Gen:   `backend/src/employees/employees.service.ts`
+================================================================================

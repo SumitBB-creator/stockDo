@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, forwardRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,6 +19,7 @@ import {
     FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { RateInput } from '@/components/ui/rate-input';
 import {
     Select,
     SelectContent,
@@ -333,7 +334,7 @@ export default function EditAgreementPage() {
                         </div>
 
                         <div className="border rounded-md">
-                            <Table>
+                            <Table wrapperClassName="max-h-[400px] overflow-y-auto">
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead className="w-[50px]">Sr.</TableHead>
@@ -361,6 +362,7 @@ export default function EditAgreementPage() {
                                                         render={({ field }) => (
                                                             <FormItem>
                                                                 <MaterialCombobox
+                                                                    ref={field.ref}
                                                                     value={field.value}
                                                                     onChange={field.onChange}
                                                                     materials={materials}
@@ -383,8 +385,7 @@ export default function EditAgreementPage() {
                                                         render={({ field }) => (
                                                             <FormItem>
                                                                 <FormControl>
-                                                                    <Input
-                                                                        type="number"
+                                                                    <RateInput
                                                                         {...field}
                                                                         onChange={e => field.onChange(parseFloat(e.target.value))}
                                                                     />
@@ -405,8 +406,7 @@ export default function EditAgreementPage() {
                                                         render={({ field }) => (
                                                             <FormItem>
                                                                 <FormControl>
-                                                                    <Input
-                                                                        type="number"
+                                                                    <RateInput
                                                                         {...field}
                                                                         onChange={e => field.onChange(parseFloat(e.target.value))}
                                                                     />
@@ -427,8 +427,7 @@ export default function EditAgreementPage() {
                                                         render={({ field }) => (
                                                             <FormItem>
                                                                 <FormControl>
-                                                                    <Input
-                                                                        type="number"
+                                                                    <RateInput
                                                                         {...field}
                                                                         onChange={e => field.onChange(parseFloat(e.target.value))}
                                                                     />
@@ -519,19 +518,19 @@ export default function EditAgreementPage() {
     );
 }
 
-function MaterialCombobox({
-    value,
-    onChange,
-    materials,
-    onSelect,
-    isOptionDisabled
-}: {
+const MaterialCombobox = forwardRef<HTMLInputElement, {
     value: string;
     onChange: (value: string) => void;
     materials: any[];
     onSelect: (material: any) => void;
     isOptionDisabled?: (id: string) => boolean;
-}) {
+}>(({
+    value,
+    onChange,
+    materials,
+    onSelect,
+    isOptionDisabled
+}, ref) => {
     const autocompleteItems = materials.map(m => ({
         value: m.id,
         label: m.name
@@ -539,6 +538,7 @@ function MaterialCombobox({
 
     return (
         <Autocomplete
+            ref={ref}
             items={autocompleteItems}
             value={value}
             onChange={(val) => {
@@ -550,4 +550,5 @@ function MaterialCombobox({
             isOptionDisabled={isOptionDisabled}
         />
     );
-}
+});
+MaterialCombobox.displayName = "MaterialCombobox";

@@ -1,0 +1,163 @@
+================================================================================
+STOCKDO: AGREEMENT TEMPLATES MANAGEMENT EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document provides a highly detailed, file-level architectural and operational
+guide for the Agreement Templates Management module of StockDo. It describes how the 
+system handles dynamic legal contracts, editable boilerplate clauses, real-time 
+placeholders injection, and PDF render engines.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+The Agreement Templates module is the "Legal Boilerplate Administrator" of StockDo.
+Instead of hardcoding the terms and conditions of rental contracts inside the code 
+or PDF templates, the system stores the contract text inside the database.
+
+This architecture enables:
+1. Dynamic Legal Text Editing:
+   Administrators can alter the legal prologue ("Intro Text") or reword individual 
+   terms and conditions in real-time without recompiling the code.
+2. Dynamic Variables / Placeholders Injection:
+   Boilerplate terms support token variables (e.g. `{siteAddress}`, `{date}`, `{party2}`)
+   which are dynamically resolved, formatted, and highlighted in the printed contract.
+3. Seeding of Boilerplate:
+   The backend automatically seeds a fully legally-compliant shuttering rent contract
+   upon module initialization, ensuring a functional, production-ready legal framework 
+   from day one.
+
+--------------------------------------------------------------------------------
+2. DATABASE SCHEMAS & DATABASE LAYER
+--------------------------------------------------------------------------------
+Mapped in backend/prisma/schema.prisma:
+
+Table: agreement_templates (Model: AgreementTemplate)
+Stores the standardized legal text structure of the contract.
+* Fields:
+  - id: String (UUID, Primary Key)
+  - name: String (Defaulting to "Standard Agreement")
+  - introText: String (Mapped to "intro_text" in database, type: TEXT)
+  - terms: Json (An ordered array of strings representing individual terms: string[])
+  - isActive: Boolean (Mapped to "is_active", defaulting to true)
+  - created_at / updated_at: DateTime
+
+--------------------------------------------------------------------------------
+3. THE FRONTEND TEMPLATE BOARD PAGE
+--------------------------------------------------------------------------------
+* Page Path:
+  frontend/src/app/dashboard/agreement/template/page.tsx
+
+Exposes a centralized admin interface to manage the active legal boilerplate:
+
+1. Intro Text Card:
+   - Purpose: Configures the starting prologue paragraph of the contract.
+   - Textarea: A min-height [100px] leading-relaxed editor allowing real-time edits.
+   - Tooltip Info: Displays supported variables: `{date}`, `{party1}`, `{party2}`.
+
+2. Terms & Conditions Board:
+   - Add Term: Appends a new empty string to the local terms list.
+   - Term Editor: Loops through the terms array, rendering each term inside an 
+     individual numbered Card containing a custom textarea and edit toolbar.
+   - Reorder Terms: Exposes ghost "Up" and "Down" arrows. Swaps indexes in the 
+     terms array and updates the UI instantly:
+     `[newTerms[index], newTerms[newIndex]] = [newTerms[newIndex], newTerms[index]]`
+     * Note: "Up" is disabled for term index 0, and "Down" is disabled for the last term.
+   - Delete Term: Exposes a red "Trash" button that calls splice(index, 1) on the terms list.
+   - Empty State: Renders a dashed border placeholder card if no terms exist.
+
+3. Global Save Action:
+   Submits the completed state (introText, terms, template name) via PUT to the
+   backend API wrapper.
+
+--------------------------------------------------------------------------------
+4. THE PDF RENDER PLACEHOLDER REPLACEMENT ENGINE
+--------------------------------------------------------------------------------
+* File Location:
+  frontend/src/components/agreement/AgreementDocument.tsx
+
+The core brilliance of the Agreement Templates module lies in how the React-PDF
+render engine processes the template text and substitutes the placeholders dynamically:
+
+1. Dynamic Coordinates Compilation:
+   At render-time, the engine constructs coordinates:
+   - Party 1 (Company Coordinates):
+     Compiles into: [CompanyName] C/O [EmployerName] [Address1], [Address2], [City] - [Pin] ([State])
+   - Party 2 (Customer Coordinates):
+     Compiles into: [CustomerName] [RelationType]-Mr. [RelationName], [CustomerAddress], [CustomerCity] ([CustomerState] - [CustomerPin])
+   - Date: Formats date using date-fns into "dd-MMM-yyyy" (e.g. "25-May-2026").
+
+2. Placeholders Mapping:
+   The system maps variables using string replacement in replacePlaceholders(text):
+   - `{date}` -> Formatted contract start date.
+   - `{party1}` -> Compiled Company Coordinates.
+   - `{party2}` -> Compiled Customer Coordinates.
+   - `{siteAddress}` -> Agreement's Project Site location.
+   - `{residenceAddress}` -> Customer's Office address.
+   - `{authorizedRepresentative}` -> Authorized Client representative.
+   - `{minimumRentPeriod}` -> Contract minimum rent period duration integer.
+
+3. Bold Underlined Highlights (Method: renderTextWithBoldPlaceholders):
+   To prevent personalized dynamic values from getting lost in dry legal boilerplate,
+   the engine splits the text by placeholders using a regular expression:
+   `const regex = new RegExp("(" + placeholders.map(p => escapeRegex(p)).join("|") + ")", "g")`
+   - Non-placeholder text: Rendered using default Helvetica font.
+   - Placeholder text: Replaced with its live resolved value and wrapped in styles:
+     `fontFamily: 'Helvetica-Bold'`
+     `textDecoration: 'underline'`
+   This ensures all key variables stand out with perfect bold, underlined styling on 
+   the final legal printed PDF.
+
+--------------------------------------------------------------------------------
+5. BACKEND INITIALIZATION & SERVICE LAYER
+--------------------------------------------------------------------------------
+* Backend Controller: backend/src/agreement-templates/agreement-templates.controller.ts
+* Backend Service:    backend/src/agreement-templates/agreement-templates.service.ts
+
+--- A. Bootstrapping Default Clauses (Method: onModuleInit) ---
+Implements NestJS OnModuleInit. Runs automatically when the backend boots.
+If the database table agreement_templates is empty (count === 0), it generates the
+default Standard Agreement:
+1. seeds defaultIntro string.
+2. seeds 8 standard shuttering rent clauses:
+   - Clause 1: Supply on hire basis exour godown to Party 2 at {siteAddress} and {residenceAddress}.
+   - Clause 2: Payment of monthly bills within 7 days by cheque.
+   - Clause 3: No site-to-site transfer without written permission.
+   - Clause 4: Return materials in safe & sound condition. Damage penalty rates apply.
+   - Clause 5: mr. {authorizedRepresentative} authorized to sign/receive challans/bills.
+   - Clause 6: Both parties undertake to honour the contract.
+   - Clause 7: Disputes settled at court of law in New Delhi.
+   - Clause 8: Minimum rent period is {minimumRentPeriod} days.
+3. Inserts the record as the active baseline template.
+
+--- B. Template Retrieval & Edits ---
+- getActiveTemplate(): Returns the standard template with isActive: true.
+- updateTemplate(id, dto): Takes introText, terms, name, and updates the table row.
+
+--------------------------------------------------------------------------------
+6. API ENDPOINT & CONTROLLER MAPPING
+--------------------------------------------------------------------------------
+Protected under global JWT security guards:
+
+- Fetch Active Boilerplate:
+  * Route: GET /agreement-templates/active
+  * Controller: getActiveTemplate()
+  * Wrapper: fetchActiveAgreementTemplate()
+- Fetch All Templates:
+  * Route: GET /agreement-templates
+  * Controller: getAllTemplates()
+  * Wrapper: -
+- Save Template:
+  * Route: PUT /agreement-templates/:id
+  * Controller: updateTemplate(@Param('id'), @Body() dto)
+  * Wrapper: updateAgreementTemplate(id, dto)
+
+--------------------------------------------------------------------------------
+7. DIRECTORY AND FILE QUICK REFERENCE
+--------------------------------------------------------------------------------
+* Main Editor Board:      frontend/src/app/dashboard/agreement/template/page.tsx
+* PDF Render Component:   frontend/src/components/agreement/AgreementDocument.tsx
+* Backend Controller:     backend/src/agreement-templates/agreement-templates.controller.ts
+* Backend Service:        backend/src/agreement-templates/agreement-templates.service.ts
+* Validation DTO:         backend/src/agreement-templates/dto/create-agreement-template.dto.ts
+* Database Schema Models: backend/prisma/schema.prisma
+================================================================================

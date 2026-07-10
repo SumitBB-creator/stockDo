@@ -25,6 +25,7 @@ import {
 import { fetchCustomers, previewCustomBill, finalizeCustomBill } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCustomerAddress } from '@/lib/utils';
+import { DatePicker } from '@/components/ui/date-picker';
 
 export default function CustomizeBillingPage() {
     const router = useRouter();
@@ -131,18 +132,18 @@ export default function CustomizeBillingPage() {
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="fromDate">From Date</Label>
-                    <Input
+                    <DatePicker
                         id="fromDate"
-                        type="date"
+                        
                         value={fromDate}
                         onChange={(e) => { setFromDate(e.target.value); setPreview(null); }}
                     />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="toDate">To Date</Label>
-                    <Input
+                    <DatePicker
                         id="toDate"
-                        type="date"
+                        
                         value={toDate}
                         onChange={(e) => { setToDate(e.target.value); setPreview(null); }}
                     />
@@ -179,7 +180,7 @@ export default function CustomizeBillingPage() {
                                 <p className="text-sm text-muted-foreground">{formatCustomerAddress(selectedCustomer)}</p>
                             </div>
                             <div className="text-right text-sm">
-                                <p><span className="text-muted-foreground">Period:</span> {format(new Date(fromDate), 'dd MMM yyyy')} — {format(new Date(toDate), 'dd MMM yyyy')}</p>
+                                <p><span className="text-muted-foreground">Period:</span> {format(new Date(fromDate), 'dd/MM/yyyy')} — {format(new Date(toDate), 'dd/MM/yyyy')}</p>
                             </div>
                         </div>
                     </div>
@@ -211,8 +212,8 @@ export default function CustomizeBillingPage() {
                                     <>
                                         {preview.items?.map((item: any, index: number) => (
                                             <TableRow key={`${item.materialId}-${index}`} className="hover:bg-muted/50">
-                                                <TableCell>{item.fromDate ? format(new Date(item.fromDate), 'dd/MM/yy') : ''}</TableCell>
-                                                <TableCell>{item.toDate ? format(new Date(item.toDate), 'dd/MM/yy') : ''}</TableCell>
+                                                <TableCell>{item.fromDate ? format(new Date(item.fromDate), 'dd/MM/yyyy') : ''}</TableCell>
+                                                <TableCell>{item.toDate ? format(new Date(item.toDate), 'dd/MM/yyyy') : ''}</TableCell>
                                                 <TableCell>{item.materialName}</TableCell>
                                                 <TableCell>{item.hsn || item.sac || ''}</TableCell>
                                                 <TableCell className="text-right tabular-nums">{item.balance || ''}</TableCell>

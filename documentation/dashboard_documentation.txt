@@ -1,0 +1,201 @@
+================================================================================
+STOCKDO: DASHBOARD & BUSINESS ANALYTICS EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document provides a highly detailed, file-level architectural and operational
+guide for the Dashboards & Business Analytics module of StockDo. It is designed
+to be easily imported into a Word Document for reporting, development, or auditing.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+The Dashboard represents the intelligence layer of StockDo. It aggregates
+real-time data from every other module (Billing, Inventory, Agreements, 
+Transactions, and Logistics) to provide a live health check of the business.
+
+The system utilizes two primary channels for analytics:
+1. Real-time Financial & Operational Aggregators:
+   Aggregates live counts and annual financials (earnings, spendings, net profit,
+   and margins) computed dynamically from transactions, bills, and settings.
+2. The Revenue Snapshot Engine (Midnight Cron Job):
+   A daily cron service that reconstructs on-site rental inventory to compute
+   daily potential rental rent ("on-field rent value") even before invoices are generated.
+
+--------------------------------------------------------------------------------
+2. FRONTEND VISUALIZATION & SECTION DETAILS
+--------------------------------------------------------------------------------
+* File Location:
+  frontend/src/app/dashboard/page.tsx
+
+The dashboard homepage is a Next.js client-side component ('use client') that
+renders four main functional regions:
+
+A. Performance Overview Stats Cards:
+A responsive 3-column grid showing annual values in high-contrast gradient cards:
+1. Earnings Card:
+   - Description: Total gross revenue earned from finalized bills for the year.
+   - Style: Indigo gradient, "IndianRupee" icon.
+   - Code Field: data?.earnings
+2. Spendings Card:
+   - Description: Total annual expenses (vendor purchases + operating expenses).
+   - Style: Rose gradient, "TrendingDown" icon.
+   - Code Field: data?.spendings
+3. Net Profit Card:
+   - Description: Net profit (Earnings - Spendings) alongside margin %.
+   - Margin Formula: (Profit / Earnings) * 100
+   - Style: Emerald gradient, "TrendingUp" icon.
+   - Code Field: data?.profit
+4. Agreements Card:
+   - Description: Total count of active rental agreements.
+   - Style: Sky gradient, "Briefcase" icon.
+   - Code Field: data?.activeAgreements
+5. Customers Card:
+   - Description: Total count of customers in the system.
+   - Style: Amber gradient, "Users" icon.
+   - Code Field: data?.customerCount
+6. Vehicles Card:
+   - Description: Total count of active transport vehicles in the logistics module.
+   - Style: Violet gradient, "Truck" icon.
+   - Code Field: data?.vehicleCount
+
+B. Monthly Performance Chart:
+- Description: Side-by-side comparison of Earnings vs Spendings per calendar month.
+- Component: Recharts BarChart.
+- Color Codes: Earnings = Cyan (#0EA5E9), Spendings = Rose (#F43F5E).
+- Code Data Source: data?.monthlyData
+
+C. Daily Revenue Trend Chart:
+- Description: Displays a 30-day chronological area chart of recurring rental
+  value sitting on customer sites (computed by the Cron engine).
+- Component: Recharts AreaChart with custom emerald green stroke (#10B981) and
+  linear transparency fill.
+- Code Data Source: dailyRevenue array
+
+D. Navigation & Alerts Cards:
+1. Annual Insights Card:
+   - Links to: /dashboard/accounting/annual-report
+   - Purpose: View detailed annual monthly performance and material breakdowns.
+2. Inventory Alerts Card:
+   - Links to: /dashboard/stock/shortage-notice
+   - Purpose: Shows red/amber alert if material quantities fall below safety thresholds.
+   - Code Field: data?.shortageCount
+
+--------------------------------------------------------------------------------
+3. FRONTEND DATA FETCHING & API LAYER
+--------------------------------------------------------------------------------
+* File Location:
+  frontend/src/lib/api.ts
+  frontend/src/store/auth-store.ts
+
+The dashboard fetches data once hydration is resolved and the JWT token exists:
+
+1. Request interceptor:
+   Appends the Bearer token automatically from the Zustand store:
+   config.headers['Authorization'] = `Bearer ${token}`
+2. Response interceptor:
+   Unwraps standardized NestJS API responses:
+   if (response.data && response.data.data) { response.data = response.data.data }
+
+API Method Wrapper Signatures:
+- fetchDashboardSummary():
+  * Endpoint: GET /api/v1/transactions/dashboard-summary
+  * Method: api.get('/transactions/dashboard-summary')
+- fetchDailyRevenueTrend():
+  * Endpoint: GET /api/v1/daily-revenue/trend
+  * Method: api.get('/daily-revenue/trend')
+
+Concurrent fetch mechanism in page.tsx:
+Inside useEffect, the page calls:
+Promise.all([ fetchDashboardSummary(), fetchDailyRevenueTrend() ])
+
+--------------------------------------------------------------------------------
+4. BACKEND BUSINESS LOGIC & CALCULATION ENGINES
+--------------------------------------------------------------------------------
+
+--- A. Dashboard Summary Engine ---
+* File Locations:
+  backend/src/transactions/transactions.controller.ts
+  backend/src/transactions/transactions.service.ts (Method: getDashboardSummary)
+
+Calculates current year financials:
+1. Earnings:
+   Sums grandTotal of all Bill records that are NOT cancelled:
+   where: { dateFrom: { gte: startDate, lte: endDate }, status: { not: 'CANCELLED' } }
+2. Spendings:
+   Sums grandTotal of all Purchase records NOT cancelled + Transaction records 
+   where type is 'EXPENSE':
+   Spendings = Purchase.grandTotal + Expense.amount
+3. Monthly Chart Data:
+   Loops through all retrieved bills, purchases, and expenses and maps them
+   to their respective calendar month using the JS getMonth() index.
+4. Active Inventory Alerts (Shortage Count):
+   Loops through all 'Active' materials, fetches associated ChallanItems:
+   - Reconstructs field stock: Quantity added on 'ISSUE', subtracted on 'RETURN'.
+   - Available Yard Stock = material.totalQty - max(0, IssuedQty).
+   - If AvailableQty <= material.lowerLimit, the material triggers shortage,
+     incrementing shortageCount.
+5. Entity Counts:
+   Uses Prisma counts to fetch active agreements, vehicles, and customer totals.
+
+--- B. Daily Revenue Snapshot Engine ---
+* File Locations:
+  backend/src/daily-revenue/daily-revenue.controller.ts
+  backend/src/daily-revenue/daily-revenue.service.ts
+  (Method: handleDailyRevenueCalculation)
+
+Tracks daily potential earning rent sitting on customer yards.
+1. Midnight Cron Job:
+   Decorated with @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT). Can be manually
+   triggered via POST to /api/v1/daily-revenue/trigger.
+2. Calculation Algorithm:
+   - Fetches all active agreements, contract rates, and challan history.
+   - For each active agreement, it loops through chronological challans:
+     * Adds quantities on 'ISSUE' challans.
+     * Subtracts quantities on 'RETURN' challans.
+   - The remaining active inventory quantities on-site are multiplied by the
+     hireRate agreed in the contract:
+     Daily Rent = On-site Quantity * agreementItem.hireRate
+   - Aggregates this value across all active agreements to get totalDailyRevenue.
+3. Database Upsert:
+   Saves or updates this value in the 'daily_revenue' table for the current date:
+   this.prisma.dailyRevenue.upsert({
+       where: { date: today },
+       update: { amount: totalDailyRevenue },
+       create: { date: today, amount: totalDailyRevenue }
+   })
+4. Trend Method:
+   getRevenueTrend() queries the last 30 daily snapshots sorted chronologically
+   to drive the Recharts AreaChart on the frontend.
+
+--------------------------------------------------------------------------------
+5. DATABASE SCHEMA REFERENCE
+--------------------------------------------------------------------------------
+Mapped in backend/prisma/schema.prisma:
+
+1. Table: daily_revenue (Model: DailyRevenue)
+   - id: String (UUID, PK)
+   - date: DateTime (Unique, Default now)
+   - amount: Float (Computed daily potential rent)
+   - created_at / updated_at: DateTime
+
+2. Core Fields in Other Tables:
+   - Bill: grandTotal (Float), status (Enum: DRAFT, FINALIZED, CANCELLED), dateFrom (DateTime)
+   - Purchase: grandTotal (Float), status (String), date (DateTime)
+   - Transaction: amount (Float), type (Enum: EXPENSE, BILL, etc.), date (DateTime)
+   - Material: totalQty (Int), lowerLimit (Int)
+   - ChallanItem: quantity (Int), materialId (String)
+   - Challan: type (Enum: ISSUE, RETURN)
+   - AgreementItem: hireRate (Float)
+
+--------------------------------------------------------------------------------
+6. FILE AND PATH QUICK REFERENCE
+--------------------------------------------------------------------------------
+* Frontend Main Page:    frontend/src/app/dashboard/page.tsx
+* Frontend API Layer:    frontend/src/lib/api.ts
+* Frontend Currency Util: frontend/src/lib/utils.ts
+* Backend Controller 1:  backend/src/transactions/transactions.controller.ts
+* Backend Service 1:     backend/src/transactions/transactions.service.ts
+* Backend Controller 2:  backend/src/daily-revenue/daily-revenue.controller.ts
+* Backend Service 2:     backend/src/daily-revenue/daily-revenue.service.ts
+* Database Schema:       backend/prisma/schema.prisma
+================================================================================

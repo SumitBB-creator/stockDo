@@ -118,7 +118,7 @@ export default function ChallanListPage() {
                                 )}
                             >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {selectedDate ? format(selectedDate, "dd MMM yyyy") : <span>Pick a date</span>}
+                                {selectedDate ? format(selectedDate, "dd/MM/yyyy") : <span>Pick a date</span>}
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="center">

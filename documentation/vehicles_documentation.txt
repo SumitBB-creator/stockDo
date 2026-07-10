@@ -1,0 +1,84 @@
+================================================================================
+STOCKDO: VEHICLES & FLEET MANAGEMENT EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document covers the Vehicles module. Unlike other CRMs (Customers, Suppliers) 
+which dictate financial flows, the Vehicles module acts as a specialized fleet 
+management tracker. It is designed to track logistical assets and explicitly monitor 
+their compliance and expiration deadlines to prevent legal or operational halting 
+during material dispatch.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW & COMPLIANCE TRACKING
+--------------------------------------------------------------------------------
+A Vehicle in StockDo isn't just a metadata tag; it is a tracked asset with 
+multiple volatile lifecycles. 
+
+Every vehicle has 8 independent compliance dates:
+1. Next Service Due
+2. Pollution Certificate Due
+3. Insurance Due
+4. Road Tax Due
+5. Token Tax Due
+6. National Permit Due
+7. State Permit Due
+8. Fitness Test Due
+
+By maintaining these dates in a centralized repository, the ERP ensures that 
+dispatch managers are explicitly aware of upcoming expirations before assigning 
+a vehicle to a Delivery Challan.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* Page Location: `frontend/src/app/dashboard/vehicles/page.tsx`
+
+The frontend utilizes a unique, highly horizontal Single Page Application (SPA) 
+architecture optimized for data density and rapid auditing.
+
+--- UI LIFE-CYCLE & FEATURES ---
+1. Dynamic Column Visibility:
+   Because tracking 8 different dates plus metadata requires immense horizontal space, 
+   the UI features a "View Columns" dropdown. This allows fleet managers to toggle 
+   specific columns on or off (e.g., hiding National Permit if tracking a local LCV).
+
+2. The Inline "Add New" Row:
+   Similar to the Materials module, Vehicles abandons the traditional "Modal Dialog" 
+   approach for creation. Instead, the absolute bottom row of the table acts as a 
+   persistent data-entry form.
+   - Text Inputs: Vehicle Number, Type, Details.
+   - Date Pickers: 8 custom `DatePickerCell` popovers using `shadcn` Calendar components.
+   - Clicking "Add New" immediately fires the POST request and clears the inline 
+     row without disrupting the user's viewport.
+
+3. Read-Only Formatting:
+   Dates in the main table are strictly formatted using `date-fns` `format(..., 'PP')` 
+   for human-readable display.
+
+4. Deletion:
+   Vehicles can be removed directly via the Trash icon. The system prompts a browser 
+   confirmation before executing the API delete command and refreshing the table state.
+
+--------------------------------------------------------------------------------
+3. BACKEND SERVICE LOGIC
+--------------------------------------------------------------------------------
+* API Router: `backend/src/vehicles/vehicles.controller.ts`
+* Service logic: `backend/src/vehicles/vehicles.service.ts`
+* Schema: `backend/prisma/schema.prisma` -> `Vehicle` model
+
+--- API BEHAVIOR ---
+- `POST /vehicles`: Receives the JSON payload. Because the frontend utilizes proper 
+  Date Pickers, the 8 compliance dates are transmitted as normalized ISO Strings. 
+  Prisma natively converts these into PostgreSQL `DateTime` objects.
+- `GET /vehicles`: Fetches the entire fleet, ordered by `createdAt` descending.
+- `DELETE /vehicles/:id`: Permanently removes the vehicle record.
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- SPA UI & Inline Form:  `frontend/src/app/dashboard/vehicles/page.tsx`
+- Custom Components:     `DatePickerCell` (Inline in `page.tsx`)
+- Types Interface:       `frontend/src/types/index.ts` -> `Vehicle`
+- Backend API Router:    `backend/src/vehicles/vehicles.controller.ts`
+- Backend Service:       `backend/src/vehicles/vehicles.service.ts`
+================================================================================

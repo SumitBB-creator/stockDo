@@ -22,6 +22,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { DatePicker } from '@/components/ui/date-picker';
 
 interface PurchaseReportProps {
     type?: 'LOCAL' | 'CENTRAL' | 'ALL';
@@ -342,8 +343,8 @@ export function PurchaseReport({ type = 'ALL', title }: PurchaseReportProps) {
                                             />
                                         </TableCell>
                                         <TableCell className="border-r py-3">
-                                            <Input
-                                                type="date"
+                                            <DatePicker
+                                                
                                                 className="h-8 bg-white text-black"
                                                 value={newEntry.date}
                                                 onChange={(e) => setNewEntry({ ...newEntry, date: e.target.value })}

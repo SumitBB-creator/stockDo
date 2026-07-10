@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2, Save, FileSignature, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { RateInput } from '@/components/ui/rate-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Autocomplete } from '@/components/ui/autocomplete';
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { fetchCustomers, createTransaction } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { DatePicker } from '@/components/ui/date-picker';
 
 export default function NotesEntryPage() {
     const { toast } = useToast();
@@ -201,9 +203,9 @@ export default function NotesEntryPage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="date">Date *</Label>
-                            <Input
+                            <DatePicker
                                 id="date"
-                                type="date"
+                                
                                 value={date}
                                 onChange={(e) => setDate(e.target.value)}
                                 disabled={submitting}
@@ -251,8 +253,7 @@ export default function NotesEntryPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Taxable Amount (₹)</Label>
-                                        <Input
-                                            type="number"
+                                        <RateInput
                                             value={amount}
                                             onChange={(e) => setAmount(e.target.value)}
                                             className="bg-white font-semibold"
@@ -290,10 +291,8 @@ export default function NotesEntryPage() {
                         {!isTaxable && (
                             <div className="space-y-2 md:col-span-2">
                                 <Label htmlFor="amount">Amount (₹) *</Label>
-                                <Input
+                                <RateInput
                                     id="amount"
-                                    type="number"
-                                    step="0.01"
                                     placeholder="0.00"
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}

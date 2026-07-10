@@ -100,7 +100,7 @@ function PrintContent() {
                         Back
                     </Button>
                     <h1 className="text-lg font-semibold text-gray-800">
-                        Dueslist Report: {format(new Date(asOfDate), 'dd MMM yyyy')}
+                        Dueslist Report: {format(new Date(asOfDate), 'dd/MM/yyyy')}
                     </h1>
                 </div>
             </div>

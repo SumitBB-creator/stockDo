@@ -160,10 +160,10 @@ export default function CreateChallanPage() {
             };
 
             // Safely add numeric fields if they are valid numbers
-            if (values.goodsValue && !isNaN(Number(values.goodsValue))) payload.goodsValue = Number(values.goodsValue);
-            if (values.weight && !isNaN(Number(values.weight))) payload.weight = Number(values.weight);
-            if (values.transportationCost && !isNaN(Number(values.transportationCost))) payload.transportationCost = Number(values.transportationCost);
-            if (values.greenTax && !isNaN(Number(values.greenTax))) payload.greenTax = Number(values.greenTax);
+            if (values.goodsValue !== undefined && values.goodsValue !== null && !isNaN(Number(values.goodsValue))) payload.goodsValue = Number(values.goodsValue);
+            if (values.weight !== undefined && values.weight !== null && !isNaN(Number(values.weight))) payload.weight = Number(values.weight);
+            if (values.transportationCost !== undefined && values.transportationCost !== null && !isNaN(Number(values.transportationCost))) payload.transportationCost = Number(values.transportationCost);
+            if (values.greenTax !== undefined && values.greenTax !== null && !isNaN(Number(values.greenTax))) payload.greenTax = Number(values.greenTax);
 
             const result = await createChallan(payload);
             toast({ title: "Success", description: "Challan created successfully" });

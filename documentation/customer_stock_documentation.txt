@@ -1,0 +1,199 @@
+================================================================================
+STOCKDO: CUSTOMER STOCK MANAGEMENT EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document provides a highly detailed, file-level architectural and operational
+guide for the Customer Stock (On-Field Inventory Holdings) Management module of 
+StockDo. It covers the interactive search views, transaction replaying algorithms, 
+API gateways, backend services, and database relations.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW & BUSINESS PURPOSE
+--------------------------------------------------------------------------------
+The Customer Stock module represents the "On-Field Asset Inventory Tracker" of 
+StockDo. For shuttering and scaffolding hire companies, tracking physical materials
+currently standing on customer sites is a critical task.
+
+Instead of storing static stock totals under customer accounts in the database 
+(which risks data mismatches), StockDo implements a **Dynamic Replay Ledger Architecture**:
+
+1. Replaying History:
+   To determine the exact quantity of scaffolding plates, pipes, or U-Jacks a 
+   customer holds on any given second, the system scans all historic movements
+   (Challans) and replays the counts sequentially.
+2. The Rental Balance:
+   - "ISSUE" Challans represent materials leaving company yards $\rightarrow$ increments field holdings.
+   - "RETURN" Challans represent materials returning to company yards $\rightarrow$ decrements field holdings.
+3. Zero-Stock Filtering:
+   Materials that have been completely returned (net holding = 0) are omitted from 
+   the active holding overview to keep reporting concise.
+4. Export Utility:
+   Enables administrators to generate instant stock balance sheets to cross-reference
+   with customers during physical reconciliation audits.
+
+--------------------------------------------------------------------------------
+2. DATABASE RELATION MAPPING & LAYERS
+--------------------------------------------------------------------------------
+The Customer Stock calculations utilize four interconnected database tables.
+
+* Database File: [schema.prisma](file:///c:/Users/lenovo/Desktop/stockDo/backend/prisma/schema.prisma)
+
+1. Table: challans (Model: Challan)
+   Tracks the voucher type (ISSUE or RETURN) and link to customer ID.
+   - id: String (UUID, PK)
+   - customerId: String (UUID, FK to customers)
+   - type: ChallanType (Enum: 'ISSUE', 'RETURN')
+   - items: ChallanItem[] (Nested list of item quantities)
+
+2. Table: challan_items (Model: ChallanItem)
+   Represents the physical material count associated with the challan.
+   - id: String (UUID, PK)
+   - challanId: String (UUID, FK to challans, onDelete: Cascade)
+   - materialId: String (UUID, FK to materials)
+   - quantity: Int (Voucher line item count)
+
+3. Table: materials (Model: Material)
+   Provides names and measurement units for stock rendering.
+   - id: String (UUID, PK)
+   - name: String (Material descriptive name)
+   - unit: String (Measurement unit, e.g. "Nos", "Kg", "Sq.Ft")
+
+4. Table: customers (Model: Customer)
+   Identifies the client site receiving or returning inventory.
+   - id: String (UUID, PK)
+   - name: String (Company name)
+
+--------------------------------------------------------------------------------
+3. THE FRONTEND INTERACTIVE BOARD
+--------------------------------------------------------------------------------
+* Page Path:
+  frontend/src/app/dashboard/customer-stock/page.tsx
+
+Renders the administrator's stock audit dashboard:
+
+1. Search Autocomplete:
+   - Purpose: Easily search and filter customers.
+   - Implementation: Uses a high-fidelity Autocomplete component mapping customer ids.
+   - Display Labels: Concatenates customer `name`, reference labels (relationType, 
+     relationName), and formatted site addresses (`formatCustomerAddress`) inside 
+     the search selector.
+   - Trigger: Selecting a customer fires `handleCustomerChange(customerId)`.
+
+2. Dynamic Fetching & Loading Indicator:
+   - Setting `selectedCustomerId` triggers a state change. If valid, the UI displays
+     a loading state ("Loading stock data...") while calling the API.
+   - If no customer is selected, the stock grid is cleared and shows the initial state:
+     "Please search and select a customer above to view their stock."
+
+3. Assets Grid Table:
+   - Material Name: Rendered under Helvetica bold style.
+   - Measurement Unit: Rendered inside a prominent gray secondary badge:
+     `<span className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-xs font-medium">`
+   - Current Stock Holding: Dynamically displays the computed net count in a prominent,
+     large bold typography class to stand out:
+     `<TableCell className="text-right text-primary font-bold text-lg">`
+   - Empty Hold State: Displays a custom centered text if the API returns an empty 
+     list: "This customer currently holds zero stock."
+
+4. Export Button:
+   Exposes an "Export Report" button at the header that becomes active (`disabled={!selectedCustomerId}`)
+   only when a customer selection is active.
+
+--------------------------------------------------------------------------------
+4. THE BACKEND TRANSACTIONAL REPLAY ENGINE
+--------------------------------------------------------------------------------
+* Backend Controller: backend/src/challans/challans.controller.ts
+* Backend Service:    backend/src/challans/challans.service.ts
+
+--- A. API Routing Boundary ---
+Exposes an explicit GET route mapped under challan boundaries:
+```typescript
+@Get('stock/:customerId')
+getCustomerStock(@Param('customerId') customerId: string) {
+    return this.challansService.getCustomerStock(customerId);
+}
+```
+
+--- B. Replay Algorithm (Method: getCustomerStock) ---
+This is the core business calculation engine. It calculates on-field stock balance:
+1. Gathers Challans:
+   Fetches all `Challan` records matching the customerId, pulling nested items and 
+   material attributes:
+   `where: { customerId }`
+   `include: { items: { include: { material: true } } }`
+2. Sequential Processing:
+   Initializes an empty Map tracker: `stockMap = new Map<string, { material: any, quantity: number }>()`
+   Iterates through every challan chronologically, replaying quantities:
+   - If `challan.type === 'ISSUE'`:
+     $$\text{stockMap[materialId].quantity} = \text{currentQty} + \text{item.quantity}$$
+   - If `challan.type === 'RETURN'`:
+     $$\text{stockMap[materialId].quantity} = \text{currentQty} - \text{item.quantity}$$
+3. Formatting & Strip Zero Values:
+   - Converts the mapped values into an array.
+   - Flattens attributes so `materialId`, `materialName`, and `unit` reside on the top level.
+   - Filters out rows where the calculated quantity is exactly 0:
+     `.filter(s => s.quantity !== 0)`
+   This guarantees that items fully returned are stripped from the active list.
+
+```typescript
+async getCustomerStock(customerId: string) {
+    // 1. Fetch all challan items for this customer
+    const challans = await this.prisma.challan.findMany({
+        where: { customerId },
+        include: { items: { include: { material: true } } },
+    });
+
+    const stockMap = new Map<string, { material: any, quantity: number }>();
+
+    for (const challan of challans) {
+        for (const item of challan.items) {
+            const current = stockMap.get(item.materialId) || { material: item.material, quantity: 0 };
+
+            if (challan.type === 'ISSUE') {
+                current.quantity += item.quantity;
+            } else if (challan.type === 'RETURN') {
+                current.quantity -= item.quantity;
+            }
+
+            stockMap.set(item.materialId, current);
+        }
+    }
+
+    return Array.from(stockMap.values())
+        .map(s => ({
+            materialId: s.material.id,
+            materialName: s.material.name,
+            unit: s.material.unit, 
+            material: s.material,
+            quantity: s.quantity,
+        }))
+        .filter(s => s.quantity !== 0);
+}
+```
+
+--------------------------------------------------------------------------------
+5. FRONTEND API LAYER
+--------------------------------------------------------------------------------
+* File Location:
+  frontend/src/lib/api.ts
+
+Wrapper implementation:
+```typescript
+export const fetchCustomerStock = async (customerId: string) => {
+    const response = await api.get(`/challans/stock/${customerId}`);
+    return response.data;
+};
+```
+Interceptors automatically handle authorization using local Zustand state headers 
+and extract NestJS responses.
+
+--------------------------------------------------------------------------------
+6. DIRECTORY AND FILE QUICK REFERENCE
+--------------------------------------------------------------------------------
+* Frontend Dashboard Page: frontend/src/app/dashboard/customer-stock/page.tsx
+* Frontend API Client:     frontend/src/lib/api.ts (Method: fetchCustomerStock)
+* Backend Controller:      backend/src/challans/challans.controller.ts (Route: /challans/stock/:customerId)
+* Backend Service:         backend/src/challans/challans.service.ts (Method: getCustomerStock)
+* Database Schema Models:  backend/prisma/schema.prisma
+* Shared Address Formatter: frontend/src/lib/utils.ts (Method: formatCustomerAddress)
+================================================================================

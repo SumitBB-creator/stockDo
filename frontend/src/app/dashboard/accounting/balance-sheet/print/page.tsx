@@ -77,7 +77,7 @@ function PrintContent() {
                         Back
                     </Button>
                     <h1 className="text-lg font-semibold text-gray-800">
-                        Balance Sheet Report: {format(new Date(asOfDate), 'dd MMM yyyy')}
+                        Balance Sheet Report: {format(new Date(asOfDate), 'dd/MM/yyyy')}
                     </h1>
                 </div>
             </div>

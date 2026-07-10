@@ -1,0 +1,110 @@
+================================================================================
+STOCKDO: TRANSPORTATION EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document covers the Transportation section under the Accounting module.
+This feature enables accountants to view, filter, and track all transportation 
+and logistical costs incurred during the movement of materials (both Issues 
+and Returns).
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+In StockDo, transportation costs are tracked directly on the `Challan` entity.
+When a user generates a Challan (whether issuing material to a site or returning 
+it to the main stock), they can specify a `transportationCost`.
+
+The Transportation accounting module acts as a specialized query interface 
+designed to aggregate these `Challans`, specifically filtering for records 
+where transportation costs are involved. It provides a monthly summary that can 
+be further filtered by a specific customer. 
+
+This is crucial for cross-referencing transporter bills (Bilties) and 
+ensuring the logistic debits match the internal records.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* File Location: `frontend/src/app/dashboard/accounting/transportation/page.tsx`
+
+--- UI LIFE-CYCLE ---
+1. Base Data Loading: 
+   On mount, `fetchCustomers()` and `fetchCompany()` are called. `fetchCompany()` 
+   is necessary to resolve the internal company address for "From/To" display logic.
+2. Filter Configuration:
+   - Date Selector: Users use Left/Right chevron buttons to navigate between months 
+     (managed via `date-fns` `addMonths` and `subMonths`).
+   - Customer Search: An autocomplete component lets users filter by a specific 
+     customer.
+3. Search Execution:
+   Whenever the month, year, or selected customer changes, the component triggers 
+   `fetchTransportationChallans(...)`. 
+4. Table Rendering & Logic:
+   The UI renders a table detailing the Challan No, Date, Vehicle No, Party Details, 
+   and the Transportation Cost.
+   - Dynamic Location Routing (`formatLocation`):
+     - If the Challan is `ISSUE`: From = Company Address, To = Customer Address.
+     - If the Challan is `RETURN`: From = Customer Address, To = Company Address.
+5. Printing:
+   A "Print PDF" button redirects to a dedicated print layout at:
+   `/dashboard/accounting/transportation/print?month=...&year=...&customerId=...`
+
+--------------------------------------------------------------------------------
+3. BACKEND QUERY ENGINE & API
+--------------------------------------------------------------------------------
+* API Location: `backend/src/challans/challans.controller.ts` -> `@Get('transportation')`
+* Service Location: `backend/src/challans/challans.service.ts` -> `getTransportationChallans`
+
+The endpoint `GET /challans/transportation` retrieves the relevant data.
+
+--- QUERY LOGIC (Prisma) ---
+The `getTransportationChallans` method dynamically builds a `whereClause`:
+- It constructs `gte` and `lte` date bounds for the selected Month and Year 
+  using JavaScript `Date` objects.
+- It applies an exact match filter if a `customerId` is provided.
+- It queries the `challans` table and includes the related `customer` data 
+  required by the frontend for address resolution.
+- It orders the records by `date` descending.
+
+```typescript
+// backend/src/challans/challans.service.ts
+async getTransportationChallans(filters: { month?: string; year?: string; customerId?: string }) {
+    const whereClause: any = {};
+
+    if (filters.year) {
+        const yearNum = parseInt(filters.year);
+        if (filters.month) {
+            const monthNum = parseInt(filters.month);
+            whereClause.date = { 
+                gte: new Date(yearNum, monthNum - 1, 1),
+                lte: new Date(yearNum, monthNum, 0, 23, 59, 59)
+            };
+        } else {
+            whereClause.date = { 
+                gte: new Date(yearNum, 0, 1),
+                lte: new Date(yearNum, 11, 31, 23, 59, 59)
+            };
+        }
+    }
+
+    if (filters.customerId) {
+        whereClause.customerId = filters.customerId;
+    }
+
+    return this.prisma.challan.findMany({
+        where: whereClause,
+        include: { customer: true },
+        orderBy: { date: 'desc' }
+    });
+}
+```
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- Dashboard UI Page:     `frontend/src/app/dashboard/accounting/transportation/page.tsx`
+- Print Layout Page:     `frontend/src/app/dashboard/accounting/transportation/print/page.tsx`
+- Axios Network Wrapper: `frontend/src/lib/api.ts` -> `fetchTransportationChallans`
+- Backend API Router:    `backend/src/challans/challans.controller.ts` -> `@Get('transportation')`
+- Backend Service:       `backend/src/challans/challans.service.ts` -> `getTransportationChallans()`
+================================================================================

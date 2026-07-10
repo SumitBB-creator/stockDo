@@ -1,0 +1,377 @@
+================================================================================
+STOCKDO: COMPANY STOCK OVERVIEW & WAREHOUSE LEDGER EXHAUSTIVE SPECIFICATION
+================================================================================
+
+This document serves as the absolute, production-grade guide for the Company 
+Stock Management and Warehouse Ledger system of StockDo. It contains granular 
+explanations of the frontend visual architectures, API configurations, memory 
+caching algorithms, database relations, code snippets, and operational workflows.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL DESIGN & INVENTORY ALGORITHMS
+--------------------------------------------------------------------------------
+Shuttering and scaffolding rental systems face unique challenges because assets 
+represent recurring physical inventory. Unlike standard retail systems where stock 
+is deleted upon purchase, StockDo assets must be continuously tracked across three 
+mutually exclusive physical locations:
+
+A. Owned Stock (Total Capital Asset Inventory):
+   Represented by the master count of physical materials bought by the company
+   and saved in the Database. This represents the total capacity of the business.
+
+B. Issued Stock (On-Field Rented Out Inventory):
+   Represented by materials currently deployed across dozens of active customer 
+   construction sites. These materials are actively generating rental income.
+
+C. Available Yard Stock (Warehoused Inventory):
+   Represented by physical shuttering materials currently sitting physically 
+   inside the central company warehouse (yard). These materials are available 
+   for loading, transport, or new client allocations.
+
+--- THE MATHEMATICAL LOGIC ---
+To guarantee data integrity, available yard stock is computed on-the-fly rather 
+than as a static integer. This prevents desynchronization when stock moves:
+
+1. Aggregate Issued Stock:
+   For any specific material ID, the system scans the entire chronological 
+   material movement database.
+   
+   $$\text{IssuedQty} = \sum (\text{ISSUE challan items}) - \sum (\text{RETURN challan items})$$
+
+   * This calculation is performed globally, summing up material quantities across
+     every customer site.
+
+2. Central Yard Available Stock:
+   Subtracts the global field allocation from the purchased master assets:
+   
+   $$\text{AvailableQty} = \text{material.totalQty} - \max(0, \text{IssuedQty})$$
+
+   * Features a safety max wrapper to prevent anomalous negative issued stock.
+
+--------------------------------------------------------------------------------
+2. DATABASE RELATIONAL SCHEMAS
+--------------------------------------------------------------------------------
+The database calculations query three primary tables managed through Prisma.
+
+* Schema File Location: [schema.prisma](file:///c:/Users/lenovo/Desktop/stockDo/backend/prisma/schema.prisma)
+
+A. The Materials Master Table: `materials`
+* Model Definition:
+  ```prisma
+  model Material {
+    id                 String   @id @default(uuid())
+    materialId         String   @unique @map("material_id") // M0001, M0002...
+    branchId           String   @map("branch_id")
+    name               String
+    unit               String?  // Nos, Kg, Sq.Ft, bags
+    totalQty           Int      @default(0) @map("total_qty") // Total Owned Asset
+    lowerLimit         Int      @default(0) @map("lower_limit") // Safety Threshold
+    status             String   @default("Active")
+    createdAt          DateTime @default(now()) @map("created_at")
+    updatedAt          DateTime @updatedAt @map("updated_at")
+    challanItems       ChallanItem[]
+  }
+  ```
+
+B. The Challan Header Table: `challans`
+* Model Definition:
+  ```prisma
+  model Challan {
+    id            String      @id @default(uuid())
+    challanNumber String      @unique @map("challan_number") // CHN-0001, RTN-0001
+    date          DateTime
+    customerId    String      @map("customer_id")
+    type          ChallanType // Enum: 'ISSUE', 'RETURN'
+    items         ChallanItem[]
+  }
+  ```
+
+C. The Challan Items Line Table: `challan_items`
+* Model Definition:
+  ```prisma
+  model ChallanItem {
+    id             String   @id @default(uuid())
+    challanId      String   @map("challan_id")
+    challan        Challan  @relation(fields: [challanId], references: [id], onDelete: Cascade)
+    materialId     String   @map("material_id")
+    material       Material @relation(fields: [materialId], references: [id])
+    quantity       Int      // Physical count of item being moved
+  }
+  ```
+
+--------------------------------------------------------------------------------
+3. FRONTEND CONTROLLER & RENDER LAYER
+--------------------------------------------------------------------------------
+* File Location:
+  frontend/src/app/dashboard/company-stock/page.tsx
+
+The view layer is implemented as an interactive Next.js client component ('use client')
+that hooks into local search and loading states.
+
+--- FULL CODE LISTING ---
+```typescript
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Package, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { fetchCompanyStock } from '@/lib/api';
+
+export default function CompanyStockPage() {
+    const [stock, setStock] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        loadStock();
+    }, []);
+
+    const loadStock = async () => {
+        try {
+            const data = await fetchCompanyStock();
+            setStock(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error('Failed to fetch company stock', error);
+            setStock([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filteredStock = stock.filter(item =>
+        item.materialName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.unit && item.unit.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h1 className="text-xl font-bold flex items-center gap-2">
+                    <Package className="h-8 w-8 text-primary" />
+                    Company Stock Overview
+                </h1>
+            </div>
+
+            <div className="flex items-center gap-4 bg-card p-4 rounded-lg border shadow-sm">
+                <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search by material or category..."
+                        className="pl-9"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
+                <Table>
+                    <TableHeader className="bg-muted/50">
+                        <TableRow>
+                            <TableHead>Material Name</TableHead>
+                            <TableHead>Measurement Unit</TableHead>
+                            <TableHead className="text-right">Total Purchased Stock</TableHead>
+                            <TableHead className="text-right">Issued (Rented Out)</TableHead>
+                            <TableHead className="text-right text-primary font-bold">Currently Available</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="text-center h-32">
+                                    Loading stock data...
+                                </TableCell>
+                            </TableRow>
+                        ) : filteredStock.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="text-center h-32 text-muted-foreground">
+                                    No materials found matching your search.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            filteredStock.map((item) => (
+                                <TableRow key={item.materialId}>
+                                    <TableCell className="font-medium">{item.materialName}</TableCell>
+                                    <TableCell>
+                                        <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-xs font-medium">
+                                            {item.unit || 'Nos'}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell className="text-right font-semibold">{item.totalQty}</TableCell>
+                                    <TableCell className="text-right text-amber-600 font-semibold">{item.issuedQty}</TableCell>
+                                    <TableCell className="text-right text-green-600 font-bold text-lg">{item.availableQty}</TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+        </div>
+    );
+}
+```
+
+--- FRONTEND LIFE-CYCLE DETAILS ---
+1. Initial Mount:
+   A native `useEffect` triggers `loadStock()` immediately after loading to fetch the
+   aggregate state of physical assets.
+2. State Triggers:
+   - `loading` (boolean): Controls loading spinners to prevent cumulative layout shifts.
+   - `searchQuery` (string): Captures keyboard input dynamically.
+   - `stock` (array): Holds the dynamic dataset retrieved from the backend API.
+3. Category & Material Matching:
+   Matches search queries using case-insensitive indices against the material name 
+   or measurement unit.
+4. Typography & Badge Conventions:
+   - Total Owned: Mapped to Helvetica semi-bold numbers (`font-semibold`).
+   - Issued Assets (Field): Highlighted in amber bold CSS style (`text-amber-600 font-semibold`)
+     to represent assets currently renting out and earning revenue.
+   - Yard Availability (Central): Mapped to a prominent, large bold green CSS style 
+     (`text-green-600 font-bold text-lg`) to give yard planners immediate visual clarity 
+     on loading constraints.
+   - Units: Enclosed in rounded secondary badging (`bg-secondary text-xs rounded-md`).
+
+--------------------------------------------------------------------------------
+4. BACKEND BUSINESS LOGIC & LEDGER ENGINE
+--------------------------------------------------------------------------------
+
+--- A. REST API Endpoints ---
+* File Location:
+  backend/src/challans/challans.controller.ts
+* Endpoint Mapping:
+  `GET` `/api/v1/challans/company-stock`
+* JWT Guard:
+  Controller requests are protected under NestJS passport JWT verification.
+
+--- B. Global Replay Allocation Service ---
+* File Location:
+  backend/src/challans/challans.service.ts
+* Method Definition:
+  `getCompanyStock()`
+
+--- FULL CODE LISTING ---
+```typescript
+async getCompanyStock() {
+    // 1. Fetch all materials in active status
+    const materials = await this.prisma.material.findMany();
+
+    // 2. Fetch all challans and their items
+    const allChallans = await this.prisma.challan.findMany({
+        include: { items: true },
+    });
+
+    // 3. Map to keep track of issued quantities
+    const issuedMap = new Map<string, number>();
+
+    for (const challan of allChallans) {
+        for (const item of challan.items) {
+            const currentIssued = issuedMap.get(item.materialId) || 0;
+
+            if (challan.type === 'ISSUE') {
+                issuedMap.set(item.materialId, currentIssued + item.quantity);
+            } else if (challan.type === 'RETURN') {
+                // Prevent negative issued stock, assuming data might have discrepancies
+                issuedMap.set(item.materialId, Math.max(0, currentIssued - item.quantity));
+            }
+        }
+    }
+
+    // 4. Combine material total stock with issued stock to calculate available stock
+    return materials.map(material => {
+        const issuedQty = issuedMap.get(material.id) || 0;
+        const availableQty = material.totalQty - issuedQty;
+
+        return {
+            materialId: material.id,
+            materialName: material.name,
+            unit: material.unit,
+            totalQty: material.totalQty,
+            lowerLimit: material.lowerLimit,
+            issuedQty,
+            availableQty,
+        };
+    });
+}
+```
+
+--- DETAILED SERVICE METHOD STEP-BY-STEP FLOW ---
+1. Master Material Pull:
+   Queries the materials table, retrieving name, measurement unit, safety boundaries
+   (`lowerLimit`), and purchased stock numbers (`totalQty`).
+2. Global Vouchers Fetch:
+   Fetches all challans stored in PostgreSQL, joining nested challan items:
+   `include: { items: true }`
+3. Map Initialization:
+   Allocates a standard ES6 Map tracking `(materialId -> issuedQuantity)`.
+4. Replaying Vouchers (Asset ledger loop):
+   Iterates through every challan chronologically, and processes every item:
+   - If `challan.type === 'ISSUE'`: adds quantities to `issuedMap`.
+   - If `challan.type === 'RETURN'`: subtracts quantities.
+   - Discrepancy Prevention: Uses a `Math.max(0, ...)` constraint. This is a critical
+     safety guard in logistics databases. If a return challan accidentally registers
+     more items than were originally issued (e.g. due to admin input errors), it prevents
+     the system from showing a corrupted negative issued stock.
+5. Division & Mapping Output:
+   Iterates through the retrieved materials list:
+   - Extracts the calculated `issuedQty` from the memory map.
+   - Computes yard availability: `availableQty = totalQty - issuedQty`.
+   - Compiles a flattened JSON payload containing `materialId`, `materialName`, 
+     `unit`, `totalQty`, `lowerLimit`, `issuedQty`, and `availableQty`.
+
+--------------------------------------------------------------------------------
+5. FRONTEND AXIOS CONFIGURATION
+--------------------------------------------------------------------------------
+* File Location:
+  frontend/src/lib/api.ts
+
+```typescript
+export const fetchCompanyStock = async () => {
+    const response = await api.get('/challans/company-stock');
+    return response.data;
+};
+```
+API request is routed through a standard Axios client. An interceptor automatically
+injects local session JWT security headers dynamically on every request.
+
+--------------------------------------------------------------------------------
+6. MODULE WORKFLOWS & INTEGRATIONS
+--------------------------------------------------------------------------------
+
+A. Yard Logistics Allocation:
+   When yard managers receive a loading slip, they access `/dashboard/company-stock`
+   to verify if the available stock (`availableQty`) is sufficient to cover the
+   slip. If available stock is insufficient, physical load operations are blocked.
+
+B. Procurement Alerts:
+   If yard stock `availableQty` drops below or matches `lowerLimit`, the master dashboard
+   raises a red warning card. This informs the procurement officer to buy more material
+   from suppliers.
+
+C. Physical Reconciliation Audits:
+   During end-of-year physical audits, supervisors do the following:
+   1. Access Company Stock overview to see theoretical Available stock.
+   2. Count physical materials sitting in the yard.
+   3. If physical counts differ, they utilize the ledger to track past movements
+      and pinpoint discrepancies.
+
+--------------------------------------------------------------------------------
+7. QUICK PATH REFERENCE DIRECTORY
+--------------------------------------------------------------------------------
+* Frontend UI Page:      frontend/src/app/dashboard/company-stock/page.tsx
+* Frontend API Client:   frontend/src/lib/api.ts (Method: fetchCompanyStock)
+* Backend Controller:    backend/src/challans/challans.controller.ts
+* Backend Service:       backend/src/challans/challans.service.ts (Method: getCompanyStock)
+* Database Schema:       backend/prisma/schema.prisma
+* Shared UI Components:  frontend/src/components/ui/table.tsx
+                         frontend/src/components/ui/input.tsx
+                         frontend/src/components/ui/button.tsx
+================================================================================

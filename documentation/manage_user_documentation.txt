@@ -1,0 +1,73 @@
+================================================================================
+STOCKDO: MANAGE USER (CONTROL PANEL) EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document covers the Manage User module, located within the Control Panel. 
+This module represents the second half of StockDo's Role-Based Access Control (RBAC) 
+architecture. It is used to register operational personnel and attach them to the 
+security profiles (Roles) defined in the Manage Role module.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+In the StockDo backend, `Users` are the entities capable of logging into the system 
+using an Email and Password. A User is fundamentally powerless until they are 
+mapped to a `Role`. 
+
+By decoupling Users from Roles, an Administrator can update a Role (e.g., granting 
+"Challan" access to the "Logistics" role) and instantly, all 50 users assigned to 
+that role inherit the new access level without requiring individual user modifications.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* Page Location: `frontend/src/app/dashboard/control-panel/users/page.tsx`
+
+The Manage User interface utilizes the same specialized Dark Mode theme (`bg-[#020817]`) 
+as the Manage Role page to signal to administrators that they are operating in a 
+sensitive configuration environment.
+
+--- UI LIFE-CYCLE ---
+1. Data Hydration:
+   On mount, `loadData()` runs a parallel `Promise.all` request to fetch both 
+   `GET /users` and `GET /roles`. The roles are required to populate the dropdown 
+   menus for assignment.
+
+2. Inline Account Registration (Create):
+   Similar to other StockDo modules, new users are added via an inline row at 
+   the bottom of the table. 
+   - Inputs: Full Name, System Email, Assigned Role (Dropdown), and Password.
+   - The Password input is cleverly hidden under the "Activity" (UpdatedAt) column 
+     for the new-row UI.
+   - Clicking "Add New" fires the POST request and registers the account.
+
+3. Modal Editing (Update):
+   Clicking "Edit" on an existing user opens a standard modal Dialog.
+   - The administrator can update the user's Name, Email, or re-assign them to 
+     a completely different Role.
+   - Note: The system deliberately hides the Password field in the Edit modal. 
+     Password resets (if required) must be handled via a dedicated reset flow or 
+     direct database intervention.
+
+4. Deletion:
+   Clicking "Delete" permanently drops the user's login credentials and session.
+
+--------------------------------------------------------------------------------
+3. BACKEND SERVICE & AUTHENTICATION HOOKS
+--------------------------------------------------------------------------------
+* API Router: `backend/src/users/users.controller.ts` (Implicit based on standard NestJS patterns)
+
+--- PERMISSION GUARDS ---
+The entire Manage User UI is wrapped in the `usePermissions()` hook. 
+Specifically, it queries `hasAction("Manage User", "add")` and `"edit"`. 
+If an administrator accidentally locks themselves out of "Manage User", the 
+inline "Add New" button and all "Edit" hyperlinks will automatically disable 
+and turn grey, preventing further modifications.
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- SPA UI:            `frontend/src/app/dashboard/control-panel/users/page.tsx`
+- RBAC Client Hook:  `frontend/src/hooks/use-permissions.ts`
+- Roles API Link:    `backend/src/roles/roles.controller.ts`
+================================================================================

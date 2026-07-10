@@ -1,0 +1,98 @@
+================================================================================
+STOCKDO: DUES LIST EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document outlines the architecture, frontend, and backend mechanics for the
+Dues List (Outstanding Balances) module within the Accounting section.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+The Dues List is a real-time macroscopic view of all active Debtors (Customers). 
+Instead of rendering chronological ledgers, it aggregates the historical sums 
+of all transactions up to a user-defined `asOfDate`.
+
+It provides a high-level summary of:
+- Total Billing Amount (Total value of goods/services billed)
+- Total Bill Payment (Total receipts against bills)
+- Total Refund Payment (Payments issued back to the customer)
+- Net Due (Overall outstanding balance)
+- Advance Payment (If a customer has paid more than their total bills, it's flagged as an advance)
+
+The system automatically distinguishes between `Current Balance (Including Advance)` 
+and `Current Balance (Excluding Advance)`. If a customer's `netDue` is negative, 
+it represents a Credit (Advance). The excluding-advance balance for that customer 
+is exactly 0.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* File Location: `frontend/src/app/dashboard/accounting/dueslist/page.tsx`
+
+--- UI LIFE-CYCLE ---
+1. Dynamic Inputs & Filters:
+   - As Of Date: Defaults to today. Changing this re-fetches the historical aggregation.
+   - Filter Status: A Radio group allowing toggling between:
+     - All
+     - General (Same as All without filtering, but distinct in some UX contexts)
+     - Over Dues: Only shows rows where `netDue > 0`.
+     - No Dues: Only shows rows where `netDue <= 0`.
+   - Search Customer: An autocomplete to isolate a single customer's row.
+2. Search Execution:
+   Changing `selectedDate` triggers `fetchDueslist(selectedDate)`. 
+3. Data Table Rendering:
+   The UI loops through the aggregated customer data. It uses custom cell formatting:
+   - Advance payments map to `due.advancePayment`.
+   - Current Balance (Included): Shows Red for Debit, Green (with 'CR' suffix) for Credit.
+   - Current Balance (Excluded): Replaces negative credit balances with a standard dash (`-`), 
+     focusing only on pure outstanding debt.
+4. Print Functionality:
+   Passes the `asOfDate` and filter logic to a dedicated `print` layout via Next.js router.
+
+--------------------------------------------------------------------------------
+3. BACKEND AGGREGATION ENGINE (PostgreSQL GroupBy)
+--------------------------------------------------------------------------------
+* API Location: `backend/src/transactions/transactions.controller.ts` -> `@Get('dues')`
+* Service Location: `backend/src/transactions/transactions.service.ts` -> `getDueslist()`
+
+To ensure performance over potentially millions of transactions, the system pushes 
+the aggregation workload directly to the PostgreSQL database engine using Prisma's 
+`groupBy` API.
+
+--- QUERY LOGIC ---
+1. Prisma GroupBy:
+   Groups all transactions in the system by `ledgerAccountId` and `type` where 
+   `date <= dateLimit`. It sums the `amount` column.
+2. In-Memory Calculation:
+   The application layer iterates over the grouped SQL result. 
+   - Increase Types (`BILL`, `DEBIT_NOTE`): Added to `billingAmount` and `netDue`.
+   - Decrease Types (`RECEIPT`, `CREDIT_NOTE`): Added to `billPayment` and subtracted from `netDue`.
+   - Refund Types (`PAYMENT`): Added to `refundPayment` and `netDue`.
+3. Entity Resolution:
+   The code looks up the `Customer` table to attach human-readable names and details 
+   to each aggregated row. It computes the virtual fields:
+   - `advancePayment = data.netDue < 0 ? Math.abs(data.netDue) : 0`
+   - `balanceExcludingAdvance = data.netDue > 0 ? data.netDue : 0`
+4. Sorting:
+   Finally, the array is sorted descending by the highest `netDue`, and then 
+   alphabetically by customer name.
+
+```typescript
+// backend/src/transactions/transactions.service.ts (Aggregation Snippet)
+const grouped = await this.prisma.transaction.groupBy({
+    by: ['ledgerAccountId', 'type'],
+    _sum: { amount: true },
+    where: { date: { lte: dateLimit } }
+});
+// ... maps to billingAmount, billPayment, etc.
+```
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- Dashboard UI Page:     `frontend/src/app/dashboard/accounting/dueslist/page.tsx`
+- Print Layout Page:     `frontend/src/app/dashboard/accounting/dueslist/print/page.tsx`
+- Axios Network Wrapper: `frontend/src/lib/api.ts` -> `fetchDueslist`
+- Backend API Router:    `backend/src/transactions/transactions.controller.ts` -> `@Get('dues')`
+- Backend Service:       `backend/src/transactions/transactions.service.ts` -> `getDueslist()`
+================================================================================

@@ -103,7 +103,7 @@ export default function AgreementListPage() {
                                 <TableRow key={agreement.id}>
                                     <TableCell className="font-medium">{agreement.agreementId}</TableCell>
                                     <TableCell>{agreement.customer?.name}</TableCell>
-                                    <TableCell>{format(new Date(agreement.validFrom), 'dd MMM yyyy')}</TableCell>
+                                    <TableCell>{format(new Date(agreement.validFrom), 'dd/MM/yyyy')}</TableCell>
                                     <TableCell>{agreement.minimumRentPeriod} Days</TableCell>
                                     <TableCell>{agreement.status}</TableCell>
                                     <TableCell className="text-right">

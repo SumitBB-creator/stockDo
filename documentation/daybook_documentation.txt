@@ -1,0 +1,93 @@
+================================================================================
+STOCKDO: DAYBOOK EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document covers the Daybook module under the Accounting section.
+The Daybook is a daily chronological record of all financial transactions across 
+the entire organization, regardless of the entity (Customer, Supplier, Employee, 
+or Internal). It provides a daily cash and credit flow summary.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+While the "Ledger" isolates transactions for a single entity over a range of dates, 
+the "Daybook" isolates a single date but aggregates all entities globally.
+
+It queries the `Transaction` table directly, bounding the date from `00:00:00` 
+to `23:59:59` of the selected day. The critical challenge in the Daybook is 
+Entity Resolution: since the `ledgerAccountId` is a polymorphic reference, the 
+system must look up which entity the ID belongs to (Customer, Supplier, Employee, 
+or Company) and attach human-readable labels to the UI.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* File Location: `frontend/src/app/dashboard/accounting/daybook/page.tsx`
+
+--- UI LIFE-CYCLE ---
+1. Date Selection:
+   The UI defaults to today's date (`yyyy-MM-dd`). Changing the date triggers 
+   the `fetchDaybook(selectedDate)` API call.
+2. In-Memory Search Filter:
+   Because the dataset for a single day is usually manageable, the UI implements 
+   a fast client-side filter using `searchTerm`. It filters against the resolved 
+   `entityName`, `referenceId`, or `description`.
+3. Table Rendering:
+   The Daybook is structured chronologically:
+   - Time (Extracted from the transaction timestamp).
+   - Party / Entity Name (Resolved by the backend).
+   - Type (Mapped to human-readable strings like `Invoice`, `Receipt`, `Credit Note`).
+   - Particulars (`description`).
+   - Ref No (`referenceId`, usually a Cheque Number, UTR, or Bill Number).
+   - Debit / Credit Columns (The amount is placed in the respective column based 
+     on whether `type` is an Increase/Decrease type).
+4. Sub-Totals:
+   Calculates the `totalDailyDebit` and `totalDailyCredit` strictly on the currently 
+   visible (`filteredTransactions`) array.
+5. Print Functionality:
+   Passes the `selectedDate` and `searchTerm` to a dedicated `print` layout.
+
+--------------------------------------------------------------------------------
+3. BACKEND SERVICE & ENTITY RESOLUTION
+--------------------------------------------------------------------------------
+* API Location: `backend/src/transactions/transactions.controller.ts` -> `@Get('daybook')`
+* Service Location: `backend/src/transactions/transactions.service.ts` -> `getDaybook()`
+
+--- LOGIC & ENTITY WATERFALL ---
+1. Date Bounding:
+   Creates native JavaScript `Date` objects for `00:00:00` and `23:59:59` to construct 
+   a precise Prisma `gte` and `lte` clause.
+2. Chronological Query:
+   Fetches all transactions globally for the timeframe, ordered by `date` ascending.
+3. Waterfall Resolution (Promise.all):
+   For every transaction, the backend executes a cascading lookup sequence to resolve 
+   the `ledgerAccountId`:
+   - Step 1: Queries `Customer` table (If found, returns `Entity Name (Relation)`).
+   - Step 2: Queries `Supplier` table (If found, returns `Supplier: Entity Name`).
+   - Step 3: Queries `Employee` table (If found, returns `Employee: Entity Name`).
+   - Step 4: Queries `Company` table (If found, returns `Internal: Entity Name`).
+   - Fallback: Returns the raw UUID if it matches none (Data Integrity Fallback).
+
+```typescript
+// backend/src/transactions/transactions.service.ts (Waterfall Snippet)
+const enriched = await Promise.all(transactions.map(async (t) => {
+    // Try Customer First
+    let entity = await this.prisma.customer.findFirst({
+        where: { OR: [{ id: t.ledgerAccountId }, { ledgerAccountId: t.ledgerAccountId }] }
+    });
+    if (entity) return { ...t, entityName: `${entity.name}` };
+    
+    // Try Supplier next...
+    // ...
+}));
+```
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- Dashboard UI Page:     `frontend/src/app/dashboard/accounting/daybook/page.tsx`
+- Print Layout Page:     `frontend/src/app/dashboard/accounting/daybook/print/page.tsx`
+- Axios Network Wrapper: `frontend/src/lib/api.ts` -> `fetchDaybook`
+- Backend API Router:    `backend/src/transactions/transactions.controller.ts` -> `@Get('daybook')`
+- Backend Service:       `backend/src/transactions/transactions.service.ts` -> `getDaybook()`
+================================================================================

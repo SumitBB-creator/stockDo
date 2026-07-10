@@ -254,7 +254,7 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, compan
                     </View>
                     <View style={styles.metaRow}>
                         <Text style={styles.metaLabel}>Date:</Text>
-                        <Text style={styles.metaValue}>{format(new Date(quotation.date), 'dd MMM yyyy')}</Text>
+                        <Text style={styles.metaValue}>{format(new Date(quotation.date), 'dd/MM/yyyy')}</Text>
                     </View>
                 </View>
             </View>

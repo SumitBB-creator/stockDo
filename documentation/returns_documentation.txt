@@ -1,0 +1,94 @@
+================================================================================
+STOCKDO: INWARD RETURNS EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document outlines the architecture, backend logic, and frontend components for the
+Returns (Inward) module in StockDo. 
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+The Returns module handles the process of receiving rented stock back from a customer's site.
+Technically, a "Return" is not a separate entity in the database; it is a specialized 
+instance of a `Challan` where the `type` is set to `RETURN`.
+
+However, the UI and validation logic for Returns is distinct from standard Issues:
+- Stock Validation: You can only return items that the customer currently holds (Customer Stock).
+- Damage & Shortages: Returns support inputting `damageQuantity` and `shortQuantity`.
+  - Normal Quantity: Stock is returned to the company's main inventory.
+  - Damage Quantity: Stock is logged but flagged as damaged (triggers scrap or repair workflows).
+  - Short Quantity: Stock was lost at the customer site. It generates a "Shortage Notice".
+- In the billing engine, a `RETURN` challan halts the daily rental accrual for the 
+  returned quantity on the date of return.
+
+--------------------------------------------------------------------------------
+2. DATABASE RELATIONAL SCHEMA (CHALLAN)
+--------------------------------------------------------------------------------
+* Schema File Location: `backend/prisma/schema.prisma`
+
+Model: Challan (`challans` table)
+- `type`: Enum ['ISSUE', 'RETURN', 'TRANSFER']
+- `date`: DateTime
+- ... standard challan fields ...
+
+Model: ChallanItem (`challan_items` table)
+- `materialId`: UUID
+- `quantity`: Float (Good condition material returned to main stock)
+- `damageQuantity`: Float (Material returned but damaged)
+- `shortQuantity`: Float (Material lost at site, triggers Shortage Notice)
+
+--------------------------------------------------------------------------------
+3. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* File Location: `frontend/src/app/dashboard/stock/return/new/page.tsx`
+
+The Create Return UI behaves differently from a standard issue:
+1. Customer Selection Trigger: 
+   Selecting a customer triggers `loadCustomerStock(customerId)`. The component 
+   fetches the live holdings of that specific customer.
+2. Dynamic Dropdowns:
+   The "Select Material" dropdown is constrained only to items currently held by 
+   the customer.
+3. Max Validation:
+   The form enforces that: `(quantity + damageQuantity + shortQuantity) <= maxQty`
+   where `maxQty` is the total quantity currently issued to that site.
+4. Payload Construction:
+   Sends the `createChallan` payload with `type: 'RETURN'`.
+
+```typescript
+// Payload Construction Snippet
+const payload = {
+    date: values.date.toISOString(),
+    customerId: values.customerId,
+    type: 'RETURN',
+    items: values.items.map(item => ({
+        materialId: item.materialId,
+        quantity: item.quantity, // Good items
+        ...(item.damageQuantity ? { damageQuantity: item.damageQuantity } : {}),
+        ...(item.shortQuantity ? { shortQuantity: item.shortQuantity } : {}),
+    })),
+    // ... other logistical fields
+};
+const result = await createChallan(payload);
+```
+
+--------------------------------------------------------------------------------
+4. BACKEND PROCESSING & SHORTAGE TRIGGER
+--------------------------------------------------------------------------------
+* File Location: `backend/src/challans/challans.service.ts`
+
+When a `RETURN` challan is submitted:
+1. Validates the Customer Stock to prevent negative balances.
+2. Creates the Challan and ChallanItems.
+3. If `shortQuantity > 0` for any item, the system automatically hooks into the 
+   `Shortage Notice` generation workflow, registering a shortage that will later 
+   be billed to the customer at the recovery rate.
+
+--------------------------------------------------------------------------------
+5. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- Return Creation UI: `frontend/src/app/dashboard/stock/return/new/page.tsx`
+- Returns List UI:    `frontend/src/app/dashboard/stock/return/page.tsx`
+- Backend Router:     `backend/src/challans/challans.controller.ts` (Shared)
+- Backend Service:    `backend/src/challans/challans.service.ts` (Shared)
+================================================================================

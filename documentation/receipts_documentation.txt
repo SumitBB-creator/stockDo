@@ -1,0 +1,100 @@
+================================================================================
+STOCKDO: RECEIPTS EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document outlines the architecture and frontend interface for the 
+Receipts module under the Accounting section.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+In StockDo, a "Receipt" is not a separate database entity. It is handled through 
+the centralized `Transaction` table. When a payment comes into the company, 
+a transaction is recorded with `type: 'RECEIPT'`. 
+
+Because of the polymorphic nature of the Ledger system, a Receipt can be booked 
+against any entity:
+- Customer: Receiving payment against an outstanding bill or advance.
+- Supplier: Receiving a refund for returned goods.
+- Employee: Receiving unspent petty cash back.
+
+This unified approach ensures that logging a receipt automatically updates 
+the respective entity's Ledger and recalculates their net dues on the Dues List.
+
+--------------------------------------------------------------------------------
+2. FRONTEND CONTROLLER & INTERFACE
+--------------------------------------------------------------------------------
+* File Location: `frontend/src/app/dashboard/accounting/receipt/new/page.tsx`
+
+--- UI LIFE-CYCLE ---
+1. Party Resolution & Loading:
+   On mount, the component uses `Promise.all` to concurrently fetch Customers, 
+   Suppliers, Employees, and the Internal Company profile. It maps all of these 
+   into a single flattened `AutocompleteItem[]` array, tagged with `tertiaryLabel` 
+   for clarity.
+2. Payment Categorization:
+   Users select a "Payment Type" (which is appended to the transaction description):
+   - Advance Payment
+   - Against Bill
+   - Refund
+   - Loss
+   - Discount
+3. Payment Logistics:
+   The form captures granular payment metadata:
+   - Date: If the user selects today's date, the frontend dynamically merges the 
+     current HH:mm:ss into the Date object to ensure chronological accuracy in 
+     the Daybook.
+   - Payment Mode: Dropdown covering Cash, NEFT, RTGS, IMPS, UPI, Cheque.
+   - Bank Details: Bank Name, Branch, State.
+   - Reference: UTR or Cheque Number.
+   - Notes: "On Account of" specifics.
+4. Payload Construction & Submission:
+   When saving, the frontend concatenates the payment type, mode, bank info, 
+   reference, and notes into a single comprehensive `description` string.
+   It then posts the payload to `createTransaction` with `type: 'RECEIPT'`.
+
+```typescript
+// Payload Construction Snippet
+const description = [
+    paymentAs,
+    `via ${paymentMode}`,
+    bankInfo ? `to ${bankInfo}` : '',
+    reference ? `(Ref: ${reference})` : '',
+    notes ? `- ${notes}` : ''
+].filter(Boolean).join(' ');
+
+const result = await createTransaction({
+    customerId: selectedParty, // Universal ledgerAccountId
+    date: transactionDate,
+    type: 'RECEIPT',
+    amount: parseFloat(amount),
+    description,
+    referenceId: reference || undefined,
+});
+```
+
+--------------------------------------------------------------------------------
+3. BACKEND SERVICE & LOGIC
+--------------------------------------------------------------------------------
+* API Location: `backend/src/transactions/transactions.controller.ts` -> `@Post()`
+* Service Location: `backend/src/transactions/transactions.service.ts` -> `create()`
+
+When the frontend pushes the Receipt, the backend treats it as a standard 
+Transaction insert. 
+- It validates the payload via `CreateTransactionDto`.
+- It inserts the record into the `Transaction` table.
+- Because Ledgers and Dues Lists dynamically calculate running balances off 
+  the `Transaction` table (via `groupBy` and historical sum), no separate 
+  "Account Balance" table needs to be mutated. The accounting ledger updates 
+  instantly and transactionally.
+
+--------------------------------------------------------------------------------
+4. QUICK DIRECTORY REFERENCE
+--------------------------------------------------------------------------------
+- Receipt Entry Form:    `frontend/src/app/dashboard/accounting/receipt/new/page.tsx`
+- Receipt List UI:       `frontend/src/app/dashboard/accounting/receipt/page.tsx`
+- Receipt Print Layout:  `frontend/src/app/dashboard/accounting/receipt/[id]/page.tsx`
+- Axios Network Wrapper: `frontend/src/lib/api.ts` -> `createTransaction`
+- Backend API Router:    `backend/src/transactions/transactions.controller.ts` -> `@Post()`
+- Backend Service:       `backend/src/transactions/transactions.service.ts` -> `create()`
+================================================================================

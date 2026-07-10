@@ -1,0 +1,122 @@
+STOCKDO ERP - DOCUMENTATION MASTER INDEX
+================================================================================
+
+This file serves as the master navigation index for all documentation generated for the StockDo ERP project. It categorizes the text files by module and functional domain. 
+Each entry contains the file name and a brief explanation of what is contained within the file.
+
+--------------------------------------------------------------------------------
+1. MASTER DATA & CRM
+--------------------------------------------------------------------------------
+These modules define the core entities of the system, including who you do business with and what you track.
+
+- company_details_documentation.txt: Documentation of the global settings and root identity provider module.
+- company_settings_exhaustive_details.txt: Architectural breakdown of the Singleton pattern and backend logic for company settings.
+- customers_documentation.txt: Documentation for the Customers CRM, tracking client details and interactions.
+- customers_exhaustive_details.txt: Database schema and architectural details for Customer entities.
+- suppliers_documentation.txt: Documentation for the Suppliers CRM, tracking vendors and supply chain partners.
+- suppliers_exhaustive_details.txt: Database schema and architectural details for Supplier entities.
+- employees_documentation.txt: Documentation for the Employees CRM, tracking staff details and HR metrics.
+- employees_revenue_exhaustive_details.txt: Architectural breakdown linking employees to revenue generation and roles.
+- materials_documentation.txt: Documentation for the Materials module, defining products, parts, and inventory items.
+- materials_exhaustive_details.txt: Architectural details on material properties, HSN codes, and inventory metrics.
+- vehicles_documentation.txt: Documentation for the Vehicles module, tracking fleet details and compliance.
+- vehicles_exhaustive_details.txt: Architectural details for fleet tracking and compliance deadline management.
+
+--------------------------------------------------------------------------------
+2. INVENTORY & LOGISTICS MANAGEMENT
+--------------------------------------------------------------------------------
+Modules handling the physical movement of stock, internal tracking, dispatch, and transportation.
+
+- company_stock_documentation.txt: Documentation for tracking internal company warehouse inventory.
+- customer_stock_documentation.txt: Documentation for tracking inventory currently deployed at customer sites.
+- challans_documentation.txt: Documentation for Delivery Challans, tracking the dispatch of materials.
+- challans_exhaustive_details.txt: Architectural breakdown of challan generation and state management.
+- shortages_documentation.txt: Documentation for tracking and resolving missing or damaged materials.
+- returns_documentation.txt: Documentation for the Returns module, tracking inward logistics.
+- transfers_documentation.txt: Documentation for Site-to-Site material transfers.
+- transfers_exhaustive_details.txt: Architectural details on maintaining data integrity during site transfers.
+- transportation_documentation.txt: Documentation for tracking dispatch vehicles and freight charges.
+- logistics_transportation_exhaustive_details.txt: Architectural breakdown of the transportation and freight calculation engine.
+- stock_reconciliation_exhaustive_details.txt: Technical details for maintaining inventory accuracy and reconciliation logic.
+
+--------------------------------------------------------------------------------
+3. COMMERCIAL OPERATIONS (SALES & PURCHASES)
+--------------------------------------------------------------------------------
+The operational heart of generating revenue and recording expenses against inventory.
+
+- quotations_documentation.txt: Documentation for the Quotations module, generating estimates for clients.
+- quotations_exhaustive_details.txt: Architectural details on quote generation and lifecycle management.
+- billing_documentation.txt: Documentation for the primary Billing Engine generating tax invoices.
+- billing_accounting_exhaustive_details.txt: Architectural details connecting billing to the financial ledgers.
+- customized_billing_documentation.txt: Documentation for ad-hoc and specialized invoice generation.
+- customized_billing_exhaustive_details.txt: Technical details on handling unstructured billing scenarios.
+- sale_reports_documentation.txt: Documentation covering both Local and Central Sales analytical reports.
+- purchase_reports_documentation.txt: Documentation covering both Local and Central Purchases analytical reports.
+- sales_purchases_exhaustive_details.txt: High-level architectural overview of the sales and purchases workflows.
+- purchases_exhaustive_details.txt: Architectural breakdown of purchase order generation and tracking.
+
+--------------------------------------------------------------------------------
+4. ACCOUNTING & FINANCIAL LEDGERS
+--------------------------------------------------------------------------------
+Double-entry accounting, real-time balance tracking, and tax compliance.
+
+- daybook_documentation.txt: Documentation for the Daybook, tracking daily financial transactions.
+- ledger_documentation.txt: Documentation for the core Ledger configuration and chart of accounts.
+- financial_ledger_engine_exhaustive_details.txt: Architectural details on the double-entry accounting engine.
+- transactions_ledgers_documentation.txt: Documentation for individual transaction entries in the ledger.
+- reporting_ledger_exhaustive_details.txt: Technical details on how ledger data is aggregated for reporting.
+- dues_list_documentation.txt: Documentation for tracking Accounts Receivable and pending payments.
+- receipts_documentation.txt: Documentation for logging inbound payments and clearing dues.
+- notes_documentation.txt: Documentation covering both Credit and Debit Notes for financial adjustments.
+- vouchers_adjustments_exhaustive_details.txt: Architectural details on handling financial vouchers and adjustments.
+- gst_summary_documentation.txt: Documentation for the GST Summary report to assist in tax filing.
+- annual_report_documentation.txt: Documentation for the Annual Financial Report and summaries.
+- balance_sheet_documentation.txt: Documentation for generating the organizational Balance Sheet.
+
+--------------------------------------------------------------------------------
+5. AGREEMENTS & CONTRACTS
+--------------------------------------------------------------------------------
+Legal binding and rental scaffolding.
+
+- agreements_documentation.txt: Documentation for the Agreements module, tracking legal and rental contracts.
+- agreements_exhaustive_details.txt: Architectural details on contract lifecycles and binding.
+- agreement_templates_documentation.txt: Documentation for managing reusable contract templates.
+- agreement_templates_exhaustive_details.txt: Technical details on template generation and dynamic variable injection.
+
+--------------------------------------------------------------------------------
+6. SECURITY, USERS & ROLES (CONTROL PANEL)
+--------------------------------------------------------------------------------
+System access control, RBAC (Role-Based Access Control), and personnel management.
+
+- manage_role_documentation.txt: Documentation for managing granular RBAC roles.
+- auth_roles_exhaustive_details.txt: Architectural details of the Role-Based Access Control system.
+- manage_user_documentation.txt: Documentation for managing system users and mapping them to roles.
+- users_exhaustive_details.txt: Architectural details on user authentication and session management.
+- auth_roles_module_details.txt: Additional details regarding the authentication and roles integration.
+- roles_permissions_exhaustive_details.txt: Deep dive into the permissions resolution algorithm.
+- authentication_security_exhaustive_details.txt: Architectural overview of system-wide security and JWT auth.
+
+--------------------------------------------------------------------------------
+7. REPORTS & UTILITY SYSTEMS
+--------------------------------------------------------------------------------
+General insights, document generation, and utility modules.
+
+- dashboard_documentation.txt: Documentation for the main system Dashboard and KPI widgets.
+- dashboards_analytics_exhaustive_details.txt: Technical details on aggregating analytical data for dashboards.
+- print_filters_documentation.txt: Documentation for configuration filters applied to printed reports.
+- printing_pdf_exhaustive_details.txt: Architectural details on the PDF generation engine and printing service.
+
+--------------------------------------------------------------------------------
+8. CORE SYSTEM ARCHITECTURE & OPERATIONS
+--------------------------------------------------------------------------------
+Underlying technical foundation, devops, and broad system designs.
+
+- project_documentation.md: The original high-level project summary and tech stack overview.
+- api_architecture_exhaustive_details.txt: Comprehensive guide to the backend REST API patterns.
+- database_schema_exhaustive_details.txt: Full documentation of the Prisma database schema and relations.
+- ui_design_system_exhaustive_details.txt: Overview of the frontend UI component library and styling rules.
+- deployment_environment_exhaustive_details.txt: Details on server deployment, environments, and CI/CD.
+- infrastructure_exhaustive_details.txt: Overview of the cloud infrastructure and hosting architecture.
+- reliability_pipeline_exhaustive_details.txt: Details on system monitoring, logging, and error handling.
+- maintenance_scripts_exhaustive_details.txt: Guide to backend utility scripts and automated maintenance tasks.
+================================================================================

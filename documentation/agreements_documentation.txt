@@ -1,0 +1,185 @@
+================================================================================
+STOCKDO: AGREEMENTS MANAGEMENT LIFECYCLE EXHAUSTIVE DOCUMENTATION
+================================================================================
+
+This document provides a highly detailed, file-level architectural and operational
+guide for the Agreements Management module of StockDo. It describes each phase
+of the contract lifecycle (creating, editing, viewing, and deleting), detailing
+the frontend visual elements, API boundaries, services, and database schemas.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL OVERVIEW
+--------------------------------------------------------------------------------
+The Agreements module is the foundational core of the StockDo commercial workflow.
+While a Quotation represents a draft commercial proposal, an Agreement is a
+legally binding, finalized contract.
+
+Key Business Constraints:
+- Site-Binding: Agreements are linked directly to a customer's specific project site
+  (siteAddress). A single Customer can have multiple active Agreements running for
+  different construction sites.
+- Rate Engine Source: An "Active" Agreement acts as the mandatory price sheet for
+  all stock transactions. The stock movement service blocks ISSUE challans if there is no
+  Active agreement in place for that site.
+- Billing Engine Dependency: When generating invoices, the Billing service scans
+  the active agreement to retrieve daily hire rates, damage/shortage recovery penalty
+  rates, and the minimum rent duration.
+
+--------------------------------------------------------------------------------
+2. DATABASE SCHEMAS & TABLES
+--------------------------------------------------------------------------------
+Mapped in backend/prisma/schema.prisma:
+
+A. Main Header Table: agreements (Model: Agreement)
+Stores core legal and billing guidelines of the contract.
+* Fields:
+  - id: String (UUID, Primary Key)
+  - agreementId: String (Unique. Auto-generated serial ID, e.g., "AGRMT-000001")
+  - customerId: String (UUID, Foreign Key linking to customers table)
+  - validFrom: DateTime (Start date of active contract validity)
+  - siteAddress: String (Physical construction site location)
+  - residenceAddress: String (Corporate / Office address of the client)
+  - authorizedRepresentative: String (Name of the representative, typically generated from customer relationships)
+  - minimumRentPeriod: Int (Defaulting to 30 days. Triggers minimum billing calculations)
+  - status: String (Active, Draft, or Closed. Only 'Active' allows stock operations)
+  - created_at / updated_at: DateTime
+
+B. Rate Sheet Table: agreement_items (Model: AgreementItem)
+Defines the contracted pricing for each material type on site.
+* Fields:
+  - id: String (UUID, Primary Key)
+  - agreementId: String (UUID, Foreign Key linking to agreements table)
+  - materialId: String (UUID, Foreign Key linking to materials table)
+  - hireRate: Float (Daily rental rate per unit)
+  - damageRecoveryRate: Float (Penalty rate for physical damage to the item)
+  - shortRecoveryRate: Float (Penalty rate for missing or unreturned items)
+  - rateAppliedAs: String (Calculation unit, usually "Nos/Days")
+
+--------------------------------------------------------------------------------
+3. LIFECYCLE PHASES & OPERATIONAL LOGIC
+--------------------------------------------------------------------------------
+
+=== A. CREATING AN AGREEMENT ===
+* Form Path:
+  frontend/src/app/dashboard/agreement/create/page.tsx
+
+The creation flow is designed to eliminate manual data entry errors:
+1. Customer Autocomplete:
+   Renders custom customer Autocomplete component. On selection, triggers
+   onCustomerSelect(customerId).
+2. Address Auto-Population:
+   The form queries customer details and populates siteAddress and office
+   (residence) address. It also automatically sets authorizedRepresentative by joining
+   the customer's relationType and relationName (e.g. "S/O Sumit Kumar").
+3. Smart Proposal Pre-filling:
+   To prevent keying in items manually, the frontend queries the client's latest
+   finalized proposal via fetchLatestQuotationByCustomer(customerId).
+   If found, it imports the item rate sheet directly into the form's items array.
+4. Item Deduplication:
+   Autocomplete select uses isOptionDisabled to prevent the user from adding the
+   same material type in multiple rows.
+5. Print / Save:
+   Saving allows two paths:
+   - "Create Agreement" submits and redirects back to the main list.
+   - "Print" submits the payload and immediately redirects the user to the PDF
+     previewer for printing.
+
+=== B. EDITING AN AGREEMENT ===
+* Form Path:
+  frontend/src/app/dashboard/agreement/[id]/edit/page.tsx
+
+Once a contract becomes active, altering historical pricing is restricted using an
+"append-only" safety mechanism:
+1. UI Field Locking:
+   Core structural fields (Customer, Valid From, Minimum Rent Period, Authorized
+   Representative, Site Address, and Office Address) are completely locked down.
+   They are displayed inside disabled gray containers (bg-muted).
+2. Existing Line Protection:
+   Items fetched from the database are flagged with isExisting: true.
+   In the editor, existing rows are rendered in a colored block (bg-muted/30) with all
+   inputs (rates, autocompletes, units) disabled. The "Trash" delete button is hidden.
+3. Appending New Items:
+   Administrators can click "Add Item" to append *new* materials. This opens active
+   autocomplete selections and custom rate inputs, allowing sites to receive new
+   materials not covered in the original quote.
+4. Backend ACID Integrity (agreements.service.ts -> Method: update):
+   The update must execute as an atomic transaction to avoid orphan items:
+   - Performs this.prisma.$transaction()
+   - Updates scalar properties.
+   - If items are submitted, it deletes all existing items with deleteMany() and
+     re-inserts the full refreshed item list using createMany() to ensure no data mismatches.
+
+=== C. DETAIL VIEW & LEGAL PDF GENERATION ===
+* Detail View Path:
+  frontend/src/app/dashboard/agreement/[id]/page.tsx
+* Helper Component Path:
+  frontend/src/components/agreement/AgreementDocument.tsx
+
+Previews and exports high-fidelity legal PDF contracts:
+1. Bypassing SSR Hydration conflicts:
+   Uses next/dynamic with ssr: false to load Recharts and React-PDF viewers safely:
+   const PDFViewer = dynamic(() => import('@react-pdf/renderer').then((mod) => mod.PDFViewer), { ssr: false })
+2. Dynamic Multi-Source Fetching:
+   Calls Promise.all([ fetchAgreement(id), fetchCompany(), fetchActiveAgreementTemplate() ])
+   to collect:
+   - Specific contract items and rates.
+   - Global company banking details and logo.
+   - Central legal terms & conditions and prologue strings.
+3. PDF Document Assembly:
+   AgreementDocument renders formal legal borders, party coordinate tables, active
+   item rates, minimum rental rules, terms and conditions, and signature blocks.
+
+=== D. DELETING AN AGREEMENT ===
+* List Path:
+  frontend/src/app/dashboard/agreement/page.tsx
+
+Managed safely to protect historical ledger balances:
+1. Frontend Alert Guard:
+   Triggers confirm('Are you sure you want to delete this agreement?') to prevent accidental clicks.
+2. Relational Integrity:
+   - Foreign Key cascade constraints (onDelete: Cascade) clean up linked agreement_items
+     in PostgreSQL automatically.
+   - If an agreement has active child records (Challans or finalized Bills), the Postgres
+     engine blocks the deletion to preserve audit integrity and prevent orphaned rows.
+
+--------------------------------------------------------------------------------
+4. API ENDPOINT & CONTROLLER MAPPING
+--------------------------------------------------------------------------------
+* Backend Controller: backend/src/agreements/agreements.controller.ts
+* Frontend API Wrapper: frontend/src/lib/api.ts
+
+- Fetch All Agreements:
+  * Route: GET /agreements
+  * Controller Method: findAll(@Query('status'))
+  * API Wrapper: fetchAgreements(status?)
+- Fetch Single Details:
+  * Route: GET /agreements/:id
+  * Controller Method: findOne(@Param('id'))
+  * API Wrapper: fetchAgreement(id)
+- Create Agreement:
+  * Route: POST /agreements
+  * Controller Method: create(@Body() payload)
+  * API Wrapper: createAgreement(payload)
+- Update Agreement:
+  * Route: PATCH /agreements/:id
+  * Controller Method: update(@Param('id'), @Body() payload)
+  * API Wrapper: updateAgreement(id, payload)
+- Delete Agreement:
+  * Route: DELETE /agreements/:id
+  * Controller Method: remove(@Param('id'))
+  * API Wrapper: deleteAgreement(id)
+
+--------------------------------------------------------------------------------
+5. DIRECTORY AND FILE QUICK REFERENCE
+--------------------------------------------------------------------------------
+* Main Listing View:      frontend/src/app/dashboard/agreement/page.tsx
+* Creation Form Page:     frontend/src/app/dashboard/agreement/create/page.tsx
+* Edit / Locking Form:    frontend/src/app/dashboard/agreement/[id]/edit/page.tsx
+* PDF Viewer Page:        frontend/src/app/dashboard/agreement/[id]/page.tsx
+* PDF Render Component:   frontend/src/components/agreement/AgreementDocument.tsx
+* Backend Controller:     backend/src/agreements/agreements.controller.ts
+* Backend service:        backend/src/agreements/agreements.service.ts
+* Create Validation DTO:  backend/src/agreements/dto/create-agreement.dto.ts
+* Update Validation DTO:  backend/src/agreements/dto/update-agreement.dto.ts
+* Database Schema Models: backend/prisma/schema.prisma
+================================================================================

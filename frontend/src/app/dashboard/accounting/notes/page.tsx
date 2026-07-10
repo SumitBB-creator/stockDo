@@ -10,6 +10,7 @@ import { Autocomplete } from '@/components/ui/autocomplete';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, FileSignature, Trash2, Eye } from 'lucide-react';
 import { api } from '@/lib/api';
+import { DatePicker } from '@/components/ui/date-picker';
 
 const fetchNotes = async (date: string, customerId?: string) => {
     const params: any = { date };
@@ -104,8 +105,8 @@ export default function NotesListPage() {
             <div className="flex items-center justify-between gap-4 flex-wrap">
                 {/* Date Selector */}
                 <div className="flex items-center gap-2">
-                    <Input
-                        type="date"
+                    <DatePicker
+                        
                         value={selectedDate}
                         onChange={(e) => setSelectedDate(e.target.value)}
                         className="w-[180px]"
@@ -168,7 +169,7 @@ export default function NotesListPage() {
                                             </span>
                                         </TableCell>
                                         <TableCell className="whitespace-nowrap text-sm">
-                                            {format(new Date(note.date), 'dd MMM yyyy')}
+                                            {format(new Date(note.date), 'dd/MM/yyyy')}
                                         </TableCell>
                                         <TableCell className="font-medium text-primary/90">
                                             {note.entityName}
