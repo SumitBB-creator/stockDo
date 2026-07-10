@@ -136,7 +136,7 @@ export default function CustomizeBillingPage() {
                         id="fromDate"
                         
                         value={fromDate}
-                        onChange={(e) => { setFromDate(e.target.value); setPreview(null); }}
+                        onChange={(e: any) => { setFromDate(e.target.value); setPreview(null); }}
                     />
                 </div>
                 <div className="space-y-2">
@@ -145,7 +145,7 @@ export default function CustomizeBillingPage() {
                         id="toDate"
                         
                         value={toDate}
-                        onChange={(e) => { setToDate(e.target.value); setPreview(null); }}
+                        onChange={(e: any) => { setToDate(e.target.value); setPreview(null); }}
                     />
                 </div>
             </div>
