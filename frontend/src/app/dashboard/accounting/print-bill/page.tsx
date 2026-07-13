@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
 import { fetchFilteredBills, fetchCustomers } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Loader2, Printer, CheckSquare, Square, Search } from 'lucide-react';
@@ -253,7 +254,7 @@ export default function PrintBillPage() {
                                         <TableCell className="font-medium">{bill.customer?.name}</TableCell>
                                         <TableCell className="font-mono">{bill.billNumber}</TableCell>
                                         <TableCell className="text-right tabular-nums">₹{(bill.grandTotal || bill.totalAmount)?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                        <TableCell className="text-center text-muted-foreground">{new Date(bill.dateFrom).toLocaleDateString()} - {new Date(bill.dateTo).toLocaleDateString()}</TableCell>
+                                        <TableCell className="text-center text-muted-foreground">{format(new Date(bill.dateFrom), 'dd/MM/yyyy')} - {format(new Date(bill.dateTo), 'dd/MM/yyyy')}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>

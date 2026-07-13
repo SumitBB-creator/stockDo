@@ -227,7 +227,7 @@ export default function EditQuotationPage({ params }: { params: Promise<{ id: st
                                                     )}
                                                 >
                                                     {field.value ? (
-                                                        format(field.value, "PPP")
+                                                        format(field.value, "dd/MM/yyyy")
                                                     ) : (
                                                         <span>Pick a date</span>
                                                     )}

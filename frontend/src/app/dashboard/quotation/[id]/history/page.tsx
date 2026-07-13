@@ -141,8 +141,8 @@ export default function QuotationHistoryPage({ params }: { params: Promise<{ id:
         if (oldDate !== newDate) {
             changes.push({
                 field: 'Date',
-                oldVal: format(new Date(oldData.date), 'PPP'),
-                newVal: format(new Date(newData.date), 'PPP')
+                oldVal: format(new Date(oldData.date), 'dd/MM/yyyy'),
+                newVal: format(new Date(newData.date), 'dd/MM/yyyy')
             });
         }
 
@@ -202,7 +202,7 @@ export default function QuotationHistoryPage({ params }: { params: Promise<{ id:
                     </div>
                     <div>
                         <span className="font-semibold block">Date:</span>
-                        {data.date ? format(new Date(data.date), 'PPP') : 'N/A'}
+                        {data.date ? format(new Date(data.date), 'dd/MM/yyyy') : 'N/A'}
                     </div>
                     <div>
                         <span className="font-semibold block">Quotation ID:</span>

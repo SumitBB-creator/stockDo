@@ -177,7 +177,7 @@ export default function VehiclesPage() {
                     )}
                 >
                     {value ? (
-                        format(new Date(value), "PP")
+                        format(new Date(value), "dd/MM/yyyy")
                     ) : (
                         <span>{placeholder}</span>
                     )}
@@ -197,7 +197,7 @@ export default function VehiclesPage() {
 
     const ReadOnlyDateCell = ({ value }: { value: string | undefined }) => (
         <div className="whitespace-nowrap">
-            {value ? format(new Date(value), 'PP') : '-'}
+            {value ? format(new Date(value), 'dd/MM/yyyy') : '-'}
         </div>
     );
 

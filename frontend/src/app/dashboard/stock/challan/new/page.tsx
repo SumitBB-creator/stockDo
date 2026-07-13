@@ -17,6 +17,7 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form";
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from "@/components/ui/label";
 import { Input } from '@/components/ui/input';
 import {
@@ -263,7 +264,7 @@ export default function CreateChallanPage() {
                                 <FormItem className="flex flex-col">
                                     <FormLabel>Date</FormLabel>
                                     <FormControl>
-                                        <Input type="date" {...field} value={field.value || ''} />
+                                        <DatePicker {...field} value={field.value || ''} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

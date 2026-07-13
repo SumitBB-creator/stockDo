@@ -261,7 +261,7 @@ export default function EditAgreementPage() {
                                 <FormItem className="flex flex-col">
                                     <FormLabel>Valid From</FormLabel>
                                     <div className="rounded-md border bg-muted p-2.5 text-sm">
-                                        {field.value ? format(field.value, "PPP") : "N/A"}
+                                        {field.value ? format(field.value, "dd/MM/yyyy") : "N/A"}
                                     </div>
                                     <FormMessage />
                                 </FormItem>

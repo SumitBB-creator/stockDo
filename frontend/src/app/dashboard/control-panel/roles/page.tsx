@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
@@ -278,7 +279,7 @@ export default function RolesPage() {
                                         )}
                                         {visibleColumns.updatedAt && (
                                             <TableCell className="text-right pr-6 text-slate-500 text-sm">
-                                                {new Date(role.updatedAt || Date.now()).toLocaleDateString()}
+                                                {format(new Date(role.updatedAt || Date.now()), 'dd/MM/yyyy')}
                                             </TableCell>
                                         )}
                                     </TableRow>
