@@ -13,10 +13,18 @@ Font.register({
 
 const styles = StyleSheet.create({
     page: {
-        padding: 30,
+        
+        padding: 10,
         fontSize: 10,
         fontFamily: 'Helvetica',
         color: '#333',
+    },
+    pageBorder: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: '#4B5563',
+        borderRadius: 4,
+        padding: 10,
     },
     header: {
         marginBottom: 20,
@@ -187,6 +195,27 @@ export const GstSummaryDocument: React.FC<GstSummaryDocumentProps> = ({ summary,
     return (
         <Document>
             <Page size="A4" style={styles.page}>
+                <View style={styles.pageBorder}>
+                {/* Top Info Bar */}
+                <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: 4,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#000000',
+                    marginBottom: 10,
+                }}>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        (GSTIN/UIN : {company?.gstin || ''})
+                    </Text>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        I. Mark : CT
+                    </Text>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        (PAN No : {company?.pan || ''})
+                    </Text>
+                </View>
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.companyName}>{company?.companyName}</Text>
@@ -285,6 +314,7 @@ export const GstSummaryDocument: React.FC<GstSummaryDocumentProps> = ({ summary,
                     <View style={{ width: '40%', borderTopWidth: 1, borderTopColor: '#000', paddingTop: 5, textAlign: 'center' }}>
                         <Text style={{ fontSize: 9 }}>Authorized Signatory</Text>
                     </View>
+                </View>
                 </View>
                 <Text 
                     style={styles.pageNumber} 

@@ -456,7 +456,7 @@ export default function CreateChallanPage() {
                             name="receiverName"
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                    <FormLabel>Receiver Name</FormLabel>
+                                    <FormLabel>Demanded By Name</FormLabel>
                                     <FormControl>
                                         <Input {...field} value={field.value || ''} />
                                     </FormControl>
@@ -470,7 +470,7 @@ export default function CreateChallanPage() {
                             name="receiverMobile"
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                    <FormLabel>Mobile No</FormLabel>
+                                    <FormLabel>Demanded By Phone Number</FormLabel>
                                     <FormControl>
                                         <Input {...field} value={field.value || ''} />
                                     </FormControl>

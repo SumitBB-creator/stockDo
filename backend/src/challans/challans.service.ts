@@ -125,11 +125,11 @@ export class ChallansService {
             include: { items: { include: { material: true } } },
         });
 
-        const stockMap = new Map<string, { material: any, quantity: number }>();
+        const stockMap = new Map<string, { material: any, quantity: number, history: any[] }>();
 
         for (const challan of challans) {
             for (const item of challan.items) {
-                const current = stockMap.get(item.materialId) || { material: item.material, quantity: 0 };
+                const current = stockMap.get(item.materialId) || { material: item.material, quantity: 0, history: [] };
 
                 if (challan.type === 'ISSUE') {
                     current.quantity += item.quantity;
@@ -137,18 +137,30 @@ export class ChallansService {
                     current.quantity -= item.quantity;
                 }
 
+                current.history.push({
+                    id: challan.id,
+                    date: challan.date,
+                    type: challan.type,
+                    challanNo: challan.challanNumber || challan.manualChallanNumber,
+                    quantity: item.quantity
+                });
+
                 stockMap.set(item.materialId, current);
             }
         }
 
         return Array.from(stockMap.values())
-            .map(s => ({
-                materialId: s.material.id,
-                materialName: s.material.name,
-                unit: s.material.unit, // New field, flattened from material
-                material: s.material,
-                quantity: s.quantity,
-            }))
+            .map(s => {
+                s.history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                return {
+                    materialId: s.material.id,
+                    materialName: s.material.name,
+                    unit: s.material.unit,
+                    material: s.material,
+                    quantity: s.quantity,
+                    history: s.history,
+                };
+            })
             .filter(s => s.quantity !== 0);
     }
 

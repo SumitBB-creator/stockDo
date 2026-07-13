@@ -9,8 +9,15 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         padding: 30,
         fontFamily: 'Helvetica',
-        fontSize: 10,
+        fontSize: 9,
         color: '#333333',
+    },
+    pageBorder: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: '#4B5563',
+        borderRadius: 4,
+        padding: 10,
     },
     header: {
         marginBottom: 20,
@@ -28,7 +35,7 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
     },
     companyName: {
-        fontSize: 18,
+        fontSize: 13,
         fontFamily: 'Helvetica-Bold',
         textTransform: 'uppercase',
         marginBottom: 5,
@@ -40,13 +47,13 @@ const styles = StyleSheet.create({
         color: '#4B5563',
     },
     logo: {
-        width: 100,
+        width: 85,
         height: 50,
         objectFit: 'contain',
         marginBottom: 5,
     },
     title: {
-        fontSize: 22,
+        fontSize: 15,
         fontFamily: 'Helvetica-Bold',
         textTransform: 'uppercase',
         color: '#E5E7EB',
@@ -72,14 +79,14 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     underlinedTitle: {
-        fontSize: 10,
+        fontSize: 9,
         fontFamily: 'Helvetica-Bold',
         textDecoration: 'underline',
         marginBottom: 4,
         color: '#6B7280',
     },
     customerName: {
-        fontSize: 12,
+        fontSize: 11,
         fontFamily: 'Helvetica-Bold',
         marginBottom: 2,
         color: '#111827',
@@ -97,14 +104,14 @@ const styles = StyleSheet.create({
     metaLabel: {
         color: '#6B7280',
         fontFamily: 'Helvetica-Bold',
-        width: 90,
+        width: 75,
         textAlign: 'right',
         marginRight: 10,
     },
     metaValue: {
         fontFamily: 'Helvetica',
         color: '#111827',
-        width: 100,
+        width: 85,
         textAlign: 'right',
     },
     table: {
@@ -192,7 +199,7 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
     },
     boldText: {
-        fontSize: 10,
+        fontSize: 9,
         fontFamily: 'Helvetica-Bold',
         color: '#111827',
     },
@@ -207,7 +214,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     notesTitle: {
-        fontSize: 10,
+        fontSize: 9,
         fontFamily: 'Helvetica-Bold',
         marginBottom: 8,
         color: '#111827',
@@ -230,7 +237,7 @@ const styles = StyleSheet.create({
     },
     pageNumber: {
         position: 'absolute',
-        fontSize: 10,
+        fontSize: 9,
         bottom: 20,
         left: 0,
         right: 0,
@@ -252,6 +259,27 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
     return (
         <Document>
             <Page size="A4" style={styles.page}>
+                <View style={styles.pageBorder}>
+                {/* Top Info Bar */}
+                <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: 4,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#000000',
+                    marginBottom: 10,
+                }}>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        (GSTIN/UIN : {company?.gstin || ''})
+                    </Text>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        I. Mark : CT
+                    </Text>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        (PAN No : {company?.pan || ''})
+                    </Text>
+                </View>
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
@@ -280,7 +308,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                 {/* Not for Sale Header */}
                 <View style={{ alignItems: 'center', marginBottom: 5 }}>
                     <Text style={{
-                        fontSize: 10,
+                        fontSize: 9,
                         fontFamily: 'Helvetica-Bold',
                         textDecoration: 'underline',
                         color: '#111827'
@@ -293,7 +321,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                 <View style={[styles.section, { borderBottomWidth: 1, borderBottomColor: '#E5E7EB', paddingBottom: 10, marginBottom: 10 }]}>
                     <View style={styles.customerSection}>
                         <Text style={styles.underlinedTitle}>Details of Cosignee (Shiped To) :</Text>
-                        <Text style={[styles.customerName, { textTransform: 'uppercase', fontSize: 10, marginBottom: 4 }]}>
+                        <Text style={[styles.customerName, { textTransform: 'uppercase', fontSize: 9, marginBottom: 4 }]}>
                             M/S {challan.customer?.name} {challan.customer?.relationName ? `${challan.customer.relationType || 'Dir. Of-MR.'} ${challan.customer.relationName}` : ''}
                         </Text>
                         <Text style={[styles.underlinedTitle, { fontSize: 9, marginBottom: 2 }]}>Site Address :</Text>
@@ -353,6 +381,14 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                         <View style={styles.metaRow}>
                             <Text style={styles.metaLabel}>Phone No:</Text>
                             <Text style={styles.metaValue}>{challan.customer?.sitePhone || challan.customer?.officePhone || '........................'}</Text>
+                        </View>
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaLabel}>Demanded By Name:</Text>
+                            <Text style={styles.metaValue}>{challan.receiverName || '........................'}</Text>
+                        </View>
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaLabel}>Demand By Ph:</Text>
+                            <Text style={styles.metaValue}>{challan.receiverMobile || '........................'}</Text>
                         </View>
                     </View>
                 </View>
@@ -558,23 +594,22 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                             <Text style={styles.boldText}>Receiver's Sign & Mobile No</Text>
                             <View style={{ marginTop: 15 }}>
                                 <Text style={styles.boldText}>
-                                    Receiver Name : {challan.receiverName || '...................................'}
+                                    Receiver Name : ...................................
                                 </Text>
-                                {challan.receiverMobile && (
-                                    <Text style={[styles.boldText, { marginTop: 4 }]}>
-                                        Mobile No : {challan.receiverMobile}
-                                    </Text>
-                                )}
+                                <Text style={[styles.boldText, { marginTop: 4 }]}>
+                                    Mobile No : ...................................
+                                </Text>
                             </View>
                         </View>
                         <View style={styles.signature}>
                             <Text style={styles.boldText}>Authorized Signatory</Text>
                             <View style={{ marginTop: 15, flexDirection: 'row', alignItems: 'center' }}>
                                 <Text style={styles.boldText}>For : </Text>
-                                <Text style={[styles.boldText, { fontSize: 11 }]}>{company?.companyName || 'Company Name'}</Text>
+                                <Text style={[styles.boldText, { fontSize: 12 }]}>{company?.companyName || 'Company Name'}</Text>
                             </View>
                         </View>
                     </View>
+                </View>
                 </View>
                 <Text 
                     style={styles.pageNumber} 

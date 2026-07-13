@@ -4,12 +4,20 @@ import { format } from 'date-fns';
 
 const styles = StyleSheet.create({
     page: {
+        
         flexDirection: 'column',
         backgroundColor: '#FFFFFF',
-        padding: 30,
+        padding: 10,
         fontFamily: 'Helvetica',
         fontSize: 10,
         color: '#000000',
+    },
+    pageBorder: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: '#4B5563',
+        borderRadius: 4,
+        padding: 10,
     },
     header: {
         marginBottom: 15,
@@ -247,6 +255,27 @@ const ReceiptDocument: React.FC<ReceiptDocumentProps> = ({ receipt, company, log
     return (
         <Document>
             <Page size="A4" style={styles.page}>
+                <View style={styles.pageBorder}>
+                {/* Top Info Bar */}
+                <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: 4,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#000000',
+                    marginBottom: 10,
+                }}>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        (GSTIN/UIN : {company?.gstin || ''})
+                    </Text>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        I. Mark : CT
+                    </Text>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        (PAN No : {company?.pan || ''})
+                    </Text>
+                </View>
 
                 {/* Top Middle Labels */}
                 <View style={styles.topCenteredHeader}>
@@ -333,6 +362,7 @@ const ReceiptDocument: React.FC<ReceiptDocumentProps> = ({ receipt, company, log
                     </View>
                 </View>
 
+                </View>
                 <Text 
                     style={styles.pageNumber} 
                     render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 

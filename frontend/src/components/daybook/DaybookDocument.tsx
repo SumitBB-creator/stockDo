@@ -4,12 +4,20 @@ import { format } from 'date-fns';
 
 const styles = StyleSheet.create({
     page: {
+        
         flexDirection: 'column',
         backgroundColor: '#FFFFFF',
-        padding: 30,
+        padding: 10,
         fontFamily: 'Helvetica',
         fontSize: 10,
         color: '#000000',
+    },
+    pageBorder: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: '#4B5563',
+        borderRadius: 4,
+        padding: 10,
     },
     header: {
         marginBottom: 15,
@@ -66,8 +74,7 @@ const styles = StyleSheet.create({
     },
     table: {
         width: '100%',
-        borderWidth: 1,
-        borderColor: '#000000',
+        
         marginBottom: 20,
     },
     tableHeader: {
@@ -196,6 +203,27 @@ const DaybookDocument: React.FC<DaybookDocumentProps> = ({ transactions, company
     return (
         <Document>
             <Page size="A4" style={styles.page}>
+                <View style={styles.pageBorder}>
+                {/* Top Info Bar */}
+                <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: 4,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#000000',
+                    marginBottom: 10,
+                }}>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        (GSTIN/UIN : {company?.gstin || ''})
+                    </Text>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        I. Mark : CT
+                    </Text>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        (PAN No : {company?.pan || ''})
+                    </Text>
+                </View>
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
@@ -267,6 +295,7 @@ const DaybookDocument: React.FC<DaybookDocumentProps> = ({ transactions, company
                 </View>
 
                 <Text style={styles.footerLabel}>End of Daybook for {format(new Date(date), 'dd/MM/yyyy')}</Text>
+                </View>
                 <Text 
                     style={styles.pageNumber} 
                     render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 

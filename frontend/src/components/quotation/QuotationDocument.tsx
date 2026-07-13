@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 
 const styles = StyleSheet.create({
     page: {
+        
         flexDirection: 'column',
         backgroundColor: '#FFFFFF',
         paddingTop: 20,
@@ -16,6 +17,14 @@ const styles = StyleSheet.create({
         fontFamily: 'Helvetica',
         fontSize: 10,
         color: '#333333',
+    
+        padding: 10,},
+    pageBorder: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: '#4B5563',
+        borderRadius: 4,
+        padding: 10,
     },
     header: {
         marginBottom: 10,
@@ -195,6 +204,8 @@ interface QuotationDocumentProps {
 const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, company, logoUrl }) => (
     <Document>
         <Page size="A4" style={styles.page}>
+                <View style={styles.pageBorder}>
+
             {/* Header */}
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
@@ -295,12 +306,13 @@ const QuotationDocument: React.FC<QuotationDocumentProps> = ({ quotation, compan
                     </View>
                 </View>
             </View>
-            <Text 
+            </View>
+                <Text 
                 style={styles.pageNumber} 
                 render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 
                 fixed 
             />
-        </Page>
+            </Page>
     </Document>
 );
 

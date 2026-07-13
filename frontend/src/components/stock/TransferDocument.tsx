@@ -5,12 +5,20 @@ import { toWords } from '@/lib/utils';
 
 const styles = StyleSheet.create({
     page: {
+        
         flexDirection: 'column',
         backgroundColor: '#FFFFFF',
-        padding: 30,
+        padding: 10,
         fontFamily: 'Helvetica',
         fontSize: 10,
         color: '#333333',
+    },
+    pageBorder: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: '#4B5563',
+        borderRadius: 4,
+        padding: 10,
     },
     header: {
         marginBottom: 20,
@@ -232,6 +240,8 @@ const TransferDocument: React.FC<TransferDocumentProps> = ({ transfer, company, 
     return (
         <Document>
             <Page size="A4" style={styles.page}>
+                <View style={styles.pageBorder}>
+
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
@@ -359,6 +369,7 @@ const TransferDocument: React.FC<TransferDocumentProps> = ({ transfer, company, 
                     </View>
                 </View>
 
+                </View>
                 <Text 
                     style={styles.pageNumber} 
                     render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 

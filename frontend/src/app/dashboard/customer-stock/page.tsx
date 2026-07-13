@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Package, Download, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Package, Download, User, ChevronDown, ChevronUp, Calendar, ArrowUpRight, ArrowDownRight, FileText } from 'lucide-react';
+import { format } from 'date-fns';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -21,6 +23,17 @@ export default function CustomerStockPage() {
     const [stock, setStock] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [pageInitialized, setPageInitialized] = useState(false);
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+    const toggleRow = (id: string) => {
+        const newSet = new Set(expandedRows);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        setExpandedRows(newSet);
+    };
 
     useEffect(() => {
         loadCustomers();
@@ -119,17 +132,93 @@ export default function CustomerStockPage() {
                             </TableRow>
                         ) : (
                             stock.map((item) => (
-                                <TableRow key={item.materialId}>
-                                    <TableCell className="font-medium">{item.materialName}</TableCell>
-                                    <TableCell>
-                                        <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-xs font-medium">
-                                            {item.unit || item.material?.unit || 'Nos'}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell className="text-right text-primary font-bold text-lg">
-                                        {item.quantity}
-                                    </TableCell>
-                                </TableRow>
+                                <React.Fragment key={item.materialId}>
+                                    <TableRow 
+                                        className="cursor-pointer hover:bg-muted/50 transition-colors" 
+                                        onClick={() => toggleRow(item.materialId)}
+                                    >
+                                        <TableCell className="font-medium">
+                                            <div className="flex items-center gap-2">
+                                                {expandedRows.has(item.materialId) ? (
+                                                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                                ) : (
+                                                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                                )}
+                                                {item.materialName}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-xs font-medium">
+                                                {item.unit || item.material?.unit || 'Nos'}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="text-right text-primary font-bold text-lg">
+                                            {item.quantity}
+                                        </TableCell>
+                                    </TableRow>
+                                    
+                                    {expandedRows.has(item.materialId) && item.history && item.history.length > 0 && (
+                                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                                            <TableCell colSpan={3} className="p-0 border-b">
+                                                <div className="p-4 bg-muted/20 border-t border-b overflow-hidden shadow-inner">
+                                                    <div className="mb-3 flex items-center gap-2">
+                                                        <FileText className="h-4 w-4 text-primary" />
+                                                        <h3 className="font-semibold text-sm">Transaction History</h3>
+                                                    </div>
+                                                    <div className="rounded-md border bg-card">
+                                                        <Table>
+                                                            <TableHeader className="bg-muted">
+                                                                <TableRow>
+                                                                    <TableHead className="w-[150px]">Date</TableHead>
+                                                                    <TableHead>Transaction No</TableHead>
+                                                                    <TableHead>Type</TableHead>
+                                                                    <TableHead className="text-right">Quantity</TableHead>
+                                                                </TableRow>
+                                                            </TableHeader>
+                                                            <TableBody>
+                                                                {item.history.map((tx: any) => (
+                                                                    <TableRow key={tx.id}>
+                                                                        <TableCell className="font-medium">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <Calendar className="h-3 w-3 text-muted-foreground" />
+                                                                                {format(new Date(tx.date), 'dd MMM yyyy')}
+                                                                            </div>
+                                                                        </TableCell>
+                                                                        <TableCell>
+                                                                            <Link 
+                                                                                href={`/dashboard/stock/challan/${tx.id}/print`}
+                                                                                target="_blank"
+                                                                                className="text-primary hover:underline font-medium"
+                                                                            >
+                                                                                {tx.challanNo}
+                                                                            </Link>
+                                                                        </TableCell>
+                                                                        <TableCell>
+                                                                            {tx.type === 'ISSUE' ? (
+                                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-medium">
+                                                                                    <ArrowUpRight className="h-3 w-3" />
+                                                                                    Sent
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                                                                                    <ArrowDownRight className="h-3 w-3" />
+                                                                                    Received
+                                                                                </span>
+                                                                            )}
+                                                                        </TableCell>
+                                                                        <TableCell className="text-right font-semibold">
+                                                                            {tx.type === 'ISSUE' ? '+' : '-'}{tx.quantity}
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                ))}
+                                                            </TableBody>
+                                                        </Table>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </React.Fragment>
                             ))
                         )}
                     </TableBody>

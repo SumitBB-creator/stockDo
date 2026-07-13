@@ -7,13 +7,20 @@ const styles = StyleSheet.create({
     page: {
         flexDirection: 'column',
         backgroundColor: '#FFFFFF',
-        paddingTop: 20,
-        paddingBottom: 30,
-        paddingLeft: 40,
-        paddingRight: 40,
+        padding: 10,
+        
+        
+        
         fontFamily: 'Helvetica',
         fontSize: 10,
         color: '#000000',
+    },
+    pageBorder: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: '#4B5563',
+        borderRadius: 4,
+        padding: 10,
     },
     header: {
         marginBottom: 10,
@@ -255,6 +262,8 @@ const AgreementDocument: React.FC<AgreementDocumentProps> = ({ agreement, compan
     return (
         <Document>
             <Page size="A4" style={styles.page}>
+                <View style={styles.pageBorder}>
+
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
@@ -342,6 +351,7 @@ const AgreementDocument: React.FC<AgreementDocumentProps> = ({ agreement, compan
                     </View>
                 </View>
 
+                </View>
                 <Text 
                     style={styles.pageNumber} 
                     render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 

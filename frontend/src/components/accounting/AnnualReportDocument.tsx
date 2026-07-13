@@ -13,10 +13,18 @@ Font.register({
 
 const styles = StyleSheet.create({
     page: {
-        padding: 30,
+        
+        padding: 10,
         fontSize: 10,
         fontFamily: 'Helvetica',
         color: '#333',
+    },
+    pageBorder: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: '#4B5563',
+        borderRadius: 4,
+        padding: 10,
     },
     header: {
         marginBottom: 20,
@@ -153,6 +161,38 @@ export const AnnualReportDocument: React.FC<AnnualReportDocumentProps> = ({ data
     return (
         <Document>
             <Page size="A4" style={styles.page}>
+                <View style={styles.pageBorder}>
+                {/* Top Info Bar */}
+                <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: 4,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#000000',
+                    marginBottom: 10,
+                }}>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        (GSTIN/UIN : {company?.gstin || ''})
+                    </Text>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        I. Mark : CT
+                    </Text>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+                        (PAN No : {company?.pan || ''})
+                    </Text>
+                </View>
+                {/* Page Border */}
+                <View style={{
+                    position: 'absolute',
+                    top: 15,
+                    left: 15,
+                    right: 15,
+                    bottom: 15,
+                    borderWidth: 1,
+                    borderColor: '#000000',
+                }} />
+
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.companyName}>{company?.companyName}</Text>
@@ -235,6 +275,7 @@ export const AnnualReportDocument: React.FC<AnnualReportDocumentProps> = ({ data
                     <Text style={styles.signatureLine}>Prepared By</Text>
                     <Text style={styles.signatureLine}>Authorized Signatory</Text>
                 </View>
+                            </View>
             </Page>
         </Document>
     );
