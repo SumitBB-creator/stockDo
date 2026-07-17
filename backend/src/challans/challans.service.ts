@@ -285,4 +285,132 @@ export class ChallansService {
             }
         });
     }
+
+    async getCompanyStockLedger(filters?: { startDate?: string, endDate?: string }) {
+        const materials = await this.prisma.material.findMany({
+            orderBy: { name: 'asc' }
+        });
+
+        const allChallans = await this.prisma.challan.findMany({
+            include: { items: true },
+        });
+
+        const allPurchases = await this.prisma.purchase.findMany({
+            where: { status: 'Finalized' }, // Assuming we only count finalized purchases
+            include: { items: true },
+        });
+
+        // 1. Group by Date
+        const dateMap = new Map<string, any>(); // Map<dateString, { date, materials: Map<materialId, stats> }>
+
+        // Helper to get or create date entry
+        const getDateEntry = (dateObj: Date) => {
+            const dateStr = dateObj.toISOString().split('T')[0];
+            if (!dateMap.has(dateStr)) {
+                dateMap.set(dateStr, {
+                    date: dateStr,
+                    materials: new Map<string, { issue: number, rtn: number, dmg: number, short: number, newQty: number }>()
+                });
+            }
+            return dateMap.get(dateStr).materials;
+        };
+
+        // Helper to get or create material entry for a date
+        const getMaterialEntry = (materialsMap: Map<string, any>, materialId: string) => {
+            if (!materialsMap.has(materialId)) {
+                materialsMap.set(materialId, { issue: 0, rtn: 0, dmg: 0, short: 0, newQty: 0 });
+            }
+            return materialsMap.get(materialId);
+        };
+
+        // Process Challans
+        for (const challan of allChallans) {
+            const matMap = getDateEntry(new Date(challan.date));
+            for (const item of challan.items) {
+                const matEntry = getMaterialEntry(matMap, item.materialId);
+                if (challan.type === 'ISSUE') {
+                    matEntry.issue += item.quantity;
+                } else if (challan.type === 'RETURN') {
+                    matEntry.rtn += item.quantity;
+                    matEntry.dmg += (item.damageQuantity || 0);
+                    matEntry.short += (item.shortQuantity || 0);
+                }
+            }
+        }
+
+        // Process Purchases
+        for (const purchase of allPurchases) {
+            const matMap = getDateEntry(new Date(purchase.date));
+            for (const item of purchase.items) {
+                if (item.materialId) {
+                    const matEntry = getMaterialEntry(matMap, item.materialId);
+                    matEntry.newQty += item.quantity;
+                }
+            }
+        }
+
+        // Sort dates chronologically
+        const sortedDates = Array.from(dateMap.values()).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        // 2. Calculate running balances
+        // We'll track the running balance for each material
+        const runningBalances = new Map<string, number>();
+        for (const mat of materials) {
+            runningBalances.set(mat.id, mat.totalQty || 0);
+        }
+
+        const ledgerRows = sortedDates.map(dateRow => {
+            const rowData: any = { date: dateRow.date, materials: {} };
+            
+            for (const mat of materials) {
+                const matId = mat.id;
+                const stats = dateRow.materials.get(matId) || { issue: 0, rtn: 0, dmg: 0, short: 0, newQty: 0 };
+                
+                let prevBal = runningBalances.get(matId) || 0;
+                // Bal = Prev + New - Issue + Rtn - Dmg - Short
+                // Wait, if damage and short are part of return, they shouldn't be added to good balance
+                // Usually: Return qty is TOTAL received. But if some are damaged/short, they are subtracted from good stock
+                let currentBal = prevBal + stats.newQty - stats.issue + stats.rtn - stats.dmg - stats.short;
+                
+                runningBalances.set(matId, currentBal);
+                
+                rowData.materials[matId] = {
+                    ...stats,
+                    frozen: 0, // Not implemented in schema
+                    bal: currentBal
+                };
+            }
+            
+            return rowData;
+        });
+
+        // 3. Prepare bottom table (Available Qty)
+        const availableQty = materials.map(mat => {
+            return {
+                materialId: mat.id,
+                materialName: mat.name,
+                unit: mat.unit,
+                available: runningBalances.get(mat.id) || 0
+            };
+        });
+
+        let filteredLedger = ledgerRows;
+        if (filters?.startDate && filters?.endDate) {
+            const start = new Date(filters.startDate).getTime();
+            const end = new Date(filters.endDate);
+            end.setHours(23, 59, 59, 999);
+            const endTime = end.getTime();
+            
+            filteredLedger = ledgerRows.filter(row => {
+                const rowTime = new Date(row.date).getTime();
+                return rowTime >= start && rowTime <= endTime;
+            });
+        }
+
+        return {
+            materials: materials.map(m => ({ id: m.id, name: m.name, unit: m.unit })),
+            ledger: filteredLedger,
+            availableQty
+        };
+    }
 }

@@ -75,9 +75,7 @@ export default function CustomerStockPage() {
                     <User className="h-8 w-8 text-primary" />
                     Customer Stock
                 </h1>
-                <Button variant="outline" disabled={!selectedCustomerId}>
-                    <Download className="mr-2 h-4 w-4" /> Export Report
-                </Button>
+
             </div>
 
             <div className="bg-card p-6 rounded-lg border shadow-sm">

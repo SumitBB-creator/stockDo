@@ -26,6 +26,14 @@ export class ChallansController {
         return this.challansService.getCompanyStock();
     }
 
+    @Get('company-ledger')
+    getCompanyStockLedger(
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string
+    ) {
+        return this.challansService.getCompanyStockLedger({ startDate, endDate });
+    }
+
     @Get('transportation')
     getTransportationChallans(
         @Query('month') month?: string,

@@ -182,6 +182,11 @@ export const fetchCompanyStock = async () => {
     return response.data;
 };
 
+export const fetchCompanyStockLedger = async (filters?: { startDate?: string; endDate?: string }) => {
+    const response = await api.get('/challans/company-ledger', { params: filters });
+    return response.data;
+};
+
 export const fetchTransportationChallans = async (filters: { year?: string; month?: string; customerId?: string }) => {
     const response = await api.get('/challans/transportation', { params: filters });
     return response.data;
