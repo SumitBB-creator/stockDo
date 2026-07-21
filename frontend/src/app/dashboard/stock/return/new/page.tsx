@@ -69,9 +69,10 @@ const formSchema = z.object({
         quantity: z.number().min(0, "Quantity must be at least 0"), // Can be 0 if only returning damaged/short
         damageQuantity: z.number().optional(),
         shortQuantity: z.number().optional(),
+        frozenQuantity: z.number().optional(),
         maxQuantity: z.number().optional(), // For validation display
     })).min(1, "At least one item is required").refine(items =>
-        items.every(item => (item.quantity + (item.damageQuantity || 0) + (item.shortQuantity || 0)) > 0),
+        items.every(item => (item.quantity + (item.shortQuantity || 0) + (item.frozenQuantity || 0)) > 0),
         { message: "Total quantity per item must be greater than 0" }
     ),
 });
@@ -181,11 +182,10 @@ export default function CreateReturnPage() {
         // Validate against stock
         for (const item of values.items) {
             const stockItem = customerStock.find(s => s.materialId === item.materialId);
-            const totalReturned = item.quantity + (item.damageQuantity || 0) + (item.shortQuantity || 0);
-            if (!stockItem || totalReturned > stockItem.quantity) {
+            if (!stockItem) {
                 toast({
                     title: "Stock Validation Error",
-                    description: `Cannot return total of ${totalReturned} for material. Max returnable: ${stockItem?.quantity || 0}`,
+                    description: `Material not found in customer stock.`,
                     variant: "destructive",
                 });
                 return;
@@ -203,6 +203,7 @@ export default function CreateReturnPage() {
                     quantity: item.quantity,
                     ...(item.damageQuantity ? { damageQuantity: item.damageQuantity } : {}),
                     ...(item.shortQuantity ? { shortQuantity: item.shortQuantity } : {}),
+                    ...(item.frozenQuantity ? { frozenQuantity: item.frozenQuantity } : {}),
                 })),
             };
 
@@ -452,8 +453,34 @@ export default function CreateReturnPage() {
                                         const shortQty = form.watch(`items.${index}.shortQuantity`) || 0;
                                         const maxQty = stockItem?.maxQty || 0;
 
-                                        const totalDeducted = returnedQty + damageQty + shortQty;
-                                        const balanceQty = maxQty > 0 ? (maxQty - totalDeducted) : 0;
+                                        const totalEntered = returnedQty + shortQty; // damageQty is part of returnedQty
+                                        const balanceQty = maxQty > 0 ? Math.max(0, maxQty - totalEntered) : 0;
+                                        const frozenQty = form.watch(`items.${index}.frozenQuantity`) || 0;
+
+                                        // We calculate frozen quantity dynamically
+                                        const handleQtyChange = (fieldName: "quantity" | "damageQuantity" | "shortQuantity", val: any) => {
+                                            const numVal = val === '' ? 0 : parseInt(val);
+                                            form.setValue(`items.${index}.${fieldName}`, val === '' ? undefined : numVal as any);
+                                            
+                                            // Recalculate totals with the new value
+                                            const newReturned = fieldName === 'quantity' ? numVal : returnedQty;
+                                            const newDamage = fieldName === 'damageQuantity' ? numVal : damageQty;
+                                            const newShort = fieldName === 'shortQuantity' ? numVal : shortQty;
+                                            
+                                            const newTotal = newReturned + newShort;
+                                            const physicalTotal = newReturned;
+                                            
+                                            if (physicalTotal > maxQty && maxQty > 0) {
+                                                // If physical return exceeds max, the physical excess becomes frozen
+                                                // Short quantity does not contribute to frozen (since it represents missing items, not surplus)
+                                                const excess = physicalTotal - maxQty;
+                                                form.setValue(`items.${index}.frozenQuantity`, excess);
+                                                
+                                                // We no longer cap the entered value, so the input field shows exactly what the user typed.
+                                            } else {
+                                                form.setValue(`items.${index}.frozenQuantity`, 0);
+                                            }
+                                        };
 
                                         return (
                                             <TableRow key={field.id}>
@@ -487,10 +514,7 @@ export default function CreateReturnPage() {
                                                                         type="number"
                                                                         {...field}
                                                                         value={field.value ?? ''}
-                                                                        onChange={e => {
-                                                                            const val = e.target.value === '' ? '' : (parseInt(e.target.value) || 0);
-                                                                            field.onChange(val);
-                                                                        }}
+                                                                        onChange={e => handleQtyChange('quantity', e.target.value)}
                                                                     />
                                                                 </FormControl>
                                                                 <FormMessage />
@@ -509,10 +533,7 @@ export default function CreateReturnPage() {
                                                                         type="number"
                                                                         {...field}
                                                                         value={field.value ?? ''}
-                                                                        onChange={e => {
-                                                                            const val = e.target.value === '' ? '' : (parseInt(e.target.value) || 0);
-                                                                            field.onChange(val);
-                                                                        }}
+                                                                        onChange={e => handleQtyChange('damageQuantity', e.target.value)}
                                                                     />
                                                                 </FormControl>
                                                                 <FormMessage />
@@ -531,10 +552,8 @@ export default function CreateReturnPage() {
                                                                         type="number"
                                                                         {...field}
                                                                         value={field.value ?? ''}
-                                                                        onChange={e => {
-                                                                            const val = e.target.value === '' ? '' : (parseInt(e.target.value) || 0);
-                                                                            field.onChange(val);
-                                                                        }}
+                                                                        disabled={returnedQty >= maxQty && maxQty > 0}
+                                                                        onChange={e => handleQtyChange('shortQuantity', e.target.value)}
                                                                     />
                                                                 </FormControl>
                                                                 <FormMessage />
@@ -548,8 +567,8 @@ export default function CreateReturnPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="align-top pt-4 text-right">
-                                                    <div className="font-medium px-3 py-2 border border-transparent text-muted-foreground">
-                                                        -
+                                                    <div className="font-medium px-3 py-2 border border-transparent text-destructive">
+                                                        {frozenQty > 0 ? frozenQty : '-'}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="align-top pt-4 pl-0 pr-2">

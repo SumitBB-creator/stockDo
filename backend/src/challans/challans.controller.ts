@@ -43,6 +43,16 @@ export class ChallansController {
         return this.challansService.getTransportationChallans({ month, year, customerId });
     }
 
+    
+    @Get('stock-ledger/:customerId')
+    getCustomerStockLedger(
+        @Param('customerId') customerId: string,
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string
+    ) {
+        return this.challansService.getCustomerStockLedger(customerId, { startDate, endDate });
+    }
+
     @Get('stock/:customerId')
     getCustomerStock(@Param('customerId') customerId: string) {
         return this.challansService.getCustomerStock(customerId);

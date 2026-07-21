@@ -6,9 +6,23 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { Loader2, Printer, X } from 'lucide-react';
+import { Loader2, Printer, X, Plus } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import {
     Form,
     FormControl,
@@ -20,6 +34,7 @@ import {
 import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from "@/components/ui/label";
 import { Input } from '@/components/ui/input';
+import { RateInput } from '@/components/ui/rate-input';
 import {
     Table,
     TableBody,
@@ -30,7 +45,7 @@ import {
 } from "@/components/ui/table";
 import { Autocomplete } from '@/components/ui/autocomplete';
 import { useToast } from '@/components/ui/use-toast';
-import { fetchCustomers, fetchAgreements, createChallan } from '@/lib/api';
+import { fetchCustomers, fetchAgreements, createChallan, fetchMaterials, updateAgreement } from '@/lib/api';
 import { formatCustomerAddress } from '@/lib/utils';
 
 // Validation Schema
@@ -77,6 +92,17 @@ export default function CreateChallanPage() {
 
     // Derived state
     const [activeAgreement, setActiveAgreement] = useState<any>(null);
+    const [isAddMaterialOpen, setIsAddMaterialOpen] = useState(false);
+    const [materialsList, setMaterialsList] = useState<any[]>([]);
+    const [newMaterial, setNewMaterial] = useState<any>({
+        materialId: '',
+        hireRate: 0,
+        damageRecoveryRate: 0,
+        shortRecoveryRate: 0,
+        rateAppliedAs: 'Nos/Days'
+    });
+    const [addingMaterial, setAddingMaterial] = useState(false);
+
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -124,12 +150,14 @@ export default function CreateChallanPage() {
 
     const loadInitialData = async () => {
         try {
-            const [custData, agreeData] = await Promise.all([
+            const [custData, agreeData, matData] = await Promise.all([
                 fetchCustomers(),
-                fetchAgreements('Active')
+                fetchAgreements('Active'),
+                fetchMaterials()
             ]);
             setCustomers(custData);
             setAgreements(agreeData);
+            setMaterialsList(matData);
         } catch (error) {
             console.error("Failed to load data", error);
         }
@@ -198,6 +226,61 @@ export default function CreateChallanPage() {
     const handlePrint = () => {
         form.handleSubmit((data) => onSubmit(data, 'print'), onError)();
     };
+
+    
+    const handleAddMaterialSubmit = async () => {
+        if (!newMaterial.materialId) return toast({ title: "Error", description: "Select a material", variant: "destructive" });
+        if (!activeAgreement) return;
+        
+        setAddingMaterial(true);
+        try {
+            const payload = {
+                items: [
+                    ...activeAgreement.items.map((i: any) => ({
+                        materialId: i.materialId,
+                        hireRate: i.hireRate,
+                        damageRecoveryRate: i.damageRecoveryRate,
+                        shortRecoveryRate: i.shortRecoveryRate,
+                        rateAppliedAs: i.rateAppliedAs
+                    })),
+                    {
+                        materialId: newMaterial.materialId,
+                        hireRate: Number(newMaterial.hireRate),
+                        damageRecoveryRate: Number(newMaterial.damageRecoveryRate),
+                        shortRecoveryRate: Number(newMaterial.shortRecoveryRate),
+                        rateAppliedAs: newMaterial.rateAppliedAs
+                    }
+                ]
+            };
+            
+            await updateAgreement(activeAgreement.id, payload);
+            
+            // Refresh agreements and active agreement
+            const agreeData = await fetchAgreements('Active');
+            setAgreements(agreeData);
+            
+            const updatedAgreement = agreeData.find((a: any) => a.id === activeAgreement.id);
+            if (updatedAgreement) {
+                setActiveAgreement(updatedAgreement);
+                
+                // Keep the modal open behavior mostly intact, but add to form items:
+                const currentFormItems = form.getValues('items');
+                if (!currentFormItems.find((i: any) => i.materialId === newMaterial.materialId)) {
+                    form.setValue('items', [...currentFormItems, { materialId: newMaterial.materialId, quantity: 0, issuedQuantity: 0, balanceQuantity: 0 }]);
+                }
+            }
+            
+            setIsAddMaterialOpen(false);
+            setNewMaterial({ materialId: '', hireRate: 0, damageRecoveryRate: 0, shortRecoveryRate: 0, rateAppliedAs: 'Nos/Days' });
+            toast({ title: "Success", description: "Material added to agreement!" });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Error", description: "Failed to add material to agreement", variant: "destructive" });
+        } finally {
+            setAddingMaterial(false);
+        }
+    };
+
 
     const handleAddItem = (materialId: string) => {
         const currentItems = form.getValues('items');
@@ -348,6 +431,20 @@ export default function CreateChallanPage() {
                                 )}
                             </TableBody>
                         </Table>
+                        {activeAgreement && (
+                            <div className="p-4 border-t bg-muted/20 flex justify-end">
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="gap-2"
+                                    onClick={() => setIsAddMaterialOpen(true)}
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    Add New Material to Agreement
+                                </Button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Footer Section */}
@@ -549,8 +646,114 @@ export default function CreateChallanPage() {
                         </Button>
                     </div>
 
-                </form>
+        </form>
             </Form>
+            {/* Add Material Dialog */}
+            <Dialog open={isAddMaterialOpen} onOpenChange={setIsAddMaterialOpen}>
+                <DialogContent className="max-w-4xl">
+                    <DialogHeader>
+                        <DialogTitle>Add Material to Agreement</DialogTitle>
+                                        </DialogHeader>
+                    <div className="py-4 overflow-x-auto">
+                        <div className="border rounded-md min-w-[700px]">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[50px]">Sr.</TableHead>
+                                        <TableHead className="w-[250px]">Material</TableHead>
+                                        <TableHead>Hire Rate</TableHead>
+                                        <TableHead>Damage (Recovery)</TableHead>
+                                        <TableHead>Short (Recovery)</TableHead>
+                                        <TableHead className="w-[150px]">Rate As</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {activeAgreement?.items?.map((item: any, index: number) => (
+                                        <TableRow key={item.id} className="bg-muted/30">
+                                            <TableCell>{index + 1}</TableCell>
+                                            <TableCell>
+                                                <div className="py-2 text-sm font-medium">
+                                                    {materialsList.find(m => m.id === item.materialId)?.name || 'Unknown Material'}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell><div className="py-2 text-sm">{item.hireRate}</div></TableCell>
+                                            <TableCell><div className="py-2 text-sm">{item.damageRecoveryRate}</div></TableCell>
+                                            <TableCell><div className="py-2 text-sm">{item.shortRecoveryRate}</div></TableCell>
+                                            <TableCell><div className="py-2 text-sm">{item.rateAppliedAs}</div></TableCell>
+                                        </TableRow>
+                                    ))}
+                                    <TableRow>
+                                        <TableCell>{(activeAgreement?.items?.length || 0) + 1}</TableCell>
+                                        <TableCell>
+                                            <Autocomplete
+                                                items={materialsList
+                                                    .filter(m => !activeAgreement?.items?.some((i: any) => i.materialId === m.id))
+                                                    .map(m => ({ value: m.id, label: m.name }))}
+                                                value={newMaterial.materialId}
+                                                onChange={(val) => {
+                                                    const selectedMat = materialsList.find(m => m.id === val);
+                                                    if (selectedMat) {
+                                                        setNewMaterial({
+                                                            ...newMaterial,
+                                                            materialId: val,
+                                                            hireRate: selectedMat.hireRate || 0,
+                                                            damageRecoveryRate: selectedMat.damageRecoveryRate || 0,
+                                                            shortRecoveryRate: selectedMat.shortRecoveryRate || 0
+                                                        });
+                                                    }
+                                                }}
+                                                placeholder="Select Material"
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <RateInput 
+                                                value={newMaterial.hireRate}
+                                                onChange={e => setNewMaterial({...newMaterial, hireRate: e.target.value})}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <RateInput 
+                                                value={newMaterial.damageRecoveryRate}
+                                                onChange={e => setNewMaterial({...newMaterial, damageRecoveryRate: e.target.value})}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <RateInput 
+                                                value={newMaterial.shortRecoveryRate}
+                                                onChange={e => setNewMaterial({...newMaterial, shortRecoveryRate: e.target.value})}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Select 
+                                                value={newMaterial.rateAppliedAs} 
+                                                onValueChange={val => setNewMaterial({...newMaterial, rateAppliedAs: val})}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Nos/Days">Nos/Days</SelectItem>
+                                                    <SelectItem value="Nos">Nos</SelectItem>
+                                                    <SelectItem value="Kg">Kg</SelectItem>
+                                                    <SelectItem value="Sq.Ft">Sq.Ft</SelectItem>
+                                                    <SelectItem value="Nos/Running Mtr">Nos/Running Mtr</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </TableCell>
+                                    </TableRow>
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setIsAddMaterialOpen(false)}>Cancel</Button>
+                        <Button type="button" onClick={handleAddMaterialSubmit} disabled={addingMaterial || !newMaterial.materialId}>
+                            {addingMaterial ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Save to Agreement
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

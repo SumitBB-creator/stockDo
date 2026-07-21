@@ -18,6 +18,10 @@ class ChallanItemDto {
     @IsNumber()
     @IsOptional()
     shortQuantity?: number;
+
+    @IsNumber()
+    @IsOptional()
+    frozenQuantity?: number;
 }
 
 export class CreateChallanDto {

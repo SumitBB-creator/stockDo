@@ -446,6 +446,7 @@ model ChallanItem {
   quantity       Int
   damageQuantity Int @default(0) @map("damage_quantity")
   shortQuantity  Int @default(0) @map("short_quantity")
+  frozenQuantity Int @default(0) @map("frozen_quantity")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

@@ -76,6 +76,7 @@ export class ChallansService {
                             quantity: item.quantity,
                             damageQuantity: item.damageQuantity || 0,
                             shortQuantity: item.shortQuantity || 0,
+                            frozenQuantity: item.frozenQuantity || 0,
                         })),
                     },
                 },
@@ -413,4 +414,127 @@ export class ChallansService {
             availableQty
         };
     }
+
+    async getCustomerStockLedger(customerId: string, filters?: { startDate?: string, endDate?: string }) {
+        const latestAgreement = await this.prisma.agreement.findFirst({
+            where: { customerId: customerId },
+            orderBy: { createdAt: 'desc' },
+            include: { items: { include: { material: true } } }
+        });
+        
+        let materials: any[] = [];
+        if (latestAgreement && latestAgreement.items) {
+            materials = latestAgreement.items
+                .map(item => item.material)
+                .sort((a, b) => a.name.localeCompare(b.name));
+        }
+
+        // Fetch all challans for this customer, ordered chronologically by date
+        const customerChallans = await this.prisma.challan.findMany({
+            where: { customerId },
+            include: { items: true },
+            orderBy: { date: 'asc' }
+        });
+
+        // We track the running balance for each material for this customer
+        const runningBalances = new Map<string, number>();
+        for (const mat of materials) {
+            runningBalances.set(mat.id, 0);
+        }
+
+        const ledgerRows = customerChallans.map(challan => {
+            const rowData: any = { 
+                id: challan.id,
+                date: challan.date, 
+                type: challan.type,
+                challanNo: challan.challanNumber || challan.manualChallanNumber || 'N/A',
+                vehicleNo: challan.vehicleNumber || 'N/A',
+                materials: {} 
+            };
+            
+            // Map items for quick lookup in this challan
+            const itemMap = new Map();
+            for (const item of challan.items) {
+                itemMap.set(item.materialId, item);
+            }
+
+            for (const mat of materials) {
+                const matId = mat.id;
+                let issue = 0;
+                let rtn = 0;
+                let dmg = 0;
+                let short = 0;
+                
+                let frozen = 0;
+                
+                const item = itemMap.get(matId);
+                if (item) {
+                    if (challan.type === 'ISSUE') {
+                        issue = item.quantity;
+                    } else if (challan.type === 'RETURN') {
+                        rtn = item.quantity;
+                        dmg = item.damageQuantity || 0;
+                        short = item.shortQuantity || 0;
+                        frozen = item.frozenQuantity || 0;
+                    }
+                }
+
+                let prevBal = runningBalances.get(matId) || 0;
+                // For customer, Issue increases their balance (what they have), Return decreases it.
+                // Frozen quantity implies they returned more than they had, so it should not reduce the normal balance below 0 ideally, but wait:
+                // Actually, standard return qty would be capped at previous balance, and excess goes to frozen.
+                // So rtn is the normal return. The normal balance is affected by `rtn`.
+                let currentBal = prevBal + issue - rtn;
+                if (currentBal < 0) {
+                    currentBal = 0;
+                }
+                
+                // Track accumulated frozen if needed, but the ledger displays frozen per transaction?
+                // The image shows Frozen Quantity per transaction. We just need to pass `frozen`.
+                
+                runningBalances.set(matId, currentBal);
+                
+                rowData.materials[matId] = {
+                    issue,
+                    rtn,
+                    dmg,
+                    short,
+                    frozen,
+                    bal: currentBal
+                };
+            }
+            
+            return rowData;
+        });
+
+        // Prepare bottom table (Available Qty / Outstanding Balance)
+        const availableQty = materials.map(mat => {
+            return {
+                materialId: mat.id,
+                materialName: mat.name,
+                unit: mat.unit,
+                available: runningBalances.get(mat.id) || 0
+            };
+        });
+
+        let filteredLedger = ledgerRows;
+        if (filters?.startDate && filters?.endDate) {
+            const start = new Date(filters.startDate).getTime();
+            const end = new Date(filters.endDate);
+            end.setHours(23, 59, 59, 999);
+            const endTime = end.getTime();
+            
+            filteredLedger = ledgerRows.filter(row => {
+                const rowTime = new Date(row.date).getTime();
+                return rowTime >= start && rowTime <= endTime;
+            });
+        }
+
+        return {
+            materials: materials.map(m => ({ id: m.id, name: m.name, unit: m.unit })),
+            ledger: filteredLedger,
+            availableQty
+        };
+    }
+
 }

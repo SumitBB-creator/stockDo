@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { format, isSameDay, addDays, subDays } from 'date-fns';
+import { format, isSameMonth, addMonths, subMonths } from 'date-fns';
 import { Search, CalendarIcon, ChevronLeft, ChevronRight, Plus, Eye, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -73,7 +73,7 @@ export default function ChallanListPage() {
     // Filter Logic
     const filteredChallans = challans.filter(challan => {
         const challanDate = new Date(challan.date);
-        const isDateMatch = isSameDay(challanDate, selectedDate);
+        const isDateMatch = selectedCustomer ? true : isSameMonth(challanDate, selectedDate);
         const isCustomerMatch = selectedCustomer ? challan.customerId === selectedCustomer : true;
         const isIssueMatch = challan.type === 'ISSUE';
 
@@ -103,7 +103,7 @@ export default function ChallanListPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground"
-                        onClick={() => setSelectedDate(subDays(selectedDate, 1))}
+                        onClick={() => setSelectedDate(subMonths(selectedDate, 1))}
                     >
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
@@ -118,7 +118,7 @@ export default function ChallanListPage() {
                                 )}
                             >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {selectedDate ? format(selectedDate, "dd/MM/yyyy") : <span>Pick a date</span>}
+                                {selectedDate ? format(selectedDate, "MMM yyyy") : <span>Pick a date</span>}
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="center">
@@ -135,7 +135,7 @@ export default function ChallanListPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground"
-                        onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+                        onClick={() => setSelectedDate(addMonths(selectedDate, 1))}
                     >
                         <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -183,7 +183,7 @@ export default function ChallanListPage() {
                         ) : filteredChallans.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                                    No challans found for this date.
+                                    No challans found.
                                 </TableCell>
                             </TableRow>
                         ) : (

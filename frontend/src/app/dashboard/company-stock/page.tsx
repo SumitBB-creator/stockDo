@@ -120,6 +120,7 @@ export default function CompanyStockPage() {
                                     <th className="p-2 border-r border-t border-slate-300 font-semibold text-center min-w-[50px]">Dmg</th>
                                     <th className="p-2 border-r border-t border-slate-300 font-semibold text-center min-w-[50px]">Short</th>
                                     <th className="p-2 border-r border-t border-slate-300 font-semibold text-center min-w-[60px]">Frozen</th>
+                                    
                                     <th className="p-2 border-r border-t border-slate-300 font-semibold text-center min-w-[50px]">New</th>
                                     <th className="p-2 border-r-2 border-t border-slate-400 font-semibold text-center min-w-[60px]">Bal</th>
                                 </React.Fragment>
@@ -149,7 +150,7 @@ export default function CompanyStockPage() {
                                                     <td className="p-2 border-r border-slate-300 text-center"></td>
                                                     <td className="p-2 border-r border-slate-300 text-center"></td>
                                                     <td className="p-2 border-r border-slate-300 text-center"></td>
-                                                    <td className="p-2 border-r border-slate-300 text-center"></td>
+<td className="p-2 border-r border-slate-300 text-center"></td>
                                                     <td className="p-2 border-r-2 border-slate-400 text-center"></td>
                                                 </React.Fragment>
                                             );
@@ -161,6 +162,7 @@ export default function CompanyStockPage() {
                                                 <td className="p-2 border-r border-slate-300 text-center">{stats.dmg > 0 ? stats.dmg : ''}</td>
                                                 <td className="p-2 border-r border-slate-300 text-center">{stats.short > 0 ? stats.short : ''}</td>
                                                 <td className="p-2 border-r border-slate-300 text-center">{stats.frozen > 0 ? stats.frozen : ''}</td>
+                                                
                                                 <td className="p-2 border-r border-slate-300 text-center text-foreground font-bold">{stats.newQty > 0 ? stats.newQty : ''}</td>
                                                 <td className="p-2 border-r-2 border-slate-400 text-center text-foreground font-bold">{stats.bal !== 0 ? stats.bal : ''}</td>
                                             </React.Fragment>

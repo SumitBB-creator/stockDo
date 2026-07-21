@@ -177,6 +177,11 @@ export const fetchCustomerStock = async (customerId: string) => {
     return response.data;
 };
 
+export const fetchCustomerStockLedger = async (customerId: string, filters?: { startDate?: string; endDate?: string }) => {
+    const response = await api.get(`/challans/stock-ledger/${customerId}`, { params: filters });
+    return response.data;
+};
+
 export const fetchCompanyStock = async () => {
     const response = await api.get('/challans/company-stock');
     return response.data;
