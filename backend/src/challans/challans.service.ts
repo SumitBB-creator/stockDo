@@ -135,7 +135,8 @@ export class ChallansService {
                 if (challan.type === 'ISSUE') {
                     current.quantity += item.quantity;
                 } else if (challan.type === 'RETURN') {
-                    current.quantity -= item.quantity;
+                    const validRtn = item.quantity - (item.frozenQuantity || 0);
+                    current.quantity -= validRtn;
                 }
 
                 current.history.push({

@@ -294,8 +294,6 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                         <Text style={styles.companyAddress}>{company?.city ? `${company.city}, ` : ''}{company?.state} {company?.pin ? `- ${company.pin}` : ''}</Text>
                         {company?.phone && <Text style={styles.companyAddress}>Phone: {company.phone}</Text>}
                         {company?.email && <Text style={styles.companyAddress}>Email: {company.email}</Text>}
-                        {company?.gstin && <Text style={styles.companyAddress}>GSTIN: {company.gstin}</Text>}
-                        {company?.pan && <Text style={styles.companyAddress}>PAN No: {company.pan}</Text>}
                     </View>
                     <View style={styles.headerRight}>
                         {logoUrl && (

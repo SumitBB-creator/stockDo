@@ -59,7 +59,7 @@ export default function CompanyStockPage() {
     const { materials, ledger, availableQty } = ledgerData;
 
     return (
-        <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+        <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
             <div className="flex justify-between items-center shrink-0">
                 <h1 className="text-xl font-bold flex items-center gap-2">
                     <Package className="h-8 w-8 text-primary" />
@@ -92,7 +92,7 @@ export default function CompanyStockPage() {
             </div>
 
             {/* Main Ledger Table - Horizontally Scrollable */}
-            <div className="flex-1 overflow-auto border rounded-md shadow-sm bg-card text-card-foreground relative">
+            <div className="flex-1 max-h-[400px] overflow-auto border rounded-md shadow-sm bg-card text-card-foreground relative">
                 {loading && (
                     <div className="absolute inset-0 bg-card text-card-foreground/50 z-50 flex items-center justify-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

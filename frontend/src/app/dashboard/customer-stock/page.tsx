@@ -64,7 +64,7 @@ export default function CustomerStockPage() {
     };
 
     return (
-        <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
+        <div className="space-y-6 flex flex-col min-h-[calc(100vh-8rem)]">
             <div className="flex justify-between items-center shrink-0">
                 <h1 className="text-xl font-bold flex items-center gap-2">
                     <User className="h-8 w-8 text-primary" />
@@ -119,21 +119,21 @@ export default function CustomerStockPage() {
             </div>
 
             {!selectedCustomerId ? (
-                <div className="flex-1 flex justify-center items-center text-muted-foreground border rounded-md shadow-sm bg-card">
+                <div className="flex-1 min-h-[400px] flex justify-center items-center text-muted-foreground border rounded-md shadow-sm bg-card">
                     Please select a customer to view their stock ledger.
                 </div>
             ) : loading && !ledgerData ? (
-                <div className="flex-1 flex justify-center items-center border rounded-md shadow-sm bg-card">
+                <div className="flex-1 min-h-[400px] flex justify-center items-center border rounded-md shadow-sm bg-card">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
             ) : !ledgerData || !ledgerData.materials || ledgerData.materials.length === 0 ? (
-                <div className="flex-1 flex justify-center items-center text-muted-foreground border rounded-md shadow-sm bg-card">
+                <div className="flex-1 min-h-[400px] flex justify-center items-center text-muted-foreground border rounded-md shadow-sm bg-card">
                     No data available for this customer.
                 </div>
             ) : (
                 <>
                     {/* Main Ledger Table - Horizontally Scrollable */}
-                    <div className="flex-1 overflow-auto border rounded-md shadow-sm bg-card text-card-foreground relative">
+                    <div className="flex-1 max-h-[400px] overflow-auto border rounded-md shadow-sm bg-card text-card-foreground relative">
                         {loading && (
                             <div className="absolute inset-0 bg-card text-card-foreground/50 z-50 flex items-center justify-center">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
