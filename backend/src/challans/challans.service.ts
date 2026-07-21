@@ -319,7 +319,7 @@ export class ChallansService {
         // Helper to get or create material entry for a date
         const getMaterialEntry = (materialsMap: Map<string, any>, materialId: string) => {
             if (!materialsMap.has(materialId)) {
-                materialsMap.set(materialId, { issue: 0, rtn: 0, dmg: 0, short: 0, newQty: 0 });
+                materialsMap.set(materialId, { issue: 0, rtn: 0, dmg: 0, short: 0, newQty: 0, frozen: 0 });
             }
             return materialsMap.get(materialId);
         };
@@ -332,7 +332,9 @@ export class ChallansService {
                 if (challan.type === 'ISSUE') {
                     matEntry.issue += item.quantity;
                 } else if (challan.type === 'RETURN') {
-                    matEntry.rtn += item.quantity;
+                    const frozenQty = item.frozenQuantity || 0;
+                    matEntry.rtn += (item.quantity - frozenQty);
+                    matEntry.frozen += frozenQty;
                     matEntry.dmg += (item.damageQuantity || 0);
                     matEntry.short += (item.shortQuantity || 0);
                 }
@@ -365,7 +367,7 @@ export class ChallansService {
             
             for (const mat of materials) {
                 const matId = mat.id;
-                const stats = dateRow.materials.get(matId) || { issue: 0, rtn: 0, dmg: 0, short: 0, newQty: 0 };
+                const stats = dateRow.materials.get(matId) || { issue: 0, rtn: 0, dmg: 0, short: 0, newQty: 0, frozen: 0 };
                 
                 let prevBal = runningBalances.get(matId) || 0;
                 // Bal = Prev + New - Issue + Rtn - Dmg - Short
@@ -377,7 +379,7 @@ export class ChallansService {
                 
                 rowData.materials[matId] = {
                     ...stats,
-                    frozen: 0, // Not implemented in schema
+                    frozen: stats.frozen || 0,
                     bal: currentBal
                 };
             }
@@ -409,7 +411,7 @@ export class ChallansService {
         }
 
         return {
-            materials: materials.map(m => ({ id: m.id, name: m.name, unit: m.unit })),
+            materials: materials.map(m => ({ id: m.id, name: m.name, unit: m.unit, totalQty: m.totalQty })),
             ledger: filteredLedger,
             availableQty
         };
@@ -531,7 +533,7 @@ export class ChallansService {
         }
 
         return {
-            materials: materials.map(m => ({ id: m.id, name: m.name, unit: m.unit })),
+            materials: materials.map(m => ({ id: m.id, name: m.name, unit: m.unit, totalQty: m.totalQty })), // updated
             ledger: filteredLedger,
             availableQty
         };

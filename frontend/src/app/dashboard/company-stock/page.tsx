@@ -107,7 +107,7 @@ export default function CompanyStockPage() {
                             </th>
                             {materials.map((mat: any) => (
                                 <th key={mat.id} colSpan={7} className="p-2 border-r-2 border-slate-400 font-bold text-center">
-                                    {mat.name} <span className="text-foreground font-bold">[{availableQty.find((a:any) => a.materialId === mat.id)?.available || 0}]</span>
+                                    {mat.name} <span className="text-foreground font-bold">[{mat.totalQty || 0}]</span>
                                 </th>
                             ))}
                         </tr>
