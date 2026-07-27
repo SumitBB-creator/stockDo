@@ -356,60 +356,27 @@ export class BillingService {
     ) {
         const billItems: any[] = [];
 
-        // stockState tracks open issues per material.
-        // Array tracks FIFO: [oldest issue, newer issue, ...]
-        const stockState = new Map<string, { challanNumber: string, date: Date, balance: number }[]>();
+        // 1. Calculate Opening Stock as of startDate
+        const stockState = new Map<string, number>();
 
-        // Helper to apply challan items to stockState
-        const applyChallanList = (challanList: any[]) => {
-            challanList.forEach(challan => {
-                if (challan.type === 'ISSUE') {
-                    challan.items.forEach((i: any) => {
-                        const issues = stockState.get(i.materialId) || [];
-                        const challanDate = startOfDay(new Date(challan.date));
-
-                        const existing = issues.find(iss => startOfDay(iss.date).getTime() === challanDate.getTime());
-
-                        if (existing) {
-                            existing.balance += i.quantity;
-                            if (challan.challanNumber && !existing.challanNumber.includes(challan.challanNumber)) {
-                                if (existing.challanNumber === 'Opening') {
-                                    existing.challanNumber = challan.challanNumber;
-                                } else {
-                                    existing.challanNumber += `, ${challan.challanNumber}`;
-                                }
-                            }
-                        } else {
-                            issues.push({
-                                challanNumber: challan.challanNumber || 'Opening',
-                                date: new Date(challan.date),
-                                balance: i.quantity
-                            });
-                        }
-                        stockState.set(i.materialId, issues);
-                    });
-                } else if (challan.type === 'RETURN') {
-                    challan.items.forEach((i: any) => {
-                        let returnQty = i.quantity;
-                        const issues = stockState.get(i.materialId) || [];
-                        // Deduct from oldest (index 0)
-                        for (let j = 0; j < issues.length && returnQty > 0; j++) {
-                            if (issues[j].balance > 0) {
-                                const deduct = Math.min(issues[j].balance, returnQty);
-                                issues[j].balance -= deduct;
-                                returnQty -= deduct;
-                            }
-                        }
-                    });
-                }
-            });
-        };
-
-        // 1. Replay history before startDate
         const historyChallans = challans.filter(c => isBefore(startOfDay(new Date(c.date)), startOfDay(startDate)));
-        applyChallanList(historyChallans);
+        
+        historyChallans.forEach(challan => {
+            if (challan.type === 'ISSUE') {
+                challan.items.forEach((i: any) => {
+                    const current = stockState.get(i.materialId) || 0;
+                    stockState.set(i.materialId, current + i.quantity);
+                });
+            } else if (challan.type === 'RETURN') {
+                challan.items.forEach((i: any) => {
+                    const current = stockState.get(i.materialId) || 0;
+                    stockState.set(i.materialId, Math.max(0, current - i.quantity));
+                });
+            }
+        });
 
-        const hasOpeningStock = Array.from(stockState.values()).some(issues => issues.some(iss => iss.balance > 0));
+        // Some bills might not have any history but start in the middle of the month
+        const hasOpeningStock = Array.from(stockState.values()).some(balance => balance > 0);
         let actualStartDate = startDate;
 
         if (!hasOpeningStock) {
@@ -421,44 +388,26 @@ export class BillingService {
 
         let currentDate = new Date(actualStartDate);
 
-        // Key: `${materialId}|${challanNumber}`
-        const activePeriods = new Map<string, { fromDate: Date, balance: number }>();
+        // Track active periods: Map of materialId -> period info
+        const activePeriods = new Map<string, { fromDate: Date, balance: number, description: string }>();
+        const materialFirstRow = new Set<string>();
 
-        // Set initial active periods based on opening stock
-        stockState.forEach((issues, materialId) => {
-            issues.forEach(iss => {
-                if (iss.balance > 0) {
-                    const periodKey = `${materialId}|${iss.challanNumber}`;
-                    activePeriods.set(periodKey, { fromDate: new Date(actualStartDate), balance: iss.balance });
-                }
-            });
-        });
-
-        const closePeriod = (periodKey: string, toDate: Date) => {
-            const active = activePeriods.get(periodKey);
+        const closePeriod = (materialId: string, toDate: Date) => {
+            const active = activePeriods.get(materialId);
             if (active && active.balance > 0) {
-                // Determine if this exact period spans the entire calendar month boundary
-                const isFullMonth = startOfDay(active.fromDate).getTime() <= startOfDay(actualStartDate).getTime()
-                    && startOfDay(toDate).getTime() >= startOfDay(endDate).getTime();
-
-                // Original mathematical difference plus conditional full-month offset
-                const baseDays = differenceInDays(startOfDay(toDate), startOfDay(active.fromDate));
-                const days = isFullMonth ? baseDays + 1 : baseDays;
+                const days = differenceInDays(startOfDay(toDate), startOfDay(active.fromDate)) + 1;
 
                 if (days > 0) {
-                    const [materialId, challanNumber] = periodKey.split('|');
                     const rateInfo = rates.get(materialId);
                     const rate = rateInfo?.rate || 0;
                     const no = active.balance * days;
-
                     const matName = rateInfo?.name || 'Unknown';
-                    const description = matName;
 
                     billItems.push({
                         materialId,
                         materialName: matName,
-                        challanNumber, // Adding challanNumber for sorting
-                        description,
+                        challanNumber: '', // Not used anymore for sorting
+                        description: active.description,
                         hsn: rateInfo?.hsn || rateInfo?.sac || '',
                         fromDate: active.fromDate,
                         toDate: toDate,
@@ -473,57 +422,92 @@ export class BillingService {
             }
         };
 
+        // Open initial periods for opening stock
+        stockState.forEach((balance, materialId) => {
+            if (balance > 0) {
+                const rateInfo = rates.get(materialId);
+                const matName = rateInfo?.name || 'Unknown';
+                activePeriods.set(materialId, { fromDate: new Date(actualStartDate), balance, description: matName });
+                materialFirstRow.add(materialId);
+            }
+        });
+
+        // Process day by day
         while (currentDate <= endDate) {
             const daysChallans = challans.filter(c =>
                 startOfDay(new Date(c.date)).getTime() === startOfDay(currentDate).getTime()
             );
 
             if (daysChallans.length > 0) {
-                applyChallanList(daysChallans);
+                // Calculate net change per material for this day
+                const dailyChange = new Map<string, number>();
 
-                // Check differences and adjust periods
-                stockState.forEach((issues, materialId) => {
-                    issues.forEach(iss => {
-                        const periodKey = `${materialId}|${iss.challanNumber}`;
-                        const currentActive = activePeriods.get(periodKey);
+                daysChallans.forEach(challan => {
+                    if (challan.type === 'ISSUE') {
+                        challan.items.forEach((i: any) => {
+                            const current = dailyChange.get(i.materialId) || 0;
+                            dailyChange.set(i.materialId, current + i.quantity);
+                        });
+                    } else if (challan.type === 'RETURN') {
+                        challan.items.forEach((i: any) => {
+                            const current = dailyChange.get(i.materialId) || 0;
+                            dailyChange.set(i.materialId, current - i.quantity);
+                        });
+                    }
+                });
 
-                        if (currentActive) {
-                            if (currentActive.balance !== iss.balance) {
-                                if (currentDate > currentActive.fromDate) {
-                                    closePeriod(periodKey, addDays(currentDate, -1));
-                                }
+                dailyChange.forEach((netChange, materialId) => {
+                    if (netChange !== 0) {
+                        const prevBalance = stockState.get(materialId) || 0;
+                        const newBalance = Math.max(0, prevBalance + netChange);
 
-                                if (iss.balance > 0) {
-                                    activePeriods.set(periodKey, { fromDate: new Date(currentDate), balance: iss.balance });
-                                } else {
-                                    activePeriods.delete(periodKey);
-                                }
+                        // If there is an active period, close it at the day before
+                        if (activePeriods.has(materialId) && prevBalance > 0) {
+                            if (currentDate > activePeriods.get(materialId)!.fromDate) {
+                                closePeriod(materialId, addDays(currentDate, -1));
                             }
-                        } else if (iss.balance > 0) {
-                            // New issue
-                            activePeriods.set(periodKey, { fromDate: new Date(currentDate), balance: iss.balance });
                         }
-                    });
+
+                        // Determine description for the new period
+                        let description = '';
+                        if (!materialFirstRow.has(materialId)) {
+                            const rateInfo = rates.get(materialId);
+                            description = rateInfo?.name || 'Unknown';
+                            materialFirstRow.add(materialId);
+                        } else {
+                            description = `${prevBalance} ${netChange >= 0 ? '+' : '-'} ${Math.abs(netChange)}`;
+                        }
+
+                        // Start new period with new balance
+                        if (newBalance > 0) {
+                            activePeriods.set(materialId, { fromDate: new Date(currentDate), balance: newBalance, description });
+                        } else {
+                            activePeriods.delete(materialId);
+                        }
+
+                        stockState.set(materialId, newBalance);
+                    }
                 });
             }
 
             currentDate = addDays(currentDate, 1);
         }
 
-        activePeriods.forEach((_val, periodKey) => {
-            closePeriod(periodKey, endDate);
+        // Close all remaining periods at endDate
+        activePeriods.forEach((_val, materialId) => {
+            closePeriod(materialId, endDate);
         });
 
+        // Sort items by materialName, then fromDate
         billItems.sort((a, b) => {
             if (a.materialName !== b.materialName) return a.materialName.localeCompare(b.materialName);
-            if (a.challanNumber !== b.challanNumber) return (a.challanNumber || '').localeCompare(b.challanNumber || '');
             return a.fromDate.getTime() - b.fromDate.getTime();
         });
 
         const totalAmount = billItems.reduce((sum, item) => sum + item.amount, 0);
 
         return {
-            period: { start: startDate, end: endDate },
+            period: { start: actualStartDate, end: endDate },
             items: billItems,
             totalAmount
         };

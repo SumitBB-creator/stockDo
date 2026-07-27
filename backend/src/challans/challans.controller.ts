@@ -16,6 +16,12 @@ export class ChallansController {
         }
     }
 
+    @Get('next-number')
+    async getNextNumber(@Query('type') type: string) {
+        const nextNumber = await this.challansService.getNextChallanNumber(type as 'ISSUE' | 'RETURN');
+        return { nextNumber };
+    }
+
     @Get()
     findAll() {
         return this.challansService.findAll();
@@ -61,6 +67,11 @@ export class ChallansController {
     @Get(':id')
     findOne(@Param('id') id: string) {
         return this.challansService.findOne(id);
+    }
+
+    @Patch(':id')
+    update(@Param('id') id: string, @Body() updateData: any) {
+        return this.challansService.update(id, updateData);
     }
 
     @Delete(':id')

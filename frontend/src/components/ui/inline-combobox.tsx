@@ -19,6 +19,7 @@ interface InlineComboboxProps {
     placeholder?: string
     className?: string
     disabled?: boolean
+    id?: string
 }
 
 export function InlineCombobox({
@@ -27,7 +28,8 @@ export function InlineCombobox({
     onChange,
     placeholder = "Select item...",
     className,
-    disabled
+    disabled,
+    id
 }: InlineComboboxProps) {
     const [open, setOpen] = React.useState(false)
     const [searchQuery, setSearchQuery] = React.useState("")
@@ -82,6 +84,7 @@ export function InlineCombobox({
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button
+                    id={id}
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}

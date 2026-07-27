@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format, subMonths, addMonths } from 'date-fns';
-import { ChevronLeft, ChevronRight, Loader2, Printer, Save, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Printer, Save, X, Edit2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
     Table,
     TableBody,
@@ -14,7 +15,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Autocomplete } from '@/components/ui/autocomplete';
-import { fetchCustomers, fetchCompany, fetchTransportationChallans } from '@/lib/api';
+import { fetchCustomers, fetchCompany, fetchTransportationChallans, updateChallan } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCustomerAddress } from '@/lib/utils';
 
@@ -25,6 +26,12 @@ export default function TransportationPage() {
     const [challans, setChallans] = useState<any[]>([]);
     const [companyInfo, setCompanyInfo] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+    
+    // Edit state
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editValue, setEditValue] = useState<string>('');
+    const [savingId, setSavingId] = useState<string | null>(null);
+
     const { toast } = useToast();
     const router = useRouter();
 
@@ -70,6 +77,24 @@ export default function TransportationPage() {
             toast({ title: "Error", description: "Failed to load transportation data.", variant: "destructive" });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSaveCost = async (id: string) => {
+        setSavingId(id);
+        try {
+            const numValue = parseFloat(editValue);
+            if (isNaN(numValue)) throw new Error("Invalid number");
+            
+            await updateChallan(id, { transportationCost: numValue });
+            toast({ title: "Success", description: "Transportation cost updated successfully." });
+            setEditingId(null);
+            loadTransportationData();
+        } catch (error) {
+            console.error("Failed to update cost:", error);
+            toast({ title: "Error", description: "Failed to update transportation cost.", variant: "destructive" });
+        } finally {
+            setSavingId(null);
         }
     };
 
@@ -212,8 +237,57 @@ export default function TransportationPage() {
                                     <TableCell className="text-muted-foreground text-[10px] leading-tight align-top pr-2">
                                         {formatLocation(challan, false)}
                                     </TableCell>
-                                    <TableCell className="text-xs align-top text-right whitespace-nowrap tabular-nums font-semibold">
-                                        {challan.transportationCost?.toFixed(2) || '0.00'}
+                                    <TableCell className="text-xs align-top text-right whitespace-nowrap">
+                                        {editingId === challan.id ? (
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Input 
+                                                    type="number" 
+                                                    value={editValue} 
+                                                    onChange={(e) => setEditValue(e.target.value)} 
+                                                    className="w-[80px] h-7 text-xs text-right"
+                                                    autoFocus
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') handleSaveCost(challan.id);
+                                                        if (e.key === 'Escape') setEditingId(null);
+                                                    }}
+                                                />
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                    onClick={() => handleSaveCost(challan.id)}
+                                                    disabled={savingId === challan.id}
+                                                >
+                                                    {savingId === challan.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                                </Button>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-7 w-7 text-muted-foreground"
+                                                    onClick={() => setEditingId(null)}
+                                                    disabled={savingId === challan.id}
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-end gap-2 group">
+                                                <span className="tabular-nums font-semibold">
+                                                    {challan.transportationCost?.toFixed(2) || '0.00'}
+                                                </span>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    onClick={() => {
+                                                        setEditingId(challan.id);
+                                                        setEditValue(challan.transportationCost?.toString() || '0');
+                                                    }}
+                                                >
+                                                    <Edit2 className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             ))

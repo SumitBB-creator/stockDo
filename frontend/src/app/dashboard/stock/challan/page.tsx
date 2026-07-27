@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { format, isSameMonth, addMonths, subMonths } from 'date-fns';
-import { Search, CalendarIcon, ChevronLeft, ChevronRight, Plus, Eye, Trash2 } from 'lucide-react';
+import { Search, CalendarIcon, ChevronLeft, ChevronRight, Plus, Eye, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -27,7 +27,7 @@ export default function ChallanListPage() {
     const { toast } = useToast();
 
     // Filters
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>();
     const [selectedCustomer, setSelectedCustomer] = useState<string>('');
 
     useEffect(() => {
@@ -73,7 +73,7 @@ export default function ChallanListPage() {
     // Filter Logic
     const filteredChallans = challans.filter(challan => {
         const challanDate = new Date(challan.date);
-        const isDateMatch = selectedCustomer ? true : isSameMonth(challanDate, selectedDate);
+        const isDateMatch = selectedDate ? isSameMonth(challanDate, selectedDate) : true;
         const isCustomerMatch = selectedCustomer ? challan.customerId === selectedCustomer : true;
         const isIssueMatch = challan.type === 'ISSUE';
 
@@ -103,7 +103,7 @@ export default function ChallanListPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground"
-                        onClick={() => setSelectedDate(subMonths(selectedDate, 1))}
+                        onClick={() => setSelectedDate(prev => prev ? subMonths(prev, 1) : subMonths(new Date(), 1))}
                     >
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
@@ -118,14 +118,14 @@ export default function ChallanListPage() {
                                 )}
                             >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {selectedDate ? format(selectedDate, "MMM yyyy") : <span>Pick a date</span>}
+                                {selectedDate ? format(selectedDate, "MMM yyyy") : <span>Filter by month</span>}
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="center">
                             <Calendar
                                 mode="single"
                                 selected={selectedDate}
-                                onSelect={(date) => date && setSelectedDate(date)}
+                                onSelect={setSelectedDate}
                                 initialFocus
                             />
                         </PopoverContent>
@@ -135,10 +135,23 @@ export default function ChallanListPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground"
-                        onClick={() => setSelectedDate(addMonths(selectedDate, 1))}
+                        onClick={() => setSelectedDate(prev => prev ? addMonths(prev, 1) : addMonths(new Date(), 1))}
                     >
                         <ChevronRight className="h-4 w-4" />
                     </Button>
+                    {selectedDate && (
+                        <div className="border-l pl-1 ml-1 h-6 flex items-center">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                onClick={() => setSelectedDate(undefined)}
+                                title="Clear date filter"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Customer Autocomplete Search */}
@@ -188,21 +201,25 @@ export default function ChallanListPage() {
                             </TableRow>
                         ) : (
                             filteredChallans.map((challan, index) => (
-                                <TableRow key={challan.id}>
+                                <TableRow 
+                                    key={challan.id} 
+                                    className={cn(challan.isBilled && "text-red-600 dark:text-red-500")}
+                                    title={challan.isBilled ? "A bill has been generated for this challan" : undefined}
+                                >
                                     <TableCell className="font-medium">{index + 1}</TableCell>
                                     <TableCell className="font-medium">{challan.challanNumber}</TableCell>
-                                    <TableCell className="text-muted-foreground">{challan.manualChallanNumber || '-'}</TableCell>
+                                    <TableCell className={cn(challan.isBilled ? "opacity-80" : "text-muted-foreground")}>{challan.manualChallanNumber || '-'}</TableCell>
                                     <TableCell>{format(new Date(challan.date), 'dd-MMM-yyyy')}</TableCell>
                                     <TableCell>
                                         <div className="font-medium">{challan.customer?.name}</div>
-                                        <div className="text-xs text-muted-foreground truncate max-w-[250px]">
+                                        <div className={cn("text-xs truncate max-w-[250px]", challan.isBilled ? "opacity-80" : "text-muted-foreground")}>
                                             {formatCustomerAddress(challan.customer)}
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
                                             <Link href={`/dashboard/stock/challan/${challan.id}/print`}>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                                                <Button variant="ghost" size="icon" className={cn("h-8 w-8", challan.isBilled ? "text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-950" : "text-muted-foreground hover:text-foreground")}>
                                                     <Eye className="h-4 w-4" />
                                                 </Button>
                                             </Link>

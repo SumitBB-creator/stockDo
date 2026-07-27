@@ -214,7 +214,7 @@ export default function CustomizeBillingPage() {
                                             <TableRow key={`${item.materialId}-${index}`} className="hover:bg-muted/50">
                                                 <TableCell>{item.fromDate ? format(new Date(item.fromDate), 'dd/MM/yyyy') : ''}</TableCell>
                                                 <TableCell>{item.toDate ? format(new Date(item.toDate), 'dd/MM/yyyy') : ''}</TableCell>
-                                                <TableCell>{item.materialName}</TableCell>
+                                                <TableCell>{item.description || item.materialName}</TableCell>
                                                 <TableCell>{item.hsn || item.sac || ''}</TableCell>
                                                 <TableCell className="text-right tabular-nums">{item.balance || ''}</TableCell>
                                                 <TableCell className="text-right tabular-nums">{item.days || ''}</TableCell>

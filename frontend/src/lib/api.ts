@@ -162,8 +162,19 @@ export const fetchChallan = async (id: string) => {
     return response.data;
 };
 
+export const fetchNextChallanNumber = async (type: 'ISSUE' | 'RETURN') => {
+    const response = await api.get('/challans/next-number', { params: { type } });
+    const data = response.data;
+    return data?.nextNumber || data?.data?.nextNumber || (typeof data === 'string' ? data : 'AUTO');
+};
+
 export const createChallan = async (data: any) => {
     const response = await api.post('/challans', data);
+    return response.data;
+};
+
+export const updateChallan = async (id: string, data: any) => {
+    const response = await api.patch(`/challans/${id}`, data);
     return response.data;
 };
 

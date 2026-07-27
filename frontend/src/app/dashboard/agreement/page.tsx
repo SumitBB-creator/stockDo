@@ -12,7 +12,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Plus, Loader2, Trash2, Edit, FileText } from 'lucide-react';
+import { Plus, Loader2, Trash2, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Agreement } from '@/types/agreement';
@@ -111,9 +111,7 @@ export default function AgreementListPage() {
                                             <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/agreement/${agreement.id}`)}>
                                                 <FileText className="h-4 w-4 mr-1" /> View
                                             </Button>
-                                            <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/agreement/${agreement.id}/edit`)}>
-                                                <Edit className="h-4 w-4 mr-1" /> Edit
-                                            </Button>
+
                                             <Button variant="ghost" size="sm" onClick={() => handleDelete(agreement.id)}>
                                                 <Trash2 className="h-4 w-4 text-destructive" />
                                             </Button>

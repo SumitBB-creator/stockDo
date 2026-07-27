@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/table";
 import { Autocomplete } from '@/components/ui/autocomplete';
 import { useToast } from '@/components/ui/use-toast';
-import { fetchCustomers, fetchAgreements, createChallan, fetchMaterials, updateAgreement } from '@/lib/api';
+import { fetchCustomers, fetchAgreements, createChallan, fetchMaterials, updateAgreement, fetchNextChallanNumber, fetchCustomerStock } from '@/lib/api';
 import { formatCustomerAddress } from '@/lib/utils';
 
 // Validation Schema
@@ -89,6 +89,8 @@ export default function CreateChallanPage() {
     const [loading, setLoading] = useState(false);
     const [customers, setCustomers] = useState<any[]>([]);
     const [agreements, setAgreements] = useState<any[]>([]);
+    const [nextChallanNumber, setNextChallanNumber] = useState<string>('CHN-AUTO');
+    const [customerStock, setCustomerStock] = useState<any[]>([]);
 
     // Derived state
     const [activeAgreement, setActiveAgreement] = useState<any>(null);
@@ -145,19 +147,28 @@ export default function CreateChallanPage() {
                 setActiveAgreement(null);
                 form.setValue('agreementId', '');
             }
+
+            // Fetch current stock for this customer to calculate balance
+            fetchCustomerStock(selectedCustomerId).then((stock) => {
+                setCustomerStock(stock);
+            }).catch(console.error);
+        } else {
+            setCustomerStock([]);
         }
     }, [selectedCustomerId, agreements, form]);
 
     const loadInitialData = async () => {
         try {
-            const [custData, agreeData, matData] = await Promise.all([
+            const [custData, agreeData, matData, nextChallan] = await Promise.all([
                 fetchCustomers(),
                 fetchAgreements('Active'),
-                fetchMaterials()
+                fetchMaterials(),
+                fetchNextChallanNumber('ISSUE')
             ]);
             setCustomers(custData);
             setAgreements(agreeData);
             setMaterialsList(matData);
+            setNextChallanNumber(nextChallan);
         } catch (error) {
             console.error("Failed to load data", error);
         }
@@ -301,7 +312,9 @@ export default function CreateChallanPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border rounded-lg bg-card text-card-foreground shadow-sm">
                         <div className="flex flex-col space-y-2">
                             <Label className="text-sm font-medium">Challan No</Label>
-                            <div className="font-mono font-medium mt-2">CHN-AUTO</div>
+                            <div className="font-mono font-medium py-1 px-3 bg-muted text-muted-foreground rounded-md text-sm border shadow-sm w-full h-9 flex items-center">
+                                {nextChallanNumber}
+                            </div>
                         </div>
 
                         <FormField
@@ -417,7 +430,12 @@ export default function CreateChallanPage() {
                                                 )}
                                             </TableCell>
                                             <TableCell className="p-4 text-muted-foreground">
-                                                0 {/* Placeholder for Balance logic */}
+                                                {(() => {
+                                                    const currentInput = isSelected ? (formItems[formItemIndex]?.quantity || 0) : 0;
+                                                    if (!isSelected || currentInput === 0) return '-';
+                                                    const previousStock = customerStock.find(s => s.materialId === item.materialId)?.quantity || 0;
+                                                    return previousStock + currentInput;
+                                                })()}
                                             </TableCell>
                                         </TableRow>
                                     );

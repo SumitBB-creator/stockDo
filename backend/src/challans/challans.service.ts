@@ -6,6 +6,28 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ChallansService {
     constructor(private readonly prisma: PrismaService) { }
 
+    async getNextChallanNumber(type: 'ISSUE' | 'RETURN') {
+        const prefix = type === 'RETURN' ? 'RTN' : 'CHN';
+        
+        const challans = await this.prisma.challan.findMany({
+            where: { type },
+            select: { challanNumber: true },
+        });
+
+        let maxNumber = 0;
+        for (const challan of challans) {
+            if (challan.challanNumber && challan.challanNumber.startsWith(`${prefix}-`)) {
+                const numPart = challan.challanNumber.replace(`${prefix}-`, '');
+                const num = parseInt(numPart, 10);
+                if (!isNaN(num) && num > maxNumber) {
+                    maxNumber = num;
+                }
+            }
+        }
+        
+        return `${prefix}-${(maxNumber + 1).toString().padStart(4, '0')}`;
+    }
+
     async create(createChallanDto: CreateChallanDto) {
         const { customerId, agreementId, items, type } = createChallanDto;
 
@@ -40,10 +62,22 @@ export class ChallansService {
 
         return this.prisma.$transaction(async (tx) => {
             // Generate Challan Number
-            const year = new Date().getFullYear();
-            const count = await tx.challan.count({ where: { type } });
             const prefix = type === 'RETURN' ? 'RTN' : 'CHN';
-            const challanNumber = `${prefix}-${(count + 1).toString().padStart(4, '0')}`;
+            const existingChallans = await tx.challan.findMany({
+                where: { type },
+                select: { challanNumber: true },
+            });
+            let maxNumber = 0;
+            for (const c of existingChallans) {
+                if (c.challanNumber && c.challanNumber.startsWith(`${prefix}-`)) {
+                    const numPart = c.challanNumber.replace(`${prefix}-`, '');
+                    const num = parseInt(numPart, 10);
+                    if (!isNaN(num) && num > maxNumber) {
+                        maxNumber = num;
+                    }
+                }
+            }
+            const challanNumber = `${prefix}-${(maxNumber + 1).toString().padStart(4, '0')}`;
 
             // Create Challan
             const challan = await tx.challan.create({
@@ -89,7 +123,7 @@ export class ChallansService {
     }
 
     async findAll() {
-        return this.prisma.challan.findMany({
+        const challans = await this.prisma.challan.findMany({
             include: {
                 customer: true,
                 items: {
@@ -101,6 +135,31 @@ export class ChallansService {
             orderBy: {
                 date: 'desc',
             }
+        });
+
+        const bills = await this.prisma.bill.findMany({
+            where: { status: { not: 'CANCELLED' } },
+            select: { customerId: true, dateTo: true }
+        });
+
+        const maxBillDateByCustomer = new Map<string, number>();
+        for (const bill of bills) {
+            const billDateTo = new Date(bill.dateTo);
+            billDateTo.setHours(23, 59, 59, 999);
+            const time = billDateTo.getTime();
+            
+            const current = maxBillDateByCustomer.get(bill.customerId) || 0;
+            if (time > current) {
+                maxBillDateByCustomer.set(bill.customerId, time);
+            }
+        }
+
+        return challans.map(challan => {
+            const maxBillDate = maxBillDateByCustomer.get(challan.customerId);
+            return {
+                ...challan,
+                isBilled: maxBillDate ? challan.date.getTime() <= maxBillDate : false
+            };
         });
     }
 
@@ -205,6 +264,13 @@ export class ChallansService {
                 issuedQty,
                 availableQty,
             };
+        });
+    }
+
+    async update(id: string, updateData: any) {
+        return this.prisma.challan.update({
+            where: { id },
+            data: updateData
         });
     }
 

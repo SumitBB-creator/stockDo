@@ -37,7 +37,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn, formatCustomerAddress } from '@/lib/utils';
 import { InlineCombobox } from '@/components/ui/inline-combobox';
 import { Autocomplete } from '@/components/ui/autocomplete';
-import { fetchCustomers, fetchAgreements, createChallan, fetchCustomerStock } from '@/lib/api';
+import { fetchCustomers, fetchAgreements, createChallan, fetchCustomerStock, fetchNextChallanNumber } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 
 // Schema
@@ -65,16 +65,22 @@ const formSchema = z.object({
     remarks: z.string().optional(),
     type: z.literal('RETURN'),
     items: z.array(z.object({
-        materialId: z.string().min(1, "Material is required"),
-        quantity: z.number().min(0, "Quantity must be at least 0"), // Can be 0 if only returning damaged/short
+        materialId: z.string().optional(),
+        quantity: z.number().min(0, "Quantity must be at least 0").optional(),
         damageQuantity: z.number().optional(),
         shortQuantity: z.number().optional(),
         frozenQuantity: z.number().optional(),
         maxQuantity: z.number().optional(), // For validation display
-    })).min(1, "At least one item is required").refine(items =>
-        items.every(item => (item.quantity + (item.shortQuantity || 0) + (item.frozenQuantity || 0)) > 0),
-        { message: "Total quantity per item must be greater than 0" }
-    ),
+    }))
+    .transform(items => items.filter(item => 
+        (item.materialId && item.materialId.trim() !== "") || 
+        (item.quantity || 0) > 0 || 
+        (item.shortQuantity || 0) > 0 || 
+        (item.damageQuantity || 0) > 0
+    ))
+    .refine(items => items.length > 0, { message: "At least one item is required" })
+    .refine(items => items.every(item => item.materialId && item.materialId.trim() !== ""), { message: "Material is required for all entered items" })
+    .refine(items => items.every(item => ((item.quantity || 0) + (item.shortQuantity || 0) + (item.frozenQuantity || 0)) > 0), { message: "Total quantity per item must be greater than 0" }),
 });
 
 export default function CreateReturnPage() {
@@ -87,6 +93,7 @@ export default function CreateReturnPage() {
 
     // Derived state for available materials (Customer Stock)
     const [availableMaterials, setAvailableMaterials] = useState<any[]>([]);
+    const [nextChallanNumber, setNextChallanNumber] = useState<string>('Auto Generated (RTN-...)');
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -120,18 +127,31 @@ export default function CreateReturnPage() {
         name: "items",
     });
 
+    const handleAppendItem = (item: any) => {
+        const newIndex = form.getValues('items').length;
+        append(item);
+        setTimeout(() => {
+            const comboboxBtn = document.getElementById(`material-combobox-${newIndex}`);
+            if (comboboxBtn) {
+                comboboxBtn.focus();
+            }
+        }, 50);
+    };
+
     useEffect(() => {
         loadInitialData();
     }, []);
 
     const loadInitialData = async () => {
         try {
-            const [custData, agmtData] = await Promise.all([
+            const [custData, agmtData, nextChallan] = await Promise.all([
                 fetchCustomers(),
-                fetchAgreements()
+                fetchAgreements(),
+                fetchNextChallanNumber('RETURN')
             ]);
             setCustomers(custData);
             setAgreements(agmtData);
+            setNextChallanNumber(nextChallan);
         } catch (error) {
             console.error('Failed to load data:', error);
         }
@@ -278,7 +298,9 @@ export default function CreateReturnPage() {
                                     <div className="flex items-center flex-1 space-x-2">
                                         <span className="font-bold">:</span>
                                         <FormControl>
-                                            <Input placeholder="Auto Generated (RTN-...)" readOnly {...field} className="bg-muted text-muted-foreground h-8" />
+                                            <div className="font-mono font-medium py-1 px-3 bg-muted text-muted-foreground rounded-md text-sm border shadow-sm w-full h-9 flex items-center">
+                                                {nextChallanNumber}
+                                            </div>
                                         </FormControl>
                                     </div>
                                     <FormMessage />
@@ -403,7 +425,6 @@ export default function CreateReturnPage() {
                             )}
                         />
                     </div>
-
                     {/* Items Section */}
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
@@ -412,7 +433,7 @@ export default function CreateReturnPage() {
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={() => append({ materialId: '', quantity: 1 })}
+                                onClick={() => handleAppendItem({ materialId: '', quantity: 0 })}
                                 disabled={!watchCustomerId || availableMaterials.length === 0}
                             >
                                 <Plus className="mr-2 h-4 w-4" /> Add Item
@@ -492,6 +513,7 @@ export default function CreateReturnPage() {
                                                             <FormItem>
                                                                 <FormControl>
                                                                     <InlineCombobox
+                                                                        id={`material-combobox-${index}`}
                                                                         items={availableMaterials}
                                                                         value={field.value}
                                                                         onChange={field.onChange}
@@ -554,6 +576,14 @@ export default function CreateReturnPage() {
                                                                         value={field.value ?? ''}
                                                                         disabled={returnedQty >= maxQty && maxQty > 0}
                                                                         onChange={e => handleQtyChange('shortQuantity', e.target.value)}
+                                                                        onKeyDown={e => {
+                                                                            if (e.key === 'Tab' && !e.shiftKey && index === fields.length - 1) {
+                                                                                const matId = form.getValues(`items.${index}.materialId`);
+                                                                                if (matId) {
+                                                                                    handleAppendItem({ materialId: '', quantity: 0 });
+                                                                                }
+                                                                            }
+                                                                        }}
                                                                     />
                                                                 </FormControl>
                                                                 <FormMessage />
