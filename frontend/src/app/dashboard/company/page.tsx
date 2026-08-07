@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { fetchCompany, updateCompany, uploadLogo } from '@/lib/api';
+import { INDIAN_STATES } from '@/lib/indian-states';
 
 const companySchema = z.object({
     companyName: z.string().min(1, 'Company Name is required'),
@@ -239,7 +240,20 @@ export default function CompanyPage() {
                         <FormField control={form.control} name="state" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>State</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
+                                <Select onValueChange={field.onChange} value={field.value || ""}>
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select State" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {INDIAN_STATES.map((state) => (
+                                            <SelectItem key={state} value={state}>
+                                                {state}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                                 <FormMessage />
                             </FormItem>
                         )} />

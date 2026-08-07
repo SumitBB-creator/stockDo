@@ -42,6 +42,7 @@ import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Customer } from '@/types';
 import { formatCustomerAddress } from '@/lib/utils';
+import { INDIAN_STATES, STATE_CODES } from '@/lib/indian-states';
 
 
 const formSchema = z.object({
@@ -50,7 +51,13 @@ const formSchema = z.object({
     relationType: z.string().optional(),
     relationName: z.string().optional(),
     relativeAadhar: z.string().optional(),
-    residenceAddress: z.string().optional(),
+    referenceAddress: z.string().optional(),
+    referenceCity: z.string().optional(),
+    referencePin: z.string().optional(),
+    referenceState: z.string().optional(),
+    referenceStateCode: z.string().optional(),
+    referenceCountry: z.string().optional(),
+    referencePhone: z.string().optional(),
     pan: z.string().optional(),
     email: z.string().email('Invalid email').optional().or(z.literal('')),
     phone: z.string().optional(),
@@ -60,6 +67,7 @@ const formSchema = z.object({
     officeCity: z.string().optional(),
     officePin: z.string().optional(),
     officeState: z.string().optional(),
+    officeStateCode: z.string().optional(),
     officeCountry: z.string().optional(),
     officePhone: z.string().optional(),
     officeFax: z.string().optional(),
@@ -71,6 +79,7 @@ const formSchema = z.object({
     siteCity: z.string().optional(),
     sitePin: z.string().optional(),
     siteState: z.string().optional(),
+    siteStateCode: z.string().optional(),
     siteCountry: z.string().optional(),
     sitePhone: z.string().optional(),
     siteFax: z.string().optional(),
@@ -94,7 +103,13 @@ export default function CustomersPage() {
             relationType: 'C/o',
             relationName: '',
             relativeAadhar: '',
-            residenceAddress: '',
+            referenceAddress: '',
+            referenceCity: '',
+            referencePin: '',
+            referenceState: '',
+            referenceStateCode: '',
+            referenceCountry: 'India',
+            referencePhone: '',
             pan: '',
             email: '',
             phone: '',
@@ -102,6 +117,7 @@ export default function CustomersPage() {
             officeCity: '',
             officePin: '',
             officeState: '',
+            officeStateCode: '',
             officeCountry: 'India',
             officePhone: '',
             officeFax: '',
@@ -111,6 +127,7 @@ export default function CustomersPage() {
             siteCity: '',
             sitePin: '',
             siteState: '',
+            siteStateCode: '',
             siteCountry: 'India',
             sitePhone: '',
             siteFax: '',
@@ -131,7 +148,13 @@ export default function CustomersPage() {
                 relationType: editingCustomer.relationType || 'C/o',
                 relationName: editingCustomer.relationName || '',
                 relativeAadhar: editingCustomer.relativeAadhar || '',
-                residenceAddress: editingCustomer.residenceAddress || '',
+                referenceAddress: editingCustomer.referenceAddress || '',
+                referenceCity: editingCustomer.referenceCity || '',
+                referencePin: editingCustomer.referencePin || '',
+                referenceState: editingCustomer.referenceState || '',
+                referenceStateCode: editingCustomer.referenceStateCode || '',
+                referenceCountry: editingCustomer.referenceCountry || 'India',
+                referencePhone: editingCustomer.referencePhone || '',
                 pan: editingCustomer.pan || '',
                 email: editingCustomer.email || '',
                 phone: editingCustomer.phone || '',
@@ -139,6 +162,7 @@ export default function CustomersPage() {
                 officeCity: editingCustomer.officeCity || '',
                 officePin: editingCustomer.officePin || '',
                 officeState: editingCustomer.officeState || '',
+                officeStateCode: editingCustomer.officeStateCode || '',
                 officeCountry: editingCustomer.officeCountry || 'India',
                 officePhone: editingCustomer.officePhone || '',
                 officeFax: editingCustomer.officeFax || '',
@@ -148,6 +172,7 @@ export default function CustomersPage() {
                 siteCity: editingCustomer.siteCity || '',
                 sitePin: editingCustomer.sitePin || '',
                 siteState: editingCustomer.siteState || '',
+                siteStateCode: editingCustomer.siteStateCode || '',
                 siteCountry: editingCustomer.siteCountry || 'India',
                 sitePhone: editingCustomer.sitePhone || '',
                 siteFax: editingCustomer.siteFax || '',
@@ -161,7 +186,13 @@ export default function CustomersPage() {
                 relationType: 'C/o',
                 relationName: '',
                 relativeAadhar: '',
-                residenceAddress: '',
+                referenceAddress: '',
+                referenceCity: '',
+                referencePin: '',
+                referenceState: '',
+                referenceStateCode: '',
+                referenceCountry: 'India',
+                referencePhone: '',
                 pan: '',
                 email: '',
                 phone: '',
@@ -169,6 +200,7 @@ export default function CustomersPage() {
                 officeCity: '',
                 officePin: '',
                 officeState: '',
+                officeStateCode: '',
                 officeCountry: 'India',
                 officePhone: '',
                 officeFax: '',
@@ -178,6 +210,7 @@ export default function CustomersPage() {
                 siteCity: '',
                 sitePin: '',
                 siteState: '',
+                siteStateCode: '',
                 siteCountry: 'India',
                 sitePhone: '',
                 siteFax: '',
@@ -316,6 +349,7 @@ export default function CustomersPage() {
                                         <div className="flex gap-2">
                                             <FormField control={form.control} name="relationType" render={({ field }) => (
                                                 <FormItem className="w-24">
+                                                    <FormLabel className="invisible">Type</FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                                                         <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
                                                          <SelectContent>
@@ -345,16 +379,76 @@ export default function CustomersPage() {
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField control={form.control} name="residenceAddress" render={({ field }) => (
+                                        <FormField control={form.control} name="referencePhone" render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Reference Residence Address</FormLabel>
-                                                <FormControl><Textarea placeholder="Residence Address" {...field} className="h-10" /></FormControl>
+                                                <FormLabel>Reference Phone</FormLabel>
+                                                <FormControl><Input placeholder="Phone Number" {...field} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
+                                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="referenceAddress" render={({ field }) => (
+                                                <FormItem className="md:col-span-2">
+                                                    <FormLabel>Reference Address</FormLabel>
+                                                    <FormControl><Input placeholder="Address" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="referenceCity" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Reference City</FormLabel>
+                                                    <FormControl><Input placeholder="City" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="referencePin" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Reference PIN</FormLabel>
+                                                    <FormControl><Input placeholder="PIN Code" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="referenceState" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Reference State</FormLabel>
+                                                    <Select onValueChange={(val) => {
+                                                        field.onChange(val);
+                                                        form.setValue('referenceStateCode', STATE_CODES[val] || '');
+                                                    }} value={field.value || ""}>
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select State" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            {INDIAN_STATES.map((state) => (
+                                                                <SelectItem key={state} value={state}>
+                                                                    {state}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="referenceStateCode" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>State Code</FormLabel>
+                                                    <FormControl><Input placeholder="Code" readOnly className="bg-muted" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="referenceCountry" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Reference Country</FormLabel>
+                                                    <FormControl><Input placeholder="Country" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <FormField control={form.control} name="pan" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>PAN</FormLabel>
@@ -393,7 +487,30 @@ export default function CustomersPage() {
                                         <FormField control={form.control} name="officeState" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>State</FormLabel>
-                                                <FormControl><Input placeholder="State" {...field} /></FormControl>
+                                                <Select onValueChange={(val) => {
+                                                    field.onChange(val);
+                                                    form.setValue('officeStateCode', STATE_CODES[val] || '');
+                                                }} value={field.value || ""}>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select State" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {INDIAN_STATES.map((state) => (
+                                                            <SelectItem key={state} value={state}>
+                                                                {state}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="officeStateCode" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>State Code</FormLabel>
+                                                <FormControl><Input placeholder="Code" readOnly className="bg-muted" {...field} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
@@ -456,7 +573,30 @@ export default function CustomersPage() {
                                         <FormField control={form.control} name="siteState" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>State</FormLabel>
-                                                <FormControl><Input placeholder="State" {...field} /></FormControl>
+                                                <Select onValueChange={(val) => {
+                                                    field.onChange(val);
+                                                    form.setValue('siteStateCode', STATE_CODES[val] || '');
+                                                }} value={field.value || ""}>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select State" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {INDIAN_STATES.map((state) => (
+                                                            <SelectItem key={state} value={state}>
+                                                                {state}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="siteStateCode" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>State Code</FormLabel>
+                                                <FormControl><Input placeholder="Code" readOnly className="bg-muted" {...field} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )} />

@@ -8,7 +8,13 @@ export interface Customer {
     relationType?: string;
     relationName?: string;
     relativeAadhar?: string;
-    residenceAddress?: string;
+    referenceAddress?: string;
+    referenceCity?: string;
+    referencePin?: string;
+    referenceState?: string;
+    referenceStateCode?: string;
+    referenceCountry?: string;
+    referencePhone?: string;
     pan?: string;
 
     // Office
@@ -16,6 +22,7 @@ export interface Customer {
     officeCity?: string;
     officePin?: string;
     officeState?: string;
+    officeStateCode?: string;
     officeCountry?: string;
     officePhone?: string;
     officeFax?: string;
@@ -27,6 +34,7 @@ export interface Customer {
     siteCity?: string;
     sitePin?: string;
     siteState?: string;
+    siteStateCode?: string;
     siteCountry?: string;
     sitePhone?: string;
     siteFax?: string;
@@ -47,13 +55,20 @@ export interface CreateCustomerDto {
     relationType?: string;
     relationName?: string;
     relativeAadhar?: string;
-    residenceAddress?: string;
+    referenceAddress?: string;
+    referenceCity?: string;
+    referencePin?: string;
+    referenceState?: string;
+    referenceStateCode?: string;
+    referenceCountry?: string;
+    referencePhone?: string;
     pan?: string;
 
     officeAddress?: string;
     officeCity?: string;
     officePin?: string;
     officeState?: string;
+    officeStateCode?: string;
     officeCountry?: string;
     officePhone?: string;
     officeFax?: string;
@@ -64,6 +79,7 @@ export interface CreateCustomerDto {
     siteCity?: string;
     sitePin?: string;
     siteState?: string;
+    siteStateCode?: string;
     siteCountry?: string;
     sitePhone?: string;
     siteFax?: string;
@@ -79,6 +95,12 @@ export interface Employee {
     ledgerAccountId?: string;
     relationType?: string;
     relationName?: string;
+    referenceAddress?: string;
+    referenceCity?: string;
+    referencePin?: string;
+    referenceState?: string;
+    referenceCountry?: string;
+    referencePhone?: string;
     pan?: string;
 
     address?: string;
@@ -100,6 +122,12 @@ export interface CreateEmployeeDto {
     ledgerAccountId?: string;
     relationType?: string;
     relationName?: string;
+    referenceAddress?: string;
+    referenceCity?: string;
+    referencePin?: string;
+    referenceState?: string;
+    referenceCountry?: string;
+    referencePhone?: string;
     pan?: string;
 
     address?: string;
@@ -119,6 +147,12 @@ export interface Supplier {
     ledgerAccountId?: string;
     relationType?: string;
     relationName?: string;
+    referenceAddress?: string;
+    referenceCity?: string;
+    referencePin?: string;
+    referenceState?: string;
+    referenceCountry?: string;
+    referencePhone?: string;
     pan?: string;
 
     address?: string;
@@ -140,6 +174,12 @@ export interface CreateSupplierDto {
     ledgerAccountId?: string;
     relationType?: string;
     relationName?: string;
+    referenceAddress?: string;
+    referenceCity?: string;
+    referencePin?: string;
+    referenceState?: string;
+    referenceCountry?: string;
+    referencePhone?: string;
     pan?: string;
 
     address?: string;

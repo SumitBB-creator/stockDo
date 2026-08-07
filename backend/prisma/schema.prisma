@@ -16,15 +16,22 @@ model Customer {
   relationType     String? @map("relation_type") // S/O, D/O, W/O, C/O
   relationName     String? @map("relation_name")
   relativeAadhar   String? @map("relative_aadhar")
-  residenceAddress String? @map("residence_address")
+  referenceAddress String? @map("reference_address")
+  referenceCity    String? @map("reference_city")
+  referencePin     String? @map("reference_pin")
+  referenceState     String? @map("reference_state")
+  referenceStateCode String? @map("reference_state_code")
+  referenceCountry   String? @map("reference_country")
+  referencePhone   String? @map("reference_phone")
   pan              String?
 
   // Office Address
   officeAddress String? @map("office_address")
   officeCity    String? @map("office_city")
   officePin     String? @map("office_pin")
-  officeState   String? @map("office_state")
-  officeCountry String? @map("office_country")
+  officeState     String? @map("office_state")
+  officeStateCode String? @map("office_state_code")
+  officeCountry   String? @map("office_country")
   officePhone   String? @map("office_phone")
   officeFax     String? @map("office_fax")
   officeEmail   String? @map("office_email")
@@ -34,8 +41,9 @@ model Customer {
   siteAddress String? @map("site_address")
   siteCity    String? @map("site_city")
   sitePin     String? @map("site_pin")
-  siteState   String? @map("site_state")
-  siteCountry String? @map("site_country")
+  siteState     String? @map("site_state")
+  siteStateCode String? @map("site_state_code")
+  siteCountry   String? @map("site_country")
   sitePhone   String? @map("site_phone")
   siteFax     String? @map("site_fax")
   siteEmail   String? @map("site_email")
@@ -60,6 +68,12 @@ model Employee {
   ledgerAccountId String? @unique @map("ledger_account_id")
   relationType    String? @map("relation_type") // S/O, D/O, W/O, C/O
   relationName    String? @map("relation_name")
+  referenceAddress String? @map("reference_address")
+  referenceCity    String? @map("reference_city")
+  referencePin     String? @map("reference_pin")
+  referenceState   String? @map("reference_state")
+  referenceCountry String? @map("reference_country")
+  referencePhone   String? @map("reference_phone")
   pan             String?
 
   // Address
@@ -110,6 +124,12 @@ model Supplier {
   ledgerAccountId String? @unique @map("ledger_account_id")
   relationType    String? @map("relation_type") // S/O, D/O, W/O, C/O
   relationName    String? @map("relation_name")
+  referenceAddress String? @map("reference_address")
+  referenceCity    String? @map("reference_city")
+  referencePin     String? @map("reference_pin")
+  referenceState   String? @map("reference_state")
+  referenceCountry String? @map("reference_country")
+  referencePhone   String? @map("reference_phone")
   pan             String?
 
   // Address

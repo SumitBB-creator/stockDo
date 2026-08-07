@@ -342,7 +342,7 @@ const ReceiptDocument: React.FC<ReceiptDocumentProps> = ({ receipt, company, log
 
                     <View style={styles.divider} />
 
-                    <Text style={{ marginTop: 10 }}>the sum of Rupees <Text style={styles.boldText}>{amtInWords}</Text></Text>
+                    <Text style={{ marginTop: 10 }}>the sum of Rupees <Text style={styles.boldText}>{amtInWords} Only</Text></Text>
 
                     <View style={styles.amountBox}>
                         <Text style={styles.amountLabel}>TOTAL AMOUNT</Text>

@@ -19,6 +19,30 @@ export class CreateSupplierDto {
 
     @IsString()
     @IsOptional()
+    referenceAddress?: string;
+
+    @IsString()
+    @IsOptional()
+    referenceCity?: string;
+
+    @IsString()
+    @IsOptional()
+    referencePin?: string;
+
+    @IsString()
+    @IsOptional()
+    referenceState?: string;
+
+    @IsString()
+    @IsOptional()
+    referenceCountry?: string;
+
+    @IsString()
+    @IsOptional()
+    referencePhone?: string;
+
+    @IsString()
+    @IsOptional()
     pan?: string;
 
     // Address

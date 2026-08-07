@@ -41,6 +41,7 @@ import {
 import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Employee } from '@/types';
+import { INDIAN_STATES } from '@/lib/indian-states';
 
 
 const formSchema = z.object({
@@ -48,6 +49,12 @@ const formSchema = z.object({
     ledgerAccountId: z.string().optional(),
     relationType: z.string().optional(),
     relationName: z.string().optional(),
+    referenceAddress: z.string().optional(),
+    referenceCity: z.string().optional(),
+    referencePin: z.string().optional(),
+    referenceState: z.string().optional(),
+    referenceCountry: z.string().optional(),
+    referencePhone: z.string().optional(),
     pan: z.string().optional(),
 
     // Address
@@ -77,6 +84,12 @@ export default function EmployeesPage() {
             ledgerAccountId: '',
             relationType: 'C/o',
             relationName: '',
+            referenceAddress: '',
+            referenceCity: '',
+            referencePin: '',
+            referenceState: '',
+            referenceCountry: 'India',
+            referencePhone: '',
             pan: '',
             address: '',
             city: '',
@@ -101,6 +114,12 @@ export default function EmployeesPage() {
                 ledgerAccountId: editingEmployee.ledgerAccountId || '',
                 relationType: editingEmployee.relationType || 'C/o',
                 relationName: editingEmployee.relationName || '',
+                referenceAddress: editingEmployee.referenceAddress || '',
+                referenceCity: editingEmployee.referenceCity || '',
+                referencePin: editingEmployee.referencePin || '',
+                referenceState: editingEmployee.referenceState || '',
+                referenceCountry: editingEmployee.referenceCountry || 'India',
+                referencePhone: editingEmployee.referencePhone || '',
                 pan: editingEmployee.pan || '',
                 address: editingEmployee.address || '',
                 city: editingEmployee.city || '',
@@ -118,6 +137,12 @@ export default function EmployeesPage() {
                 ledgerAccountId: '',
                 relationType: 'C/o',
                 relationName: '',
+                referenceAddress: '',
+                referenceCity: '',
+                referencePin: '',
+                referenceState: '',
+                referenceCountry: 'India',
+                referencePhone: '',
                 pan: '',
                 address: '',
                 city: '',
@@ -257,6 +282,7 @@ export default function EmployeesPage() {
                                         <div className="flex gap-2">
                                             <FormField control={form.control} name="relationType" render={({ field }) => (
                                                 <FormItem className="w-24">
+                                                    <FormLabel className="invisible">Type</FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                         <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
                                                         <SelectContent>
@@ -275,6 +301,63 @@ export default function EmployeesPage() {
                                                 <FormItem className="flex-1">
                                                     <FormLabel>Reference Name</FormLabel>
                                                     <FormControl><Input placeholder="Reference Name" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                        </div>
+                                        <FormField control={form.control} name="referencePhone" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Reference Phone</FormLabel>
+                                                <FormControl><Input placeholder="Phone Number" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="referenceAddress" render={({ field }) => (
+                                                <FormItem className="md:col-span-2">
+                                                    <FormLabel>Reference Address</FormLabel>
+                                                    <FormControl><Input placeholder="Address" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="referenceCity" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Reference City</FormLabel>
+                                                    <FormControl><Input placeholder="City" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="referencePin" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Reference PIN</FormLabel>
+                                                    <FormControl><Input placeholder="PIN Code" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="referenceState" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Reference State</FormLabel>
+                                                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select State" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            {INDIAN_STATES.map((state) => (
+                                                                <SelectItem key={state} value={state}>
+                                                                    {state}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="referenceCountry" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Reference Country</FormLabel>
+                                                    <FormControl><Input placeholder="Country" {...field} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
@@ -317,7 +400,20 @@ export default function EmployeesPage() {
                                         <FormField control={form.control} name="state" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>State</FormLabel>
-                                                <FormControl><Input placeholder="State" {...field} /></FormControl>
+                                                <Select onValueChange={field.onChange} value={field.value || ""}>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select State" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {INDIAN_STATES.map((state) => (
+                                                            <SelectItem key={state} value={state}>
+                                                                {state}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                                 <FormMessage />
                                             </FormItem>
                                         )} />

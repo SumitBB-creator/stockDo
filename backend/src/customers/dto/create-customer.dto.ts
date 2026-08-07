@@ -23,7 +23,31 @@ export class CreateCustomerDto {
 
     @IsString()
     @IsOptional()
-    residenceAddress?: string;
+    referenceAddress?: string;
+
+    @IsString()
+    @IsOptional()
+    referenceCity?: string;
+
+    @IsString()
+    @IsOptional()
+    referencePin?: string;
+
+    @IsString()
+    @IsOptional()
+    referenceState?: string;
+
+    @IsString()
+    @IsOptional()
+    referenceStateCode?: string;
+
+    @IsString()
+    @IsOptional()
+    referenceCountry?: string;
+
+    @IsString()
+    @IsOptional()
+    referencePhone?: string;
 
     @IsString()
     @IsOptional()
@@ -57,6 +81,10 @@ export class CreateCustomerDto {
     @IsString()
     @IsOptional()
     officeState?: string;
+
+    @IsString()
+    @IsOptional()
+    officeStateCode?: string;
 
     @IsString()
     @IsOptional()
@@ -94,6 +122,10 @@ export class CreateCustomerDto {
     @IsString()
     @IsOptional()
     siteState?: string;
+
+    @IsString()
+    @IsOptional()
+    siteStateCode?: string;
 
     @IsString()
     @IsOptional()
