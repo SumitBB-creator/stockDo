@@ -204,9 +204,18 @@ const ReceiptDocument: React.FC<ReceiptDocumentProps> = ({ receipt, company, log
         paymentAsDisplay = "Discount Payment";
     }
 
+    let issuingDate = "";
     if (mainDesc.includes('via ')) {
         const pParts = mainDesc.split('via ');
-        paymentMode = pParts[1]?.trim() || "Cash";
+        let rawPaymentMode = pParts[1]?.trim() || "Cash";
+        
+        const issueMatch = rawPaymentMode.match(/\[Issued:\s*(.*?)\]/);
+        if (issueMatch) {
+            issuingDate = issueMatch[1];
+            rawPaymentMode = rawPaymentMode.replace(issueMatch[0], '').trim();
+        }
+        
+        paymentMode = rawPaymentMode.replace(/\s+\(Ref:/, ' (Ref:');
     }
 
     // Number to Words Converter
@@ -334,6 +343,13 @@ const ReceiptDocument: React.FC<ReceiptDocumentProps> = ({ receipt, company, log
                         <Text style={styles.bodyLabel}>Payment Mode:</Text>
                         <Text style={styles.bodyValue}>{paymentMode}</Text>
                     </View>
+                    
+                    {issuingDate && (
+                        <View style={styles.bodyRow}>
+                            <Text style={styles.bodyLabel}>Issuing Date:</Text>
+                            <Text style={styles.bodyValue}>{issuingDate}</Text>
+                        </View>
+                    )}
 
                     <View style={styles.bodyRow}>
                         <Text style={styles.bodyLabel}>On Account Of:</Text>

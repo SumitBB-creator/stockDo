@@ -34,6 +34,7 @@ export default function ReceiptEntryPage() {
     const [branchName, setBranchName] = useState('');
     const [bankState, setBankState] = useState('');
     const [reference, setReference] = useState('');
+    const [issuingDate, setIssuingDate] = useState<string>(''); // For non-cash transactions
     const [notes, setNotes] = useState(''); // Serves as 'On Account of'
 
     useEffect(() => {
@@ -112,6 +113,7 @@ export default function ReceiptEntryPage() {
                 `via ${paymentMode}`,
                 bankInfo ? `to ${bankInfo}` : '',
                 reference ? `(Ref: ${reference})` : '',
+                issuingDate ? `[Issued: ${issuingDate}]` : '',
                 notes ? `- ${notes}` : ''
             ].filter(Boolean).join(' ');
 
@@ -256,50 +258,66 @@ export default function ReceiptEntryPage() {
                             </select>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="bankName">Bank Name</Label>
-                            <Input
-                                id="bankName"
-                                placeholder="Bank Name"
-                                value={bankName}
-                                onChange={(e: any) => setBankName(e.target.value)}
-                                disabled={submitting}
-                            />
-                        </div>
+                        {paymentMode !== 'CASH' && (
+                            <>
+                                <div className="space-y-2">
+                                    <Label htmlFor="reference">
+                                        {['CHEQUE', 'DD'].includes(paymentMode) ? 'Cheque/Draft No.' : 'Transaction ID'}
+                                    </Label>
+                                    <Input
+                                        id="reference"
+                                        placeholder={['CHEQUE', 'DD'].includes(paymentMode) ? "Cheque/Draft Number" : "Transaction ID"}
+                                        value={reference}
+                                        onChange={(e: any) => setReference(e.target.value)}
+                                        disabled={submitting}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="bankName">Bank Name</Label>
+                                    <Input
+                                        id="bankName"
+                                        placeholder="Bank Name"
+                                        value={bankName}
+                                        onChange={(e: any) => setBankName(e.target.value)}
+                                        disabled={submitting}
+                                    />
+                                </div>
 
-                        <div className="space-y-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="branchName">Branch Name</Label>
-                                <Input
-                                    id="branchName"
-                                    placeholder="Branch Name"
-                                    value={branchName}
-                                    onChange={(e: any) => setBranchName(e.target.value)}
-                                    disabled={submitting}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="bankState">Bank State</Label>
-                                <Input
-                                    id="bankState"
-                                    placeholder="State"
-                                    value={bankState}
-                                    onChange={(e: any) => setBankState(e.target.value)}
-                                    disabled={submitting}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="reference">Reference / Transaction ID</Label>
-                            <Input
-                                id="reference"
-                                placeholder="e.g. UTR Number, Cheque No"
-                                value={reference}
-                                onChange={(e: any) => setReference(e.target.value)}
-                                disabled={submitting}
-                            />
-                        </div>
+                                <div className="space-y-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="branchName">Branch Name & Address</Label>
+                                        <Input
+                                            id="branchName"
+                                            placeholder="Branch Name & Address"
+                                            value={branchName}
+                                            onChange={(e: any) => setBranchName(e.target.value)}
+                                            disabled={submitting}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="bankState">Bank State</Label>
+                                        <Input
+                                            id="bankState"
+                                            placeholder="State"
+                                            value={bankState}
+                                            onChange={(e: any) => setBankState(e.target.value)}
+                                            disabled={submitting}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="issuingDate">
+                                        {['CHEQUE', 'DD'].includes(paymentMode) ? 'Issuing Date' : 'Date'}
+                                    </Label>
+                                    <DatePicker
+                                        id="issuingDate"
+                                        value={issuingDate}
+                                        onChange={(e: any) => setIssuingDate(e.target.value)}
+                                        disabled={submitting}
+                                    />
+                                </div>
+                            </>
+                        )}
 
                         <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="notes">On Account of (Notes)</Label>
