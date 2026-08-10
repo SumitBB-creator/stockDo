@@ -58,6 +58,7 @@ const formSchema = z.object({
     referenceStateCode: z.string().optional(),
     referenceCountry: z.string().optional(),
     referencePhone: z.string().optional(),
+    referencePan: z.string().optional(),
     pan: z.string().optional(),
     email: z.string().email('Invalid email').optional().or(z.literal('')),
     phone: z.string().optional(),
@@ -109,17 +110,18 @@ export default function CustomersPage() {
             referenceState: '',
             referenceStateCode: '',
             referenceCountry: 'India',
-            referencePhone: '',
+            referencePhone: '+91 ',
+            referencePan: '',
             pan: '',
             email: '',
-            phone: '',
+            phone: '+91 ',
             officeAddress: '',
             officeCity: '',
             officePin: '',
             officeState: '',
             officeStateCode: '',
             officeCountry: 'India',
-            officePhone: '',
+            officePhone: '+91 ',
             officeFax: '',
             officeEmail: '',
             officeGst: '',
@@ -129,7 +131,7 @@ export default function CustomersPage() {
             siteState: '',
             siteStateCode: '',
             siteCountry: 'India',
-            sitePhone: '',
+            sitePhone: '+91 ',
             siteFax: '',
             siteEmail: '',
             siteGst: '',
@@ -154,17 +156,18 @@ export default function CustomersPage() {
                 referenceState: editingCustomer.referenceState || '',
                 referenceStateCode: editingCustomer.referenceStateCode || '',
                 referenceCountry: editingCustomer.referenceCountry || 'India',
-                referencePhone: editingCustomer.referencePhone || '',
+                referencePhone: editingCustomer.referencePhone || '+91 ',
+                referencePan: editingCustomer.referencePan || '',
                 pan: editingCustomer.pan || '',
                 email: editingCustomer.email || '',
-                phone: editingCustomer.phone || '',
+                phone: editingCustomer.phone || '+91 ',
                 officeAddress: editingCustomer.officeAddress || '',
                 officeCity: editingCustomer.officeCity || '',
                 officePin: editingCustomer.officePin || '',
                 officeState: editingCustomer.officeState || '',
                 officeStateCode: editingCustomer.officeStateCode || '',
                 officeCountry: editingCustomer.officeCountry || 'India',
-                officePhone: editingCustomer.officePhone || '',
+                officePhone: editingCustomer.officePhone || '+91 ',
                 officeFax: editingCustomer.officeFax || '',
                 officeEmail: editingCustomer.officeEmail || '',
                 officeGst: editingCustomer.officeGst || '',
@@ -174,7 +177,7 @@ export default function CustomersPage() {
                 siteState: editingCustomer.siteState || '',
                 siteStateCode: editingCustomer.siteStateCode || '',
                 siteCountry: editingCustomer.siteCountry || 'India',
-                sitePhone: editingCustomer.sitePhone || '',
+                sitePhone: editingCustomer.sitePhone || '+91 ',
                 siteFax: editingCustomer.siteFax || '',
                 siteEmail: editingCustomer.siteEmail || '',
                 siteGst: editingCustomer.siteGst || '',
@@ -192,17 +195,18 @@ export default function CustomersPage() {
                 referenceState: '',
                 referenceStateCode: '',
                 referenceCountry: 'India',
-                referencePhone: '',
+                referencePhone: '+91 ',
+                referencePan: '',
                 pan: '',
                 email: '',
-                phone: '',
+                phone: '+91 ',
                 officeAddress: '',
                 officeCity: '',
                 officePin: '',
                 officeState: '',
                 officeStateCode: '',
                 officeCountry: 'India',
-                officePhone: '',
+                officePhone: '+91 ',
                 officeFax: '',
                 officeEmail: '',
                 officeGst: '',
@@ -212,7 +216,7 @@ export default function CustomersPage() {
                 siteState: '',
                 siteStateCode: '',
                 siteCountry: 'India',
-                sitePhone: '',
+                sitePhone: '+91 ',
                 siteFax: '',
                 siteEmail: '',
                 siteGst: '',
@@ -223,7 +227,10 @@ export default function CustomersPage() {
     const fetchCustomers = async () => {
         try {
             const response = await api.get('/customers');
-            setCustomers(response.data);
+            const sortedData = (response.data || []).sort((a: Customer, b: Customer) => 
+                a.name.localeCompare(b.name)
+            );
+            setCustomers(sortedData);
         } catch (error) {
             console.error('Failed to fetch customers:', error);
             toast({
@@ -239,9 +246,11 @@ export default function CustomersPage() {
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         setIsSubmitting(true);
         // Sanitize values: Convert empty strings to undefined
-        const sanitizedValues = Object.fromEntries(
+        const sanitizedValues: any = Object.fromEntries(
             Object.entries(values).map(([key, value]) => [key, value === '' ? undefined : value])
         );
+        delete sanitizedValues.phone;
+        delete sanitizedValues.email;
 
         try {
             if (editingCustomer) {
@@ -366,22 +375,22 @@ export default function CustomersPage() {
                                             )} />
                                             <FormField control={form.control} name="relationName" render={({ field }) => (
                                                 <FormItem className="flex-1">
-                                                    <FormLabel>Reference Name</FormLabel>
-                                                    <FormControl><Input placeholder="Reference Name" {...field} /></FormControl>
+                                                    <FormLabel>Referencer Name</FormLabel>
+                                                    <FormControl><Input placeholder="Referencer Name" {...field} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
                                         </div>
                                         <FormField control={form.control} name="relativeAadhar" render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Reference Aadhar No</FormLabel>
+                                                <FormLabel>Referencer Aadhar No</FormLabel>
                                                 <FormControl><Input placeholder="Aadhar Number" {...field} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
                                         <FormField control={form.control} name="referencePhone" render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Reference Phone</FormLabel>
+                                                <FormLabel>Referencer Phone</FormLabel>
                                                 <FormControl><Input placeholder="Phone Number" {...field} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -389,73 +398,41 @@ export default function CustomersPage() {
                                         <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <FormField control={form.control} name="referenceAddress" render={({ field }) => (
                                                 <FormItem className="md:col-span-2">
-                                                    <FormLabel>Reference Address</FormLabel>
+                                                    <FormLabel>Referencer Residence Address</FormLabel>
                                                     <FormControl><Input placeholder="Address" {...field} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
                                             <FormField control={form.control} name="referenceCity" render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Reference City</FormLabel>
+                                                    <FormLabel>Referencer City</FormLabel>
                                                     <FormControl><Input placeholder="City" {...field} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
                                             <FormField control={form.control} name="referencePin" render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Reference PIN</FormLabel>
+                                                    <FormLabel>Referencer PIN</FormLabel>
                                                     <FormControl><Input placeholder="PIN Code" {...field} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
-                                            <FormField control={form.control} name="referenceState" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Reference State</FormLabel>
-                                                    <Select onValueChange={(val) => {
-                                                        field.onChange(val);
-                                                        form.setValue('referenceStateCode', STATE_CODES[val] || '');
-                                                    }} value={field.value || ""}>
-                                                        <FormControl>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select State" />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            {INDIAN_STATES.map((state) => (
-                                                                <SelectItem key={state} value={state}>
-                                                                    {state}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
-                                            <FormField control={form.control} name="referenceStateCode" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>State Code</FormLabel>
-                                                    <FormControl><Input placeholder="Code" readOnly className="bg-muted" {...field} /></FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
+
                                             <FormField control={form.control} name="referenceCountry" render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Reference Country</FormLabel>
+                                                    <FormLabel>Referencer Country</FormLabel>
                                                     <FormControl><Input placeholder="Country" {...field} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
+                                            <FormField control={form.control} name="referencePan" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Referencer PAN</FormLabel>
+                                                    <FormControl><Input placeholder="PAN Number" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
                                         </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField control={form.control} name="pan" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>PAN</FormLabel>
-                                                <FormControl><Input placeholder="PAN Number" {...field} /></FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )} />
                                     </div>
                                 </div>
 
@@ -486,7 +463,7 @@ export default function CustomersPage() {
                                         )} />
                                         <FormField control={form.control} name="officeState" render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>State</FormLabel>
+                                                <FormLabel>State Name</FormLabel>
                                                 <Select onValueChange={(val) => {
                                                     field.onChange(val);
                                                     form.setValue('officeStateCode', STATE_CODES[val] || '');
@@ -542,6 +519,13 @@ export default function CustomersPage() {
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
+                                        <FormField control={form.control} name="pan" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>PAN</FormLabel>
+                                                <FormControl><Input placeholder="PAN Number" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
                                     </div>
                                 </div>
 
@@ -572,7 +556,7 @@ export default function CustomersPage() {
                                         )} />
                                         <FormField control={form.control} name="siteState" render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>State</FormLabel>
+                                                <FormLabel>State Name</FormLabel>
                                                 <Select onValueChange={(val) => {
                                                     field.onChange(val);
                                                     form.setValue('siteStateCode', STATE_CODES[val] || '');
@@ -648,9 +632,8 @@ export default function CustomersPage() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Name</TableHead>
-                            <TableHead>Reference</TableHead>
+                            <TableHead>Referencer</TableHead>
                             <TableHead>Phone No</TableHead>
-                            <TableHead>Fax No</TableHead>
                             <TableHead>Address</TableHead>
                             <TableHead>City</TableHead>
                             <TableHead>PIN</TableHead>
@@ -663,13 +646,13 @@ export default function CustomersPage() {
                     <TableBody>
                         {isLoading ? (
                             <TableRow>
-                                <TableCell colSpan={11} className="text-center h-24">
+                                <TableCell colSpan={10} className="text-center h-24">
                                     <Loader2 className="mx-auto h-6 w-6 animate-spin" />
                                 </TableCell>
                             </TableRow>
                         ) : customers.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={11} className="text-center h-24 text-muted-foreground">
+                                <TableCell colSpan={10} className="text-center h-24 text-muted-foreground">
                                     No customers found. Add one to get started.
                                 </TableCell>
                             </TableRow>
@@ -686,7 +669,6 @@ export default function CustomersPage() {
                                             : 'N/A'}
                                     </TableCell>
                                     <TableCell>{customer.officePhone || customer.sitePhone || customer.phone || 'N/A'}</TableCell>
-                                    <TableCell>{customer.officeFax || customer.siteFax || 'N/A'}</TableCell>
                                     <TableCell className="max-w-[200px] truncate" title={formatCustomerAddress(customer)}>
                                         {formatCustomerAddress(customer)}
                                     </TableCell>

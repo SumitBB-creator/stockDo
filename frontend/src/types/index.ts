@@ -15,6 +15,7 @@ export interface Customer {
     referenceStateCode?: string;
     referenceCountry?: string;
     referencePhone?: string;
+    referencePan?: string;
     pan?: string;
 
     // Office
@@ -62,6 +63,7 @@ export interface CreateCustomerDto {
     referenceStateCode?: string;
     referenceCountry?: string;
     referencePhone?: string;
+    referencePan?: string;
     pan?: string;
 
     officeAddress?: string;
@@ -101,6 +103,7 @@ export interface Employee {
     referenceState?: string;
     referenceCountry?: string;
     referencePhone?: string;
+    referencePan?: string;
     pan?: string;
 
     address?: string;
@@ -128,6 +131,7 @@ export interface CreateEmployeeDto {
     referenceState?: string;
     referenceCountry?: string;
     referencePhone?: string;
+    referencePan?: string;
     pan?: string;
 
     address?: string;
@@ -153,6 +157,7 @@ export interface Supplier {
     referenceState?: string;
     referenceCountry?: string;
     referencePhone?: string;
+    referencePan?: string;
     pan?: string;
 
     address?: string;
@@ -180,6 +185,7 @@ export interface CreateSupplierDto {
     referenceState?: string;
     referenceCountry?: string;
     referencePhone?: string;
+    referencePan?: string;
     pan?: string;
 
     address?: string;

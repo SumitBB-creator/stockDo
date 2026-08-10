@@ -205,6 +205,11 @@ const ReceiptDocument: React.FC<ReceiptDocumentProps> = ({ receipt, company, log
     }
 
     let issuingDate = "";
+    let bankName = "";
+    let branchName = "";
+    let reference = "";
+    let txnMode = "Cash";
+
     if (mainDesc.includes('via ')) {
         const pParts = mainDesc.split('via ');
         let rawPaymentMode = pParts[1]?.trim() || "Cash";
@@ -215,6 +220,25 @@ const ReceiptDocument: React.FC<ReceiptDocumentProps> = ({ receipt, company, log
             rawPaymentMode = rawPaymentMode.replace(issueMatch[0], '').trim();
         }
         
+        const refMatch = rawPaymentMode.match(/\(Ref:\s*(.*?)\)/);
+        if (refMatch) {
+            reference = refMatch[1];
+            rawPaymentMode = rawPaymentMode.replace(refMatch[0], '').trim();
+        }
+
+        if (rawPaymentMode.includes(' to ')) {
+            const toParts = rawPaymentMode.split(' to ');
+            txnMode = toParts[0]?.trim() || "Cash";
+            const bankStr = toParts[1]?.trim() || "";
+            const bankParts = bankStr.split(',').map((s: string) => s.trim());
+            bankName = bankParts[0] || "";
+            if (bankParts.length > 1) {
+                branchName = bankParts.slice(1).join(', ');
+            }
+        } else {
+            txnMode = rawPaymentMode;
+        }
+
         paymentMode = rawPaymentMode.replace(/\s+\(Ref:/, ' (Ref:');
     }
 
@@ -339,15 +363,39 @@ const ReceiptDocument: React.FC<ReceiptDocumentProps> = ({ receipt, company, log
                         </View>
                     )}
 
-                    <View style={styles.bodyRow}>
-                        <Text style={styles.bodyLabel}>Payment Mode:</Text>
-                        <Text style={styles.bodyValue}>{paymentMode}</Text>
-                    </View>
-                    
-                    {issuingDate && (
+                    {txnMode.toUpperCase() !== 'CASH' && txnMode !== '' ? (
+                        <>
+                            <View style={styles.bodyRow}>
+                                <View style={{ flexDirection: 'row', flex: 1 }}>
+                                    <Text style={styles.bodyLabel}>
+                                        {['CHEQUE', 'DD'].includes(txnMode.toUpperCase()) ? 'By Cheque/Draft No :' : 'By Transaction ID :'}
+                                    </Text>
+                                    <Text style={styles.bodyValue}>{reference}</Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', flex: 1 }}>
+                                    <Text style={styles.bodyLabel}>
+                                        {['CHEQUE', 'DD'].includes(txnMode.toUpperCase()) ? 'Issuing Date :' : 'Date :'}
+                                    </Text>
+                                    <Text style={styles.bodyValue}>{issuingDate || formatDate(receipt?.date)}</Text>
+                                </View>
+                            </View>
+                            {(bankName || branchName) && (
+                                <View style={styles.bodyRow}>
+                                    <View style={{ flexDirection: 'row', flex: 1 }}>
+                                        <Text style={styles.bodyLabel}>Bank :</Text>
+                                        <Text style={styles.bodyValue}>{bankName}</Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', flex: 1 }}>
+                                        <Text style={styles.bodyLabel}>Branch :</Text>
+                                        <Text style={styles.bodyValue}>{branchName}</Text>
+                                    </View>
+                                </View>
+                            )}
+                        </>
+                    ) : (
                         <View style={styles.bodyRow}>
-                            <Text style={styles.bodyLabel}>Issuing Date:</Text>
-                            <Text style={styles.bodyValue}>{issuingDate}</Text>
+                            <Text style={styles.bodyLabel}>Payment Mode:</Text>
+                            <Text style={styles.bodyValue}>Cash</Text>
                         </View>
                     )}
 

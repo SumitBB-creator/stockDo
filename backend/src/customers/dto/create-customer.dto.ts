@@ -51,6 +51,10 @@ export class CreateCustomerDto {
 
     @IsString()
     @IsOptional()
+    referencePan?: string;
+
+    @IsString()
+    @IsOptional()
     pan?: string;
 
     @IsEmail()
