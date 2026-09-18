@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { format, isSameMonth, addMonths, subMonths } from 'date-fns';
-import { Search, CalendarIcon, ChevronLeft, ChevronRight, Plus, Eye, Trash2, X } from 'lucide-react';
+import { Search, CalendarIcon, ChevronLeft, ChevronRight, Plus, Eye, Trash2, X, Pencil, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -13,11 +13,14 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { fetchChallans, fetchCustomers, deleteChallan } from '@/lib/api';
+import { fetchChallans, fetchCustomers, deleteChallan, updateChallan } from '@/lib/api';
 import { Autocomplete } from '@/components/ui/autocomplete';
 import { useToast } from "@/components/ui/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { cn, formatCustomerAddress } from "@/lib/utils";
 
 export default function ChallanListPage() {
@@ -29,6 +32,12 @@ export default function ChallanListPage() {
     // Filters
     const [selectedDate, setSelectedDate] = useState<Date | undefined>();
     const [selectedCustomer, setSelectedCustomer] = useState<string>('');
+
+    // Edit Transport Modal
+    const [editingChallan, setEditingChallan] = useState<any>(null);
+    const [eWayBillNo, setEWayBillNo] = useState('');
+    const [biltyNumber, setBiltyNumber] = useState('');
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -67,6 +76,27 @@ export default function ChallanListPage() {
                 variant: "destructive"
             });
             setLoading(false);
+        }
+    };
+
+    const handleEditTransport = (challan: any) => {
+        setEditingChallan(challan);
+        setEWayBillNo(challan.eWayBillNo || '');
+        setBiltyNumber(challan.biltyNumber || '');
+    };
+
+    const handleSaveTransport = async () => {
+        if (!editingChallan) return;
+        setSaving(true);
+        try {
+            await updateChallan(editingChallan.id, { eWayBillNo, biltyNumber });
+            toast({ title: "Success", description: "Transport details updated successfully." });
+            setEditingChallan(null);
+            loadData();
+        } catch (error: any) {
+            toast({ title: "Error", description: error.response?.data?.message || "Failed to update", variant: "destructive" });
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -226,6 +256,15 @@ export default function ChallanListPage() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
+                                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                onClick={() => handleEditTransport(challan)}
+                                                title="Edit Transport Details"
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
                                                 className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                                                 onClick={() => handleDelete(challan.id)}
                                             >
@@ -239,6 +278,50 @@ export default function ChallanListPage() {
                     </TableBody>
                 </Table>
             </div>
+
+            <Dialog open={!!editingChallan} onOpenChange={(open) => !open && setEditingChallan(null)}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Edit Transport Details</DialogTitle>
+                        <DialogDescription>
+                            Update the E-Way Bill Number and Builty Number for this challan.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="eWay" className="text-right">
+                                E-Way Bill No
+                            </Label>
+                            <Input
+                                id="eWay"
+                                value={eWayBillNo}
+                                onChange={(e) => setEWayBillNo(e.target.value)}
+                                className="col-span-3"
+                                placeholder="Enter E-Way Bill No"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="builty" className="text-right">
+                                Builty No
+                            </Label>
+                            <Input
+                                id="builty"
+                                value={biltyNumber}
+                                onChange={(e) => setBiltyNumber(e.target.value)}
+                                className="col-span-3"
+                                placeholder="Enter Builty No"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setEditingChallan(null)}>Cancel</Button>
+                        <Button type="button" onClick={handleSaveTransport} disabled={saving}>
+                            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Save changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

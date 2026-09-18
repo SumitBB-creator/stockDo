@@ -73,14 +73,14 @@ const formSchema = z.object({
         maxQuantity: z.number().optional(), // For validation display
     }))
     .transform(items => items.filter(item => 
-        (item.materialId && item.materialId.trim() !== "") || 
         (item.quantity || 0) > 0 || 
         (item.shortQuantity || 0) > 0 || 
-        (item.damageQuantity || 0) > 0
+        (item.damageQuantity || 0) > 0 ||
+        (item.frozenQuantity || 0) > 0
     ))
     .refine(items => items.length > 0, { message: "At least one item is required" })
     .refine(items => items.every(item => item.materialId && item.materialId.trim() !== ""), { message: "Material is required for all entered items" })
-    .refine(items => items.every(item => ((item.quantity || 0) + (item.shortQuantity || 0) + (item.frozenQuantity || 0)) > 0), { message: "Total quantity per item must be greater than 0" }),
+    .refine(items => items.every(item => ((item.quantity || 0) + (item.shortQuantity || 0) + (item.damageQuantity || 0) + (item.frozenQuantity || 0)) > 0), { message: "Total quantity per item must be greater than 0" }),
 });
 
 export default function CreateReturnPage() {
@@ -127,13 +127,31 @@ export default function CreateReturnPage() {
         name: "items",
     });
 
-    const handleAppendItem = (item: any) => {
-        const newIndex = form.getValues('items').length;
-        append(item);
+    const handleAppendItem = () => {
+        const currentItems = form.getValues('items') || [];
+        const usedMaterialIds = currentItems.map(item => item.materialId).filter(Boolean);
+        
+        const nextPending = customerStock.find((s: any) => s.quantity > 0 && !usedMaterialIds.includes(s.materialId));
+        
+        const newItem = { 
+            materialId: nextPending ? nextPending.materialId : '', 
+            quantity: undefined,
+            damageQuantity: undefined,
+            shortQuantity: undefined,
+            frozenQuantity: undefined,
+            maxQuantity: nextPending ? nextPending.quantity : undefined
+        };
+
+        const newIndex = currentItems.length;
+        append(newItem);
+        
         setTimeout(() => {
-            const comboboxBtn = document.getElementById(`material-combobox-${newIndex}`);
-            if (comboboxBtn) {
-                comboboxBtn.focus();
+            if (nextPending) {
+                const qtyInput = document.querySelector(`input[name="items.${newIndex}.quantity"]`) as HTMLElement;
+                if (qtyInput) qtyInput.focus();
+            } else {
+                const comboboxBtn = document.getElementById(`material-combobox-${newIndex}`);
+                if (comboboxBtn) comboboxBtn.focus();
             }
         }, 50);
     };
@@ -176,12 +194,29 @@ export default function CreateReturnPage() {
             setCustomerStock(stock);
 
             // Transform for Combobox
-            setAvailableMaterials(stock.map((s: any) => ({
+            const materials = stock.map((s: any) => ({
                 value: s.materialId,
                 label: `${s.materialName} (Qty: ${s.quantity})`,
                 subLabel: `Available: ${s.quantity}`,
                 maxQty: s.quantity
-            })));
+            }));
+            setAvailableMaterials(materials);
+
+            // Auto-select first material if available and items is empty
+            const currentItems = form.getValues("items") || [];
+            if (currentItems.length === 0 && stock.length > 0) {
+                const firstPending = stock.find((s: any) => s.quantity > 0);
+                if (firstPending) {
+                    form.setValue("items", [{
+                        materialId: firstPending.materialId,
+                        quantity: undefined,
+                        damageQuantity: undefined,
+                        shortQuantity: undefined,
+                        frozenQuantity: undefined,
+                        maxQuantity: firstPending.quantity
+                    }]);
+                }
+            }
 
             // Auto-select latest active agreement if possible, or just filter agreements
         } catch (error) {
@@ -433,7 +468,7 @@ export default function CreateReturnPage() {
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleAppendItem({ materialId: '', quantity: 0 })}
+                                onClick={() => handleAppendItem()}
                                 disabled={!watchCustomerId || availableMaterials.length === 0}
                             >
                                 <Plus className="mr-2 h-4 w-4" /> Add Item
@@ -580,7 +615,7 @@ export default function CreateReturnPage() {
                                                                             if (e.key === 'Tab' && !e.shiftKey && index === fields.length - 1) {
                                                                                 const matId = form.getValues(`items.${index}.materialId`);
                                                                                 if (matId) {
-                                                                                    handleAppendItem({ materialId: '', quantity: 0 });
+                                                                                    handleAppendItem();
                                                                                 }
                                                                             }
                                                                         }}
