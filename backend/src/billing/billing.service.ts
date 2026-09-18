@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { startOfDay, addDays, isBefore, differenceInDays, format } from 'date-fns';
+import { startOfDay, endOfDay, addDays, isBefore, differenceInDays, format } from 'date-fns';
 
 @Injectable()
 export class BillingService {
@@ -283,7 +283,7 @@ export class BillingService {
      */
     async generateBillCustomRange(customerId: string, fromDate: Date, toDate: Date) {
         const startDate = new Date(fromDate);
-        const endDate = new Date(toDate);
+        const endDate = endOfDay(new Date(toDate));
 
         const agreement = await this.prisma.agreement.findFirst({
             where: { customerId, status: 'Active' },
@@ -382,7 +382,7 @@ export class BillingService {
         if (!hasOpeningStock) {
             const firstChallanInPeriod = challans.find(c => !isBefore(new Date(c.date), startDate) && new Date(c.date) <= endDate);
             if (firstChallanInPeriod) {
-                actualStartDate = new Date(firstChallanInPeriod.date);
+                actualStartDate = startOfDay(new Date(firstChallanInPeriod.date));
             }
         }
 
