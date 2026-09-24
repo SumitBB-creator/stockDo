@@ -497,6 +497,9 @@ model Bill {
   greenTaxCount       Int?   @default(0) @map("green_tax_count")
   greenTax            Float? @default(0) @map("green_tax")
 
+  advanceAmount       Float? @default(0) @map("advance_amount")
+  preBalance          Float? @default(0) @map("pre_balance")
+
   // GST Fields
   gstType    String? @map("gst_type") // "IGST" or "CGST_SGST"
   gstRate    Float   @default(18) @map("gst_rate") // 18%
@@ -549,6 +552,7 @@ model Transaction {
   amount Float // Absolute amount
 
   referenceId       String? @map("reference_id") // ID of Bill or Challan or Payment Record
+  linkedBillId      String? @map("linked_bill_id") // ID of Bill adjusting this receipt
   transactionNumber String? @unique @map("transaction_number") // Auto-generated e.g. R-0001
   description       String?
 

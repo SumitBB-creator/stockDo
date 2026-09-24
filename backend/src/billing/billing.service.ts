@@ -267,6 +267,18 @@ export class BillingService {
         const greenTax = challans.reduce((sum, c) => sum + (c.greenTax || 0), 0);
         const greenTaxCount = challans.filter(c => c.greenTax && c.greenTax > 0).length;
 
+        const customerRec = await this.prisma.customer.findUnique({ where: { id: customerId } });
+        const ledgerAccountId = customerRec?.ledgerAccountId || customerId;
+        const advanceReceipts = await this.prisma.transaction.findMany({
+            where: {
+                ledgerAccountId,
+                type: 'RECEIPT',
+                date: { gte: startDate, lte: toDate },
+                linkedBillId: null
+            }
+        });
+        const advanceAmount = advanceReceipts.reduce((sum, t) => sum + t.amount, 0);
+
         return {
             customerId,
             ...periodData,
@@ -274,6 +286,8 @@ export class BillingService {
             transportationCount,
             greenTax,
             greenTaxCount,
+            advanceAmount,
+            advanceReceiptIds: advanceReceipts.map(r => r.id),
             generatedAt: new Date(),
         };
     }
@@ -319,6 +333,18 @@ export class BillingService {
         const greenTax = challans.reduce((sum, c) => sum + (c.greenTax || 0), 0);
         const greenTaxCount = challans.filter(c => c.greenTax && c.greenTax > 0).length;
 
+        const customerRec = await this.prisma.customer.findUnique({ where: { id: customerId } });
+        const ledgerAccountId = customerRec?.ledgerAccountId || customerId;
+        const advanceReceipts = await this.prisma.transaction.findMany({
+            where: {
+                ledgerAccountId,
+                type: 'RECEIPT',
+                date: { gte: startDate, lte: endDate },
+                linkedBillId: null
+            }
+        });
+        const advanceAmount = advanceReceipts.reduce((sum, t) => sum + t.amount, 0);
+
         return {
             customerId,
             ...periodData,
@@ -326,6 +352,8 @@ export class BillingService {
             transportationCount,
             greenTax,
             greenTaxCount,
+            advanceAmount,
+            advanceReceiptIds: advanceReceipts.map(r => r.id),
             generatedAt: new Date(),
         };
     }
@@ -344,6 +372,8 @@ export class BillingService {
             transportationCount: preview.transportationCount,
             greenTax: preview.greenTax,
             greenTaxCount: preview.greenTaxCount,
+            advanceAmount: preview.advanceAmount,
+            advanceReceiptIds: preview.advanceReceiptIds,
             items: preview.items,
         });
     }
@@ -483,6 +513,23 @@ export class BillingService {
                             activePeriods.set(materialId, { fromDate: new Date(currentDate), balance: newBalance, description });
                         } else {
                             activePeriods.delete(materialId);
+                            // Explicitly push the 0 balance row for informational purposes
+                            const rateInfo = rates.get(materialId);
+                            billItems.push({
+                                materialId,
+                                materialName: rateInfo?.name || 'Unknown',
+                                challanNumber: '',
+                                description,
+                                hsn: rateInfo?.hsn || rateInfo?.sac || '',
+                                fromDate: new Date(currentDate),
+                                toDate: new Date(currentDate),
+                                balance: 0,
+                                days: 0,
+                                quantityDays: 0,
+                                rate: rateInfo?.rate || 0,
+                                amount: 0,
+                                unit: rateInfo?.unit || 'Nos/Days'
+                            });
                         }
 
                         stockState.set(materialId, newBalance);
@@ -531,6 +578,8 @@ export class BillingService {
                     transportationCount: preview.transportationCount,
                     greenTax: preview.greenTax,
                     greenTaxCount: preview.greenTaxCount,
+                    advanceAmount: preview.advanceAmount,
+                    advanceReceiptIds: preview.advanceReceiptIds,
                     items: preview.items,
                 });
                 results.push({ customerId, success: true, bill });
@@ -609,6 +658,7 @@ export class BillingService {
                     sgst,
                     igst,
                     grandTotal,
+                    advanceAmount: data.advanceAmount || 0,
                     status: 'FINALIZED',
                     items: {
                         create: data.items.map((item: any) => ({
@@ -639,6 +689,13 @@ export class BillingService {
                     description: `Generated Bill #${billNumber} for period ${format(new Date(data.dateFrom), 'dd/MM/yyyy')} to ${format(new Date(data.dateTo), 'dd/MM/yyyy')}`
                 }
             });
+
+            if (data.advanceReceiptIds && data.advanceReceiptIds.length > 0) {
+                await tx.transaction.updateMany({
+                    where: { id: { in: data.advanceReceiptIds } },
+                    data: { linkedBillId: bill.id }
+                });
+            }
 
             return bill;
         });
@@ -674,3 +731,10 @@ export class BillingService {
         });
     }
 }
+
+
+
+
+
+
+

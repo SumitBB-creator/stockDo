@@ -7,7 +7,8 @@ const styles = StyleSheet.create({
     page: {
         flexDirection: 'column',
         backgroundColor: '#FFFFFF',
-        padding: 30,
+        paddingTop: 40,
+        paddingHorizontal: 10,
         fontFamily: 'Helvetica',
         fontSize: 9,
         color: '#333333',
@@ -238,7 +239,7 @@ const styles = StyleSheet.create({
     pageNumber: {
         position: 'absolute',
         fontSize: 9,
-        bottom: 20,
+        bottom: 70,
         left: 0,
         right: 0,
         textAlign: 'center',
@@ -258,8 +259,10 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
 
     return (
         <Document>
-            <Page size="A4" style={styles.page}>
-                <View style={styles.pageBorder}>
+            <Page size="A4" style={[styles.page, { paddingBottom: 250, backgroundColor: '#ffffff' }]}>
+                <View fixed style={{ position: 'absolute', top: 30, bottom: 50, left: 10, right: 10, borderWidth: 1, borderColor: '#4B5563', borderRadius: 4, zIndex: -1 }} />
+                <View style={{ padding: 10 }}>
+                <View fixed>
                 {/* Top Info Bar */}
                 <View style={{
                     flexDirection: 'row',
@@ -541,8 +544,11 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                     </View>
                 </View>
 
+                </View>
+                </View>
+
                 {/* Notes and Footer Wrapped Together so they don't split across pages */}
-                <View wrap={false}>
+                <View fixed style={{ position: 'absolute', bottom: 90, left: 20, right: 20, height: 140 }}>
                     {/* Notes Section */}
                     <View style={styles.notesSection}>
                         <Text style={styles.notesTitle}>Notes :</Text>
@@ -607,7 +613,6 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                             </View>
                         </View>
                     </View>
-                </View>
                 </View>
                 <Text 
                     style={styles.pageNumber} 
