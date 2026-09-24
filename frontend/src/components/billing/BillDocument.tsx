@@ -527,7 +527,7 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
         <View style={styles.footer} fixed>
             <View style={styles.terms}>
                 <Text style={styles.sectionTitle}>Terms & Conditions</Text>
-                <Text style={styles.termItem}>1. Payment is due within 15 days from the date of bill.</Text>
+                <Text style={styles.termItem}>1. E. & O. E Interest @24% per annum will be charged if the bill is not paid within 15 days from the date of presentation.</Text>
                 <Text style={styles.termItem}>2. Rates as per agreement.</Text>
                 <Text style={styles.termItem}>3. Subject to jurisdiction of local courts.</Text>
             </View>
