@@ -1,6 +1,7 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import { format } from 'date-fns';
+import { toWords } from '@/lib/utils';
 
 const styles = StyleSheet.create({
     page: {
@@ -177,12 +178,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#F9FAFB',
     },
     totalLabel: {
-        fontSize: 11,
+        fontSize: 10,
         fontFamily: 'Helvetica-Bold',
         color: '#111827',
     },
     totalAmount: {
-        fontSize: 12,
+        fontSize: 10,
         fontFamily: 'Helvetica-Bold',
         color: '#111827',
     },
@@ -511,6 +512,12 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                 <Text style={[styles.colRate, styles.totalLabel, { width: '40%' }]}>GRAND TOTAL (Bill Amount After Tax)</Text>
                 <Text style={[styles.colAmount, styles.totalAmount, { width: '15%' }]}>
                     {Math.max(0, (bill.grandTotal || bill.totalAmount) + (bill.preBalance || 0) - (bill.advanceAmount || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </Text>
+            </View>
+            <View style={{ paddingVertical: 8, paddingHorizontal: 10, flexDirection: 'row', justifyContent: 'flex-end', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
+                <Text style={{ fontFamily: 'Helvetica-Bold', color: '#111827', fontSize: 10 }}>Amount in Words : </Text>
+                <Text style={{ fontFamily: 'Helvetica-Bold', color: '#111827', fontSize: 10, marginLeft: 5, textTransform: 'capitalize' }}>
+                    {toWords(Math.round(Math.max(0, (bill.grandTotal || bill.totalAmount) + (bill.preBalance || 0) - (bill.advanceAmount || 0))))} Rupees Only
                 </Text>
             </View>
         </View>
