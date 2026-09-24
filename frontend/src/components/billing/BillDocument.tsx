@@ -6,8 +6,8 @@ const styles = StyleSheet.create({
     page: {
         flexDirection: 'column',
         backgroundColor: '#FFFFFF',
-        paddingTop: 40,
-        paddingHorizontal: 10,
+        paddingTop: 30,
+        
         fontFamily: 'Helvetica',
         fontSize: 10,
         color: '#333333',
@@ -22,7 +22,7 @@ const styles = StyleSheet.create({
     header: {
         marginBottom: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        borderBottomColor: '#4B5563',
         paddingBottom: 10,
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         paddingBottom: 5,
         borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        borderBottomColor: '#4B5563',
         color: '#111827',
     },
     section: {
@@ -199,9 +199,9 @@ const styles = StyleSheet.create({
     footer: {
         position: 'absolute',
         bottom: 90,
-        left: 20,
-        right: 20,
-        height: 100,
+        left: 40,
+        right: 40,
+        height: 85,
         borderTopWidth: 1,
         borderTopColor: '#000000',
         paddingTop: 10,
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     pageNumber: {
         position: 'absolute',
         fontSize: 10,
-        bottom: 70,
+        bottom: 85,
         left: 0,
         right: 0,
         textAlign: 'center',
@@ -256,9 +256,8 @@ interface BillDocumentProps {
 }
 
 export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }) => (
-    <Page size="A4" style={[styles.page, { paddingBottom: 210, backgroundColor: '#ffffff' }]}>
-                <View fixed style={{ position: 'absolute', top: 30, bottom: 50, left: 10, right: 10, borderWidth: 1, borderColor: '#4B5563', borderRadius: 4, zIndex: -1 }} />
-                <View style={{ padding: 10 }}>
+    <Page size="A4" style={[styles.page, { paddingBottom: 180, backgroundColor: '#ffffff' }]}>
+                <View style={{ paddingHorizontal: 40, paddingTop: 10 }}>
                 <View fixed>
                 {/* Top Info Bar */}
                 <View style={{
@@ -304,7 +303,7 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
         {/* Customer & Meta Info */}
         <View style={styles.section}>
             <View style={styles.customerSection}>
-                <Text style={styles.sectionTitle}>Bill To</Text>
+                <Text style={styles.sectionTitle}>Bill To (Office Address)</Text>
                 <Text style={styles.customerName}>{bill.customer?.name}</Text>
                 {(() => {
                     const customer = bill.customer;
@@ -332,16 +331,22 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                         <>
                             <Text style={styles.text}>{formattedBillAddress}</Text>
                             {customer.officeGst && <Text style={styles.text}>GSTIN: {customer.officeGst}</Text>}
+                            <Text style={styles.text}>
+                                STATE NAME : {(customer.officeState || '').toUpperCase()} / STATE CODE : {customer.officeStateCode || (customer.officeGst || '').substring(0, 2)}
+                            </Text>
                             
                             {(customer.siteAddress || customer.siteCity) && (
                                 <View style={{ marginTop: 10 }}>
-                                    <Text style={[styles.text, { fontFamily: 'Helvetica-Bold', textDecoration: 'underline' }]}>Site Address :</Text>
+                                    <Text style={[styles.text, { fontFamily: 'Helvetica-Bold', textDecoration: 'underline' }]}>Shipped To (Site Address) :</Text>
                                     <Text style={[styles.text, { fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', marginTop: 2 }]}>{customer.name}</Text>
                                     <Text style={styles.text}>{formattedSiteAddress}</Text>
                                     <Text style={styles.text}>Email : {customer.siteEmail || customer.officeEmail || ''}</Text>
                                     <Text style={[styles.text, { marginTop: 4 }]}>
                                         <Text style={{ fontFamily: 'Helvetica-Bold' }}>GSTIN/UIN : </Text>
                                         {customer.siteGst || customer.officeGst || ''}
+                                    </Text>
+                                    <Text style={styles.text}>
+                                        STATE NAME : {(customer.siteState || customer.officeState || '').toUpperCase()} / STATE CODE : {customer.siteStateCode || customer.officeStateCode || (customer.siteGst || customer.officeGst || '').substring(0, 2)}
                                     </Text>
                                 </View>
                             )}

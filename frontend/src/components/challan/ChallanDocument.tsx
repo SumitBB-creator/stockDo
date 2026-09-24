@@ -8,7 +8,7 @@ const styles = StyleSheet.create({
         flexDirection: 'column',
         backgroundColor: '#FFFFFF',
         paddingTop: 40,
-        paddingHorizontal: 10,
+        
         fontFamily: 'Helvetica',
         fontSize: 9,
         color: '#333333',
@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
     header: {
         marginBottom: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        borderBottomColor: '#4B5563',
         paddingBottom: 10,
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     pageNumber: {
         position: 'absolute',
         fontSize: 9,
-        bottom: 70,
+        bottom: 85,
         left: 0,
         right: 0,
         textAlign: 'center',
@@ -260,8 +260,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
     return (
         <Document>
             <Page size="A4" style={[styles.page, { paddingBottom: 250, backgroundColor: '#ffffff' }]}>
-                <View fixed style={{ position: 'absolute', top: 30, bottom: 50, left: 10, right: 10, borderWidth: 1, borderColor: '#4B5563', borderRadius: 4, zIndex: -1 }} />
-                <View style={{ padding: 10 }}>
+                <View style={{ paddingHorizontal: 40, paddingTop: 10 }}>
                 <View fixed>
                 {/* Top Info Bar */}
                 <View style={{
@@ -319,7 +318,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                 </View>
 
                 {/* Customer & Meta Info */}
-                <View style={[styles.section, { borderBottomWidth: 1, borderBottomColor: '#E5E7EB', paddingBottom: 10, marginBottom: 10 }]}>
+                <View style={[styles.section, { borderBottomWidth: 1, borderBottomColor: '#4B5563', paddingBottom: 10, marginBottom: 10 }]}>
                     <View style={styles.customerSection}>
                         <Text style={styles.underlinedTitle}>Details of Cosignee (Shiped To) :</Text>
                         <Text style={[styles.customerName, { textTransform: 'uppercase', fontSize: 9, marginBottom: 4 }]}>
@@ -355,7 +354,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                         </View>
 
                         <Text style={[styles.customerName, { fontSize: 9, marginTop: 4, color: '#6B7280' }]}>
-                            STATE NAME : {(challan.customer?.siteState || challan.customer?.officeState || '').toUpperCase()} / STATE CODE : {(challan.customer?.siteGst || challan.customer?.officeGst || '').substring(0, 2)}
+                            STATE NAME : {(challan.customer?.siteState || challan.customer?.officeState || '').toUpperCase()} / STATE CODE : {challan.customer?.siteStateCode || challan.customer?.officeStateCode || (challan.customer?.siteGst || challan.customer?.officeGst || '').substring(0, 2)}
                         </Text>
                     </View>
                     <View style={styles.metaSection}>
@@ -548,7 +547,7 @@ const ChallanDocument: React.FC<ChallanDocumentProps> = ({ challan, company, log
                 </View>
 
                 {/* Notes and Footer Wrapped Together so they don't split across pages */}
-                <View fixed style={{ position: 'absolute', bottom: 90, left: 20, right: 20, height: 140 }}>
+                <View fixed style={{ position: 'absolute', bottom: 90, left: 40, right: 40, height: 140 }}>
                     {/* Notes Section */}
                     <View style={styles.notesSection}>
                         <Text style={styles.notesTitle}>Notes :</Text>
