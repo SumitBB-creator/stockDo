@@ -226,6 +226,13 @@ const styles = StyleSheet.create({
     terms: {
         width: '55%',
     },
+    sectionTitle: {
+        fontSize: 10,
+        fontFamily: 'Helvetica-Bold',
+        color: '#111827',
+        textTransform: 'uppercase',
+        marginBottom: 5,
+    },
     signature: {
         width: '35%',
         alignItems: 'flex-end',
