@@ -277,27 +277,21 @@ interface BillDocumentProps {
 }
 
 export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }) => (
-    <Page size="A4" style={[styles.page, { paddingBottom: 180, backgroundColor: '#ffffff' }]}>
+    <Page size="A4" style={[styles.page, { paddingBottom: 220, backgroundColor: '#ffffff' }]}>
         <View style={{ paddingHorizontal: 40, paddingTop: 10 }}>
             <View fixed>
                 {/* Top Info Bar */}
                 <View style={{
                     flexDirection: 'row',
-                    justifyContent: 'space-between',
+                    justifyContent: 'center',
                     alignItems: 'center',
                     padding: 4,
                     borderBottomWidth: 1,
                     borderBottomColor: '#000000',
                     marginBottom: 10,
                 }}>
-                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
-                        (GSTIN/UIN : {company?.gstin || ''})
-                    </Text>
                     <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
                         TAX INVOICE
-                    </Text>
-                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
-                        (PAN No : {company?.pan || ''})
                     </Text>
                 </View>
                 {/* Header */}
@@ -311,6 +305,7 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                         <Text style={styles.companyAddress}>{company?.city ? `${company.city}, ` : ''}{company?.state} {company?.pin ? `- ${company.pin}` : ''}</Text>
                         {company?.phone && <Text style={styles.companyAddress}>Phone: {company.phone}</Text>}
                         {company?.email && <Text style={styles.companyAddress}>Email: {company.email}</Text>}
+                        <Text style={styles.companyAddress}>GSTIN/UIN : {company?.gstin || ''} | PAN No : {company?.pan || ''}</Text>
                     </View>
                     <View style={styles.headerRight}>
                         {logoUrl && (
@@ -351,20 +346,22 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                                         <View style={styles.sectionHeader}>
                                             <Text style={styles.sectionHeaderText}>BILLED TO (OFFICE ADDRESS)</Text>
                                         </View>
-                                        <View style={{ padding: 10, paddingTop: 6, flex: 1, justifyContent: 'space-between' }}>
+                                        <View style={{ padding: 10, paddingTop: 6 }}>
                                             <View>
                                                 <Text style={styles.customerName}>{customer.name}</Text>
                                                 <Text style={styles.text}>{formattedBillAddress}</Text>
                                             </View>
-                                            <View style={{ flexDirection: 'row', backgroundColor: '#EFF6FF', paddingVertical: 4, paddingHorizontal: 6, borderRadius: 4, marginTop: 6, alignItems: 'center' }}>
-                                                <Text style={[styles.text, { marginBottom: 0, fontFamily: 'Helvetica-Bold' }]}>GSTIN/UIN</Text>
-                                                <Text style={[styles.text, { marginBottom: 0, marginLeft: 12 }]}>{customer.officeGst || 'URP'}</Text>
-                                                <Text style={[styles.text, { marginBottom: 0, marginHorizontal: 12, color: '#9CA3AF' }]}>|</Text>
-                                                <Text style={[styles.text, { marginBottom: 0, fontFamily: 'Helvetica-Bold' }]}>STATE NAME</Text>
-                                                <Text style={[styles.text, { marginBottom: 0, marginLeft: 12 }]}>{(customer.officeState || '').toUpperCase()}</Text>
-                                                <Text style={[styles.text, { marginBottom: 0, marginHorizontal: 12, color: '#9CA3AF' }]}>|</Text>
-                                                <Text style={[styles.text, { marginBottom: 0, fontFamily: 'Helvetica-Bold' }]}>STATE CODE</Text>
-                                                <Text style={[styles.text, { marginBottom: 0, marginLeft: 12 }]}>{customer.officeStateCode || (customer.officeGst ? customer.officeGst.substring(0, 2) : '07')}</Text>
+                                            <View style={{ backgroundColor: '#EFF6FF', paddingVertical: 4, paddingHorizontal: 6, borderRadius: 4, marginTop: 6, justifyContent: 'center' }}>
+                                                <Text style={[styles.text, { marginBottom: 0 }]}>
+                                                    <Text style={{ fontFamily: 'Helvetica-Bold' }}>GSTIN/UIN: </Text>
+                                                    {customer.officeGst || 'URP'}
+                                                    <Text style={{ color: '#9CA3AF' }}> | </Text>
+                                                    <Text style={{ fontFamily: 'Helvetica-Bold' }}>STATE NAME: </Text>
+                                                    {(customer.officeState || '').toUpperCase()}
+                                                    <Text style={{ color: '#9CA3AF' }}> | </Text>
+                                                    <Text style={{ fontFamily: 'Helvetica-Bold' }}>STATE CODE: </Text>
+                                                    {customer.officeStateCode || (customer.officeGst ? customer.officeGst.substring(0, 2) : '07')}
+                                                </Text>
                                             </View>
                                         </View>
                                     </View>
@@ -398,7 +395,7 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                                                 <View style={styles.sectionHeader}>
                                                     <Text style={styles.sectionHeaderText}>SHIPPED TO (SITE ADDRESS)</Text>
                                                 </View>
-                                                <View style={{ padding: 10, paddingTop: 6, flex: 1, justifyContent: 'space-between' }}>
+                                                <View style={{ padding: 10, paddingTop: 6 }}>
                                                     <View>
                                                         <Text style={[styles.customerName, { textTransform: 'uppercase' }]}>{customer.name}</Text>
                                                         <Text style={styles.text}>{formattedSiteAddress}</Text>
@@ -406,15 +403,17 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                                                             <Text style={styles.text}>Email : {customer.siteEmail || customer.officeEmail}</Text>
                                                         )}
                                                     </View>
-                                                    <View style={{ flexDirection: 'row', backgroundColor: '#EFF6FF', paddingVertical: 4, paddingHorizontal: 6, borderRadius: 4, marginTop: 6, alignItems: 'center' }}>
-                                                        <Text style={[styles.text, { marginBottom: 0, fontFamily: 'Helvetica-Bold' }]}>GSTIN/UIN</Text>
-                                                        <Text style={[styles.text, { marginBottom: 0, marginLeft: 12 }]}>{customer.siteGst || customer.officeGst || 'URP'}</Text>
-                                                        <Text style={[styles.text, { marginBottom: 0, marginHorizontal: 12, color: '#9CA3AF' }]}>|</Text>
-                                                        <Text style={[styles.text, { marginBottom: 0, fontFamily: 'Helvetica-Bold' }]}>STATE NAME</Text>
-                                                        <Text style={[styles.text, { marginBottom: 0, marginLeft: 12 }]}>{(customer.siteState || customer.officeState || '').toUpperCase()}</Text>
-                                                        <Text style={[styles.text, { marginBottom: 0, marginHorizontal: 12, color: '#9CA3AF' }]}>|</Text>
-                                                        <Text style={[styles.text, { marginBottom: 0, fontFamily: 'Helvetica-Bold' }]}>STATE CODE</Text>
-                                                        <Text style={[styles.text, { marginBottom: 0, marginLeft: 12 }]}>{customer.siteStateCode || customer.officeStateCode || ((customer.siteGst || customer.officeGst) ? (customer.siteGst || customer.officeGst).substring(0, 2) : '07')}</Text>
+                                                    <View style={{ backgroundColor: '#EFF6FF', paddingVertical: 4, paddingHorizontal: 6, borderRadius: 4, marginTop: 6, justifyContent: 'center' }}>
+                                                        <Text style={[styles.text, { marginBottom: 0 }]}>
+                                                            <Text style={{ fontFamily: 'Helvetica-Bold' }}>GSTIN/UIN: </Text>
+                                                            {customer.siteGst || customer.officeGst || 'URP'}
+                                                            <Text style={{ color: '#9CA3AF' }}> | </Text>
+                                                            <Text style={{ fontFamily: 'Helvetica-Bold' }}>STATE NAME: </Text>
+                                                            {(customer.siteState || customer.officeState || '').toUpperCase()}
+                                                            <Text style={{ color: '#9CA3AF' }}> | </Text>
+                                                            <Text style={{ fontFamily: 'Helvetica-Bold' }}>STATE CODE: </Text>
+                                                            {customer.siteStateCode || customer.officeStateCode || ((customer.siteGst || customer.officeGst) ? (customer.siteGst || customer.officeGst).substring(0, 2) : '07')}
+                                                        </Text>
                                                     </View>
                                                 </View>
                                             </>
@@ -472,39 +471,39 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                         </Text>
                         <Text style={[styles.colParticulars, styles.cellText]}>{item.description}</Text>
                         <Text style={[styles.colHsn, styles.cellText]}>{item.hsn || ''}</Text>
-                        <Text style={[styles.colBalance, styles.cellText]}>{item.balance || ''}</Text>
-                        <Text style={[styles.colDays, styles.cellText]}>{item.days || ''}</Text>
-                        <Text style={[styles.colNo, styles.cellText]}>{item.quantity || ''}</Text>
+                        <Text style={[styles.colBalance, styles.cellText]}>{item.balance ?? ''}</Text>
+                        <Text style={[styles.colDays, styles.cellText]}>{item.days ?? ''}</Text>
+                        <Text style={[styles.colNo, styles.cellText]}>{item.quantity ?? ''}</Text>
                         <Text style={[styles.colRate, styles.cellText]}>{item.rate?.toFixed(2)}</Text>
                         <Text style={[styles.colAmount, styles.cellText]}>{item.amount?.toFixed(2)}</Text>
                     </View>
                 ))}
                 {/* Calculation Breakdown Rows */}
                 <View style={{ flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E5E7EB', backgroundColor: '#e5e7eb' }}>
-                    <Text style={{ width: '45%' }}></Text>
-                    <Text style={[styles.colRate, styles.cellText, { width: '40%', color: '#111827', fontFamily: 'Helvetica-Bold' }]}>Total Bill Amount (Hire Charge)</Text>
+                    <Text style={{ width: '35%' }}></Text>
+                    <Text style={[styles.colRate, styles.cellText, { width: '50%', color: '#111827', fontFamily: 'Helvetica-Bold' }]}>Total Bill Amount (Hire Charge)</Text>
                     <Text style={[styles.colAmount, styles.cellText, { width: '15%', color: '#111827', fontFamily: 'Helvetica-Bold' }]}>
                         {bill.totalAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </Text>
                 </View>
                 <View style={{ flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E5E7EB', backgroundColor: '#e5e7eb' }}>
-                    <Text style={{ width: '45%' }}></Text>
-                    <Text style={[styles.colRate, styles.cellText, { width: '40%', color: '#111827', fontFamily: 'Helvetica-Bold' }]}>Transportation ( {bill.transportationCount || 0} )</Text>
+                    <Text style={{ width: '35%' }}></Text>
+                    <Text style={[styles.colRate, styles.cellText, { width: '50%', color: '#111827', fontFamily: 'Helvetica-Bold' }]}>Transportation ( {bill.transportationCount || 0} )</Text>
                     <Text style={[styles.colAmount, styles.cellText, { width: '15%', color: '#111827', fontFamily: 'Helvetica-Bold' }]}>
                         {(bill.transportationCost || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </Text>
                 </View>
                 <View wrap={false}>
                     <View style={{ flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E5E7EB', backgroundColor: '#e5e7eb' }}>
-                        <Text style={{ width: '45%' }}></Text>
-                        <Text style={[styles.colRate, styles.cellText, { width: '40%', color: '#111827', fontFamily: 'Helvetica-Bold' }]}>Green Tax ( {bill.greenTaxCount || 0} )</Text>
+                        <Text style={{ width: '35%' }}></Text>
+                        <Text style={[styles.colRate, styles.cellText, { width: '50%', color: '#111827', fontFamily: 'Helvetica-Bold' }]}>Green Tax ( {bill.greenTaxCount || 0} )</Text>
                         <Text style={[styles.colAmount, styles.cellText, { width: '15%', color: '#111827', fontFamily: 'Helvetica-Bold' }]}>
                             {(bill.greenTax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </Text>
                     </View>
                     <View style={{ flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E5E7EB', backgroundColor: '#e5e7eb' }}>
-                        <Text style={{ width: '45%' }}></Text>
-                        <Text style={[styles.colRate, styles.cellText, { width: '40%', color: '#111827', fontFamily: 'Helvetica-Bold' }]}>
+                        <Text style={{ width: '35%' }}></Text>
+                        <Text style={[styles.colRate, styles.cellText, { width: '50%', color: '#111827', fontFamily: 'Helvetica-Bold' }]}>
                             Total + Transportation + Green Tax (Before Tax Amount)
                         </Text>
                         <Text style={[styles.colAmount, styles.cellText, { width: '15%', color: '#111827', fontFamily: 'Helvetica-Bold' }]}>
@@ -516,15 +515,15 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                 {bill.gstType === 'CGST_SGST' ? (
                     <>
                         <View style={{ flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
-                            <Text style={{ width: '45%' }}></Text>
-                            <Text style={[styles.colRate, styles.cellText, { width: '40%', fontFamily: 'Helvetica-Bold' }]}>CGST @ {(bill.gstRate || 18) / 2}%:</Text>
+                            <Text style={{ width: '35%' }}></Text>
+                            <Text style={[styles.colRate, styles.cellText, { width: '50%', fontFamily: 'Helvetica-Bold' }]}>CGST @ {(bill.gstRate || 18) / 2}%:</Text>
                             <Text style={[styles.colAmount, styles.cellText, { width: '15%', fontFamily: 'Helvetica-Bold' }]}>
                                 {bill.cgst?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </Text>
                         </View>
                         <View style={{ flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
-                            <Text style={{ width: '45%' }}></Text>
-                            <Text style={[styles.colRate, styles.cellText, { width: '40%', fontFamily: 'Helvetica-Bold' }]}>SGST @ {(bill.gstRate || 18) / 2}%:</Text>
+                            <Text style={{ width: '35%' }}></Text>
+                            <Text style={[styles.colRate, styles.cellText, { width: '50%', fontFamily: 'Helvetica-Bold' }]}>SGST @ {(bill.gstRate || 18) / 2}%:</Text>
                             <Text style={[styles.colAmount, styles.cellText, { width: '15%', fontFamily: 'Helvetica-Bold' }]}>
                                 {bill.sgst?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </Text>
@@ -532,8 +531,8 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
                     </>
                 ) : bill.gstType === 'IGST' ? (
                     <View style={{ flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
-                        <Text style={{ width: '45%' }}></Text>
-                        <Text style={[styles.colRate, styles.cellText, { width: '40%', fontFamily: 'Helvetica-Bold' }]}>IGST @ {bill.gstRate || 18}%:</Text>
+                        <Text style={{ width: '35%' }}></Text>
+                        <Text style={[styles.colRate, styles.cellText, { width: '50%', fontFamily: 'Helvetica-Bold' }]}>IGST @ {bill.gstRate || 18}%:</Text>
                         <Text style={[styles.colAmount, styles.cellText, { width: '15%', fontFamily: 'Helvetica-Bold' }]}>
                             {bill.igst?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </Text>
@@ -543,8 +542,8 @@ export const BillPage: React.FC<BillDocumentProps> = ({ bill, company, logoUrl }
 
 
                 <View style={{ flexDirection: 'row', paddingVertical: 8, backgroundColor: '#E5E7EB', borderTopWidth: 2, borderTopColor: '#D1D5DB' }}>
-                    <Text style={{ width: '45%' }}></Text>
-                    <Text style={[styles.colRate, styles.totalLabel, { width: '40%' }]}>GRAND TOTAL (Bill Amount After Tax)</Text>
+                    <Text style={{ width: '35%' }}></Text>
+                    <Text style={[styles.colRate, styles.totalLabel, { width: '50%' }]}>GRAND TOTAL (Bill Amount After Tax)</Text>
                     <Text style={[styles.colAmount, styles.totalAmount, { width: '15%' }]}>
                         {Math.max(0, (bill.grandTotal || bill.totalAmount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </Text>

@@ -390,7 +390,7 @@ export class BillingService {
         const stockState = new Map<string, number>();
 
         const historyChallans = challans.filter(c => isBefore(startOfDay(new Date(c.date)), startOfDay(startDate)));
-        
+
         historyChallans.forEach(challan => {
             if (challan.type === 'ISSUE') {
                 challan.items.forEach((i: any) => {
