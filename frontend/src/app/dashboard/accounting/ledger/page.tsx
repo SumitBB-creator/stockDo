@@ -81,6 +81,9 @@ export default function LedgerPage() {
                 }));
 
                 setParties(allParties);
+                if (compData && compData.ledgerAccountId) {
+                    setSelectedParty(compData.ledgerAccountId);
+                }
             } catch (error) {
                 console.error("Failed to load base data:", error);
             }
@@ -142,7 +145,7 @@ export default function LedgerPage() {
                     size="sm"
                     className="h-9 px-4 font-medium"
                     disabled={!ledgerData || ledgerData?.transactions?.length === 0}
-                    onClick={() => window.print()}
+                    onClick={() => window.open(`/dashboard/accounting/ledger/print?partyId=${selectedParty}&from=${fromDate}&to=${toDate}`, '_blank')}
                 >
                     <Printer className="mr-2 h-4 w-4" />
                     Print Statement

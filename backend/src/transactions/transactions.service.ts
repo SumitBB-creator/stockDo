@@ -64,10 +64,22 @@ export class TransactionsService {
         // Try Customer
         const customer = await this.prisma.customer.findFirst({
             where: { OR: [{ id: customerId }, { ledgerAccountId: customerId }] },
-            select: { id: true, name: true, ledgerAccountId: true }
+            select: { 
+                id: true, name: true, ledgerAccountId: true,
+                relationType: true, relationName: true,
+                officeAddress: true, officeCity: true, officeState: true, officePin: true
+            }
         });
         if (customer) {
-            party = { name: customer.name, type: 'CUSTOMER' };
+            let fullName = customer.name;
+            if (customer.relationType && customer.relationName) {
+                fullName += ` ${customer.relationType}-${customer.relationName}`;
+            }
+            
+            const addressParts = [customer.officeAddress, customer.officeCity, customer.officeState ? `${customer.officeState}-${customer.officePin || ''}` : null].filter(Boolean);
+            const address = addressParts.join(', ');
+
+            party = { name: fullName, address, type: 'CUSTOMER' };
             idSet.add(customer.id);
             if (customer.ledgerAccountId) idSet.add(customer.ledgerAccountId);
         }
@@ -76,10 +88,11 @@ export class TransactionsService {
             // Try Supplier
             const supplier = await this.prisma.supplier.findFirst({
                 where: { OR: [{ id: customerId }, { ledgerAccountId: customerId }] },
-                select: { id: true, name: true, ledgerAccountId: true }
+                select: { id: true, name: true, ledgerAccountId: true, address: true, city: true, state: true }
             });
             if (supplier) {
-                party = { name: supplier.name, type: 'SUPPLIER' };
+                const addressParts = [supplier.address, supplier.city, supplier.state].filter(Boolean);
+                party = { name: supplier.name, address: addressParts.join(', '), type: 'SUPPLIER' };
                 idSet.add(supplier.id);
                 if (supplier.ledgerAccountId) idSet.add(supplier.ledgerAccountId);
             }
@@ -252,7 +265,12 @@ export class TransactionsService {
         });
 
         return {
-            party,
+            partyDetails: {
+                name: party?.name,
+                address: (party as any)?.address,
+                isCompany,
+            },
+            party, // Keep party for backward compatibility if needed
             openingBalance,
             closingBalance: runningBalance,
             transactions: ledgerEntries
