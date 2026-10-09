@@ -207,28 +207,30 @@ export const LedgerDocument: React.FC<LedgerDocumentProps> = ({ data, company, f
                             <Text style={[styles.colDate, styles.headerText]}>Date</Text>
                             <Text style={[styles.colDrCr, styles.headerText]}></Text>
                             <Text style={[styles.colParticulars, styles.headerText]}>Pariculars</Text>
-                            <Text style={[styles.colVchType, styles.headerText]}>Vch Type</Text>
-                            <Text style={[styles.colVchNo, styles.headerText]}>Vch No</Text>
+                            <Text style={[styles.colVchType, styles.headerText]}>Receipt Type</Text>
+                            <Text style={[styles.colVchNo, styles.headerText]}>Receipt No</Text>
                             <Text style={[styles.colDebit, styles.headerText]}>Debit</Text>
                             <Text style={[styles.colCredit, styles.headerText]}>Credit</Text>
                         </View>
 
                         {/* Opening Balance */}
-                        <View style={styles.tableRow}>
-                            <Text style={[styles.colDate, styles.cellText]}>{format(new Date(fromDate), 'dd-MM-yyyy')}</Text>
-                            <Text style={[styles.colDrCr, styles.cellText]}>
-                                {data?.openingBalance > 0 ? "Cr" : (data?.openingBalance < 0 ? "Dr" : "")}
-                            </Text>
-                            <Text style={[styles.colParticulars, styles.cellText]}>Opening Balance</Text>
-                            <Text style={[styles.colVchType, styles.cellText]}></Text>
-                            <Text style={[styles.colVchNo, styles.cellText]}></Text>
-                            <Text style={[styles.colDebit, styles.cellText]}>
-                                {data?.openingBalance < 0 ? formatCurrency(Math.abs(data.openingBalance)) : '0'}
-                            </Text>
-                            <Text style={[styles.colCredit, styles.cellText]}>
-                                {data?.openingBalance > 0 ? formatCurrency(Math.abs(data.openingBalance)) : '0'}
-                            </Text>
-                        </View>
+                        {data?.openingBalance !== 0 && (
+                            <View style={styles.tableRow}>
+                                <Text style={[styles.colDate, styles.cellText]}>{format(new Date(fromDate), 'dd-MM-yyyy')}</Text>
+                                <Text style={[styles.colDrCr, styles.cellText]}>
+                                    {data?.openingBalance > 0 ? "Cr" : (data?.openingBalance < 0 ? "Dr" : "")}
+                                </Text>
+                                <Text style={[styles.colParticulars, styles.cellText]}>Opening Balance</Text>
+                                <Text style={[styles.colVchType, styles.cellText]}></Text>
+                                <Text style={[styles.colVchNo, styles.cellText]}></Text>
+                                <Text style={[styles.colDebit, styles.cellText]}>
+                                    {data?.openingBalance < 0 ? formatCurrency(Math.abs(data.openingBalance)) : '0'}
+                                </Text>
+                                <Text style={[styles.colCredit, styles.cellText]}>
+                                    {data?.openingBalance > 0 ? formatCurrency(Math.abs(data.openingBalance)) : '0'}
+                                </Text>
+                            </View>
+                        )}
 
                         {/* Transactions */}
                         {data?.transactions?.map((t: any, idx: number) => {

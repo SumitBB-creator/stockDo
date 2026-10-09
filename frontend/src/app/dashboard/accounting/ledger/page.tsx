@@ -191,8 +191,8 @@ export default function LedgerPage() {
                             <TableHead className="text-xs whitespace-nowrap font-medium h-10">Date</TableHead>
                             <TableHead className="text-xs whitespace-nowrap font-medium h-10 w-[40px] text-center">Cr/Dr</TableHead>
                             <TableHead className="text-xs min-w-[200px] font-medium h-10">Particulars</TableHead>
-                            <TableHead className="text-xs whitespace-nowrap font-medium h-10">Vch Type</TableHead>
-                            <TableHead className="text-xs whitespace-nowrap font-medium h-10">Vch No</TableHead>
+                            <TableHead className="text-xs whitespace-nowrap font-medium h-10">Receipt Type</TableHead>
+                            <TableHead className="text-xs whitespace-nowrap font-medium h-10">Receipt No</TableHead>
                             <TableHead className="text-xs whitespace-nowrap font-medium h-10 text-right w-[120px]">Debit (₹)</TableHead>
                             <TableHead className="text-xs whitespace-nowrap font-medium h-10 text-right w-[120px]">Credit (₹)</TableHead>
                         </TableRow>
@@ -217,21 +217,23 @@ export default function LedgerPage() {
                         ) : ledgerData ? (
                             <>
                                 {/* Opening Balance Row */}
-                                <TableRow className="bg-muted/30 border-b">
-                                    <TableCell className="text-[11px] py-1 align-top whitespace-nowrap">{format(new Date(fromDate), 'dd-MMM-yyyy')}</TableCell>
-                                    <TableCell className="text-xs py-1 align-top text-center font-medium">
-                                        {ledgerData.openingBalance > 0 ? "Cr" : (ledgerData.openingBalance < 0 ? "Dr" : "")}
-                                    </TableCell>
-                                    <TableCell className="text-xs py-1 align-top font-bold uppercase">Opening Balance</TableCell>
-                                    <TableCell className="text-xs py-1 align-top text-muted-foreground">-</TableCell>
-                                    <TableCell className="text-xs py-1 align-top text-muted-foreground">-</TableCell>
-                                    <TableCell className="text-right text-xs py-1 align-top font-bold tabular-nums">
-                                        {ledgerData.openingBalance < 0 ? formatCurrency(Math.abs(ledgerData.openingBalance)) : '0.00'}
-                                    </TableCell>
-                                    <TableCell className="text-right text-xs py-1 align-top font-bold tabular-nums">
-                                        {ledgerData.openingBalance > 0 ? formatCurrency(Math.abs(ledgerData.openingBalance)) : '0.00'}
-                                    </TableCell>
-                                </TableRow>
+                                {ledgerData.openingBalance !== 0 && (
+                                    <TableRow className="bg-muted/30 border-b">
+                                        <TableCell className="text-[11px] py-1 align-top whitespace-nowrap">{format(new Date(fromDate), 'dd-MMM-yyyy')}</TableCell>
+                                        <TableCell className="text-xs py-1 align-top text-center font-medium">
+                                            {ledgerData.openingBalance > 0 ? "Cr" : (ledgerData.openingBalance < 0 ? "Dr" : "")}
+                                        </TableCell>
+                                        <TableCell className="text-xs py-1 align-top font-bold uppercase">Opening Balance</TableCell>
+                                        <TableCell className="text-xs py-1 align-top text-muted-foreground">-</TableCell>
+                                        <TableCell className="text-xs py-1 align-top text-muted-foreground">-</TableCell>
+                                        <TableCell className="text-right text-xs py-1 align-top font-bold tabular-nums">
+                                            {ledgerData.openingBalance < 0 ? formatCurrency(Math.abs(ledgerData.openingBalance)) : '0.00'}
+                                        </TableCell>
+                                        <TableCell className="text-right text-xs py-1 align-top font-bold tabular-nums">
+                                            {ledgerData.openingBalance > 0 ? formatCurrency(Math.abs(ledgerData.openingBalance)) : '0.00'}
+                                        </TableCell>
+                                    </TableRow>
+                                )}
 
                                 {/* Transaction Rows */}
                                 {ledgerData.transactions.length === 0 ? (
